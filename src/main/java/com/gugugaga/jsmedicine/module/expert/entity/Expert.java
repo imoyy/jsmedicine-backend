@@ -17,5 +17,7 @@ public class Expert extends ManagedEntity {
     private String specialty;
     private String introduction;
     private EnabledStatus status;
+    private EnabledStatus consultEnabled;
+    private String consultationNotice;
     private Integer sortOrder;
 }

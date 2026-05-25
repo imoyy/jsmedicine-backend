@@ -1,6 +1,8 @@
 package com.gugugaga.jsmedicine.infrastructure.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.gugugaga.jsmedicine.module.auth.app.service.AppAuthProperties;
+import com.gugugaga.jsmedicine.module.auth.app.service.AppUserDetailsService;
 import com.gugugaga.jsmedicine.module.auth.admin.service.AdminUserDetailsService;
 import com.gugugaga.jsmedicine.module.auth.admin.service.AuthProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -14,7 +16,7 @@ import org.springframework.security.authentication.dao.DaoAuthenticationProvider
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 @Configuration
-@EnableConfigurationProperties(AuthProperties.class)
+@EnableConfigurationProperties({AuthProperties.class, AppAuthProperties.class})
 public class SecurityBeansConfig {
 
     @Bean
@@ -23,6 +25,17 @@ public class SecurityBeansConfig {
             PasswordEncoder passwordEncoder
     ) {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider(adminUserDetailsService);
+        provider.setPasswordEncoder(passwordEncoder);
+        provider.setHideUserNotFoundExceptions(false);
+        return provider;
+    }
+
+    @Bean
+    public DaoAuthenticationProvider appUserAuthenticationProvider(
+            AppUserDetailsService appUserDetailsService,
+            PasswordEncoder passwordEncoder
+    ) {
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider(appUserDetailsService);
         provider.setPasswordEncoder(passwordEncoder);
         provider.setHideUserNotFoundExceptions(false);
         return provider;

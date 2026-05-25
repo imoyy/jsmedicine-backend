@@ -4,6 +4,9 @@
 -- 2. 登录管理员：
 --    username = td_admin / password = Admin@123456
 --    username = td_viewer / password = Admin@123456
+-- 3. 登录用户端账号：
+--    username = td_user_01 / password = User@123456
+--    username = td_user_02 / password = User@123456
 
 SET NAMES utf8mb4;
 
@@ -17,6 +20,11 @@ DELETE FROM learning_records WHERE resource_type IN ('td-course', 'td-book', 'td
 DELETE FROM qa_answers WHERE question_id IN (SELECT id FROM qa_questions WHERE title LIKE '[TD]%');
 DELETE FROM qa_questions WHERE title LIKE '[TD]%';
 DELETE FROM feedbacks WHERE feedback_type = 'td-seed';
+DELETE FROM user_share_records WHERE user_id IN (SELECT id FROM app_users WHERE username LIKE 'td_%');
+DELETE FROM user_browse_histories WHERE user_id IN (SELECT id FROM app_users WHERE username LIKE 'td_%');
+DELETE FROM user_favorites WHERE user_id IN (SELECT id FROM app_users WHERE username LIKE 'td_%');
+DELETE FROM knowledge_entries WHERE title LIKE '[TD]%';
+DELETE FROM knowledge_categories WHERE category_name LIKE '[TD]%';
 DELETE FROM expert_experiences WHERE expert_id IN (SELECT id FROM experts WHERE real_name LIKE '[TD]%');
 DELETE FROM expert_category_relations WHERE expert_id IN (SELECT id FROM experts WHERE real_name LIKE '[TD]%');
 DELETE FROM experts WHERE real_name LIKE '[TD]%';
@@ -186,21 +194,21 @@ SET @tag_course = (SELECT id FROM tags WHERE tag_name = '[TD]针灸' AND deleted
 SET @tag_book = (SELECT id FROM tags WHERE tag_name = '[TD]经典' AND deleted = 0 LIMIT 1);
 SET @tag_expert = (SELECT id FROM tags WHERE tag_name = '[TD]名师' AND deleted = 0 LIMIT 1);
 
-INSERT INTO app_users (username, mobile, email, nickname, avatar_url, gender, status, registered_at, last_login_at, created_by, updated_by, deleted)
+INSERT INTO app_users (username, password_hash, mobile, email, nickname, avatar_url, auth_provider, wechat_open_id, wechat_union_id, gender, status, registered_at, last_login_at, last_login_ip, profile_completed, password_updated_at, created_by, updated_by, deleted)
 VALUES
-('td_user_01', '13900000001', 'td_user_01@example.com', '杏林新苗', 'https://example.com/assets/td/user-1.png', 1, 1, NOW() - INTERVAL 30 DAY, NOW() - INTERVAL 1 DAY, @admin_td_admin, @admin_td_admin, 0),
-('td_user_02', '13900000002', 'td_user_02@example.com', '岐黄同道', 'https://example.com/assets/td/user-2.png', 2, 1, NOW() - INTERVAL 28 DAY, NOW() - INTERVAL 2 DAY, @admin_td_admin, @admin_td_admin, 0),
-('td_user_03', '13900000003', 'td_user_03@example.com', '本草随行', 'https://example.com/assets/td/user-3.png', 1, 1, NOW() - INTERVAL 21 DAY, NOW() - INTERVAL 3 DAY, @admin_td_admin, @admin_td_admin, 0);
+('td_user_01', '$2a$10$3oFVwaq7Yq5ATpz69DNiE.XKiawLOLEN7KifhpMohOizAEmEIyFe.', '13900000001', 'td_user_01@example.com', '杏林新苗', 'https://example.com/assets/td/user-1.png', 'wechat_miniapp', 'td-openid-01', 'td-unionid-01', 1, 1, NOW() - INTERVAL 30 DAY, NOW() - INTERVAL 1 DAY, '127.0.0.1', 1, NOW() - INTERVAL 30 DAY, @admin_td_admin, @admin_td_admin, 0),
+('td_user_02', '$2a$10$3oFVwaq7Yq5ATpz69DNiE.XKiawLOLEN7KifhpMohOizAEmEIyFe.', '13900000002', 'td_user_02@example.com', '岐黄同道', 'https://example.com/assets/td/user-2.png', 'wechat_miniapp', 'td-openid-02', 'td-unionid-02', 2, 1, NOW() - INTERVAL 28 DAY, NOW() - INTERVAL 2 DAY, '127.0.0.1', 1, NOW() - INTERVAL 28 DAY, @admin_td_admin, @admin_td_admin, 0),
+('td_user_03', NULL, '13900000003', 'td_user_03@example.com', '本草随行', 'https://example.com/assets/td/user-3.png', 'wechat_miniapp', 'td-openid-03', 'td-unionid-03', 1, 1, NOW() - INTERVAL 21 DAY, NOW() - INTERVAL 3 DAY, '127.0.0.1', 0, NULL, @admin_td_admin, @admin_td_admin, 0);
 
 SET @user_01 = (SELECT id FROM app_users WHERE username = 'td_user_01' AND deleted = 0 LIMIT 1);
 SET @user_02 = (SELECT id FROM app_users WHERE username = 'td_user_02' AND deleted = 0 LIMIT 1);
 SET @user_03 = (SELECT id FROM app_users WHERE username = 'td_user_03' AND deleted = 0 LIMIT 1);
 
-INSERT INTO students (user_id, student_no, real_name, mobile, id_card_no, province, city, district, organization, position_title, status, enrolled_at, created_by, updated_by, deleted)
+INSERT INTO students (user_id, student_no, real_name, mobile, id_card_no, province, city, district, organization, position_title, status, certification_status, certification_submitted_at, certification_reviewed_at, certification_reviewed_by, reject_reason, certification_materials, enrolled_at, created_by, updated_by, deleted)
 VALUES
-(@user_01, 'TD-STU-001', '张青云', '13900000001', '110101199001010011', '浙江省', '杭州市', '西湖区', '国医馆一部', '住院医师', 1, NOW() - INTERVAL 20 DAY, @admin_td_admin, @admin_td_admin, 0),
-(@user_02, 'TD-STU-002', '李若水', '13900000002', '110101199202020022', '江苏省', '苏州市', '姑苏区', '针灸研究所', '主治医师', 1, NOW() - INTERVAL 18 DAY, @admin_td_admin, @admin_td_admin, 0),
-(@user_03, 'TD-STU-003', '王知秋', '13900000003', '110101199303030033', '四川省', '成都市', '高新区', '中医药大学', '讲师', 1, NOW() - INTERVAL 15 DAY, @admin_td_admin, @admin_td_admin, 0);
+(@user_01, 'TD-STU-001', '张青云', '13900000001', '110101199001010011', '浙江省', '杭州市', '西湖区', '国医馆一部', '住院医师', 1, 2, NOW() - INTERVAL 21 DAY, NOW() - INTERVAL 20 DAY, @admin_td_admin, NULL, '["https://example.com/assets/td/cert-1-a.jpg","https://example.com/assets/td/cert-1-b.jpg"]', NOW() - INTERVAL 20 DAY, @admin_td_admin, @admin_td_admin, 0),
+(@user_02, 'TD-STU-002', '李若水', '13900000002', '110101199202020022', '江苏省', '苏州市', '姑苏区', '针灸研究所', '主治医师', 1, 1, NOW() - INTERVAL 19 DAY, NULL, NULL, NULL, '["https://example.com/assets/td/cert-2-a.jpg"]', NOW() - INTERVAL 18 DAY, @admin_td_admin, @admin_td_admin, 0),
+(@user_03, 'TD-STU-003', '王知秋', '13900000003', '110101199303030033', '四川省', '成都市', '高新区', '中医药大学', '讲师', 1, 3, NOW() - INTERVAL 16 DAY, NOW() - INTERVAL 15 DAY, @admin_td_admin, '身份证照片不清晰', '["https://example.com/assets/td/cert-3-a.jpg"]', NOW() - INTERVAL 15 DAY, @admin_td_admin, @admin_td_admin, 0);
 
 SET @student_01 = (SELECT id FROM students WHERE student_no = 'TD-STU-001' AND deleted = 0 LIMIT 1);
 SET @student_02 = (SELECT id FROM students WHERE student_no = 'TD-STU-002' AND deleted = 0 LIMIT 1);
@@ -314,9 +322,9 @@ VALUES
 (@podcast_01, '[TD]第一期 经络循行', 'https://example.com/assets/td/podcast-audio-1.mp3', 1800, 1, 1, @admin_td_admin, @admin_td_admin, 0),
 (@podcast_01, '[TD]第二期 脏腑表里', 'https://example.com/assets/td/podcast-audio-2.mp3', 2100, 2, 1, @admin_td_admin, @admin_td_admin, 0);
 
-INSERT INTO topics (title, summary, cover_url, review_status, publish_status, published_at, sort_order, created_by, updated_by, deleted)
+INSERT INTO topics (title, summary, learning_requirements, cover_url, review_status, publish_status, published_at, sort_order, view_count, created_by, updated_by, deleted)
 VALUES
-('[TD]针灸临床专题', '测试专题摘要', 'https://example.com/assets/td/topic-cover-1.jpg', 2, 1, NOW() - INTERVAL 4 DAY, 1, @admin_td_admin, @admin_td_admin, 0);
+('[TD]针灸临床专题', '测试专题摘要', '完成专题下 2 个视频和 1 本图书学习后可参加考核。', 'https://example.com/assets/td/topic-cover-1.jpg', 2, 1, NOW() - INTERVAL 4 DAY, 1, 268, @admin_td_admin, @admin_td_admin, 0);
 
 SET @topic_01 = (SELECT id FROM topics WHERE title = '[TD]针灸临床专题' AND deleted = 0 LIMIT 1);
 
@@ -336,10 +344,10 @@ VALUES
 SET @expert_category_01 = (SELECT id FROM expert_categories WHERE category_name = '[TD]针灸专家' AND deleted = 0 LIMIT 1);
 SET @expert_category_02 = (SELECT id FROM expert_categories WHERE category_name = '[TD]方剂专家' AND deleted = 0 LIMIT 1);
 
-INSERT INTO experts (real_name, avatar_url, title, organization, specialty, introduction, status, sort_order, created_by, updated_by, deleted)
+INSERT INTO experts (real_name, avatar_url, title, organization, specialty, introduction, status, consult_enabled, consultation_notice, sort_order, created_by, updated_by, deleted)
 VALUES
-('[TD]陈景岐', 'https://example.com/assets/td/expert-1.jpg', '主任医师', '省中医院', '针灸与经络', '测试专家简介一。', 1, 1, @admin_td_admin, @admin_td_admin, 0),
-('[TD]宋本草', 'https://example.com/assets/td/expert-2.jpg', '教授', '中医药大学', '方剂配伍', '测试专家简介二。', 1, 2, @admin_td_admin, @admin_td_admin, 0);
+('[TD]陈景岐', 'https://example.com/assets/td/expert-1.jpg', '主任医师', '省中医院', '针灸与经络', '测试专家简介一。', 1, 1, '每周二、周四开放图文咨询。', 1, @admin_td_admin, @admin_td_admin, 0),
+('[TD]宋本草', 'https://example.com/assets/td/expert-2.jpg', '教授', '中医药大学', '方剂配伍', '测试专家简介二。', 1, 1, '方剂配伍咨询需先完成基础问卷。', 2, @admin_td_admin, @admin_td_admin, 0);
 
 SET @expert_01 = (SELECT id FROM experts WHERE real_name = '[TD]陈景岐' AND deleted = 0 LIMIT 1);
 SET @expert_02 = (SELECT id FROM experts WHERE real_name = '[TD]宋本草' AND deleted = 0 LIMIT 1);
@@ -380,16 +388,16 @@ VALUES
 ('td_book', @book_01, 'source_edition', '2026测试版', 'string', @admin_td_admin, @admin_td_admin, 0),
 ('td_student', @student_01, 'training_focus', '针灸临床', 'string', @admin_td_admin, @admin_td_admin, 0);
 
-INSERT INTO qa_questions (student_id, user_id, title, content, status, created_by, updated_by, deleted)
+INSERT INTO qa_questions (student_id, user_id, expert_category_id, expert_id, title, content, status, created_by, updated_by, deleted)
 VALUES
-(@student_01, @user_01, '[TD]艾灸后局部发红是否正常？', '测试答疑问题内容一。', 1, @admin_td_admin, @admin_td_admin, 0),
-(@student_02, @user_02, '[TD]四物汤与八珍汤如何区分？', '测试答疑问题内容二。', 0, @admin_td_admin, @admin_td_admin, 0);
+(@student_01, @user_01, @expert_category_01, @expert_01, '[TD]艾灸后局部发红是否正常？', '测试答疑问题内容一。', 1, @admin_td_admin, @admin_td_admin, 0),
+(@student_02, @user_02, @expert_category_02, @expert_02, '[TD]四物汤与八珍汤如何区分？', '测试答疑问题内容二。', 0, @admin_td_admin, @admin_td_admin, 0);
 
 SET @qa_question_01 = (SELECT id FROM qa_questions WHERE title = '[TD]艾灸后局部发红是否正常？' AND deleted = 0 LIMIT 1);
 
-INSERT INTO qa_answers (question_id, admin_id, content, answered_at, deleted)
+INSERT INTO qa_answers (question_id, admin_id, expert_id, content, answered_at, deleted)
 VALUES
-(@qa_question_01, @admin_td_admin, '局部轻微发红一般属于正常反应，需结合灸感与持续时间观察。', NOW() - INTERVAL 1 DAY, 0);
+(@qa_question_01, @admin_td_admin, @expert_01, '局部轻微发红一般属于正常反应，需结合灸感与持续时间观察。', NOW() - INTERVAL 1 DAY, 0);
 
 INSERT INTO feedbacks (user_id, student_id, feedback_type, content, contact, status, processed_by, processed_at, process_note, created_by, updated_by, deleted)
 VALUES
@@ -419,6 +427,40 @@ VALUES
 (@exam_record_01, @question_03, 'A', 5.00, 1, NOW() - INTERVAL 5 DAY),
 (@exam_record_02, @question_01, 'B', 0.00, 0, NOW() - INTERVAL 2 DAY),
 (@exam_record_02, @question_03, 'A', 5.00, 1, NOW() - INTERVAL 2 DAY);
+
+
+INSERT INTO user_favorites (user_id, resource_type, resource_id)
+VALUES
+(@user_01, 'article', @article_01),
+(@user_01, 'topic', @topic_01),
+(@user_02, 'course', @course_01),
+(@user_03, 'knowledge', 1);
+
+INSERT INTO user_browse_histories (user_id, resource_type, resource_id, source, view_count, viewed_at)
+VALUES
+(@user_01, 'article', @article_01, 'home', 3, NOW() - INTERVAL 1 DAY),
+(@user_01, 'topic', @topic_01, 'search', 2, NOW() - INTERVAL 12 HOUR),
+(@user_02, 'course', @course_01, 'topic', 5, NOW() - INTERVAL 6 HOUR),
+(@user_03, 'book', @book_01, 'detail', 1, NOW() - INTERVAL 2 HOUR);
+
+INSERT INTO user_share_records (user_id, resource_type, resource_id, share_channel)
+VALUES
+(@user_01, 'article', @article_01, 'wechat_session'),
+(@user_02, 'topic', @topic_01, 'wechat_timeline'),
+(@user_03, 'course', @course_01, 'link');
+
+INSERT INTO knowledge_categories (parent_id, category_name, category_code, description, sort_order, status, created_by, updated_by, deleted)
+VALUES
+(NULL, '[TD]中医基础理论', 'TD_KNOW_BASE', '测试知识库一级分类', 1, 1, @admin_td_admin, @admin_td_admin, 0),
+(NULL, '[TD]方剂学', 'TD_KNOW_FORMULA', '测试知识库一级分类', 2, 1, @admin_td_admin, @admin_td_admin, 0);
+
+SET @knowledge_category_01 = (SELECT id FROM knowledge_categories WHERE category_code = 'TD_KNOW_BASE' AND deleted = 0 LIMIT 1);
+SET @knowledge_category_02 = (SELECT id FROM knowledge_categories WHERE category_code = 'TD_KNOW_FORMULA' AND deleted = 0 LIMIT 1);
+
+INSERT INTO knowledge_entries (category_id, title, summary, cover_url, content, keywords, source, review_status, publish_status, sort_order, published_at, view_count, created_by, updated_by, deleted)
+VALUES
+(@knowledge_category_01, '[TD]阴阳学说概览', '测试知识库摘要一', 'https://example.com/assets/td/knowledge-cover-1.jpg', '<p>测试知识库正文一</p>', '阴阳,基础理论', '测试资料库', 2, 1, 1, NOW() - INTERVAL 8 DAY, 156, @admin_td_admin, @admin_td_admin, 0),
+(@knowledge_category_02, '[TD]四物汤配伍要点', '测试知识库摘要二', 'https://example.com/assets/td/knowledge-cover-2.jpg', '<p>测试知识库正文二</p>', '四物汤,方剂学', '测试资料库', 2, 1, 2, NOW() - INTERVAL 7 DAY, 132, @admin_td_admin, @admin_td_admin, 0);
 
 INSERT INTO audit_records (target_type, target_id, before_status, after_status, audit_comment, auditor_id, audited_at, created_at)
 VALUES

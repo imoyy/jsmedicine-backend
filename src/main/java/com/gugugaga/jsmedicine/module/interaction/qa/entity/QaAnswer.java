@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 public class QaAnswer extends BaseEntity {
     private Long questionId;
     private Long adminId;
+    private Long expertId;
     private String content;
     private LocalDateTime answeredAt;
 

@@ -12,6 +12,8 @@ import lombok.EqualsAndHashCode;
 public class QaQuestion extends ManagedEntity {
     private Long studentId;
     private Long userId;
+    private Long expertCategoryId;
+    private Long expertId;
     private String title;
     private String content;
     private QaStatus status;

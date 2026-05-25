@@ -73,3 +73,6 @@ app:
     bootstrap-username: ${AUTH_BOOTSTRAP_USERNAME:superadmin}
     bootstrap-password: ${AUTH_BOOTSTRAP_PASSWORD:}
     bootstrap-real-name: ${AUTH_BOOTSTRAP_REAL_NAME:系统超级管理员}
+  user-auth:
+    token-ttl-seconds: ${APP_USER_AUTH_TOKEN_TTL_SECONDS:7200}
+    token-prefix: ${APP_USER_AUTH_TOKEN_PREFIX:app:user:token:}

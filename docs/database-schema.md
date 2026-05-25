@@ -1,6 +1,6 @@
 # Database Schema
 
-This schema is the first production-oriented baseline derived from `AGENTS.md` and the management manual.
+This schema is the production-oriented baseline derived from `AGENTS.md`, the management manual, and the app user manual.
 
 Java entity classes under `src/main/java/com/gugugaga/jsmedicine/**/entity` are the application model source. The Flyway migration is the deployment artifact that keeps runtime databases aligned with those entities.
 
@@ -22,8 +22,9 @@ Java entity classes under `src/main/java/com/gugugaga/jsmedicine/**/entity` are 
 | Question bank | `question_categories`, `questions`, `question_options` |
 | Statistics | `learning_records`, `exam_records`, `exam_record_answers`, `students` |
 | Live management | `live_sessions` |
-| QA | `qa_questions`, `qa_answers` |
-| Feedback | `feedbacks` |
+| QA and consultation | `qa_questions`, `qa_answers` |
+| User interaction | `user_favorites`, `user_browse_histories`, `user_share_records`, `feedbacks` |
+| Knowledge base | `knowledge_categories`, `knowledge_entries` |
 
 ## Conventions
 
@@ -32,6 +33,10 @@ Java entity classes under `src/main/java/com/gugugaga/jsmedicine/**/entity` are 
 - `review_status` uses `0 draft, 1 pending, 2 approved, 3 rejected`.
 - `publish_status` uses `0 unpublished, 1 published`.
 - `status` uses `1 enabled, 0 disabled` unless the column comment states otherwise.
+- `app_users` now keeps user-side auth provider metadata and WeChat identity fields for future mini app login.
+- `app_users.password_hash` is reserved for user-side username/password login and stays independent from the admin account system.
+- `students` now carries the certification workflow status instead of only storing approved learner results.
 - Cross-resource configuration such as home content and topic content uses `(type, id)` pairs to avoid heavy join-table growth while keeping queries explicit.
+- User-side favorites, browse history, and share records also use `(resource_type, resource_id)` pairs so the same interaction tables can serve articles, topics, courses, books, podcasts, live sessions, and knowledge entries.
 - File metadata is centralized in `file_assets`; business tables keep URL fields for simple read paths and future migration compatibility.
 - `tags`, `resource_tags`, and `entity_extensions` provide controlled extension points for new filtering, operation labels, and fields that appear after the first release.
