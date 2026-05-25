@@ -62,7 +62,10 @@
 │   ├── JsmedicineApplication.java
 │   ├── common/
 │   │   ├── config/
+│   │   ├── entity/
+│   │   ├── enums/
 │   │   ├── exception/
+│   │   ├── mapper/
 │   │   ├── response/
 │   │   └── util/
 │   ├── module/
@@ -86,10 +89,11 @@
 │       ├── storage/
 │       └── integration/
 ├── src/main/resources/
-│   ├── application.yml
-│   ├── application-dev.yml
-│   ├── application-prod.yml
+│   ├── application.yaml
+│   ├── application-dev.yaml
+│   ├── application-prod.yaml
 │   └── db/migration/
+├── docs/
 ├── src/test/java/
 └── api/
 ```
@@ -100,10 +104,12 @@
 - Service 负责业务编排、事务控制、权限判断、状态流转。
 - Repository / Mapper 只负责数据访问，优先采用 MyBatis / MyBatis-Plus 落地。
 - DTO 和 Entity 分离，不直接暴露数据库模型。
+- Entity 是当前数据模型的代码源头，数据库迁移脚本是运行时落地产物；新增字段、表、状态时必须先更新实体和枚举，再同步 Flyway。
 - 模块按业务域拆分，模块间通过 Service 协作，避免循环依赖。
 - 不要增加无必要的中间层和抽象层。
 - 能直接复用现成依赖解决的问题，不手写低价值基础设施代码。
 - 简单 CRUD、分页、批量更新、条件查询优先使用 MyBatis-Plus 等成熟能力，不重复封装轮子。
+- 当前应用入口已通过 `@MapperScan("com.gugugaga.jsmedicine.**.mapper")` 扫描 Mapper；新增模块应按 `module/<domain>/{entity,mapper}` 结构扩展，不要把 Mapper 分散到非约定目录。
 
 ## 功能范围
 
@@ -147,12 +153,20 @@
 
 - 优先使用 MySQL。
 - 数据表结构通过迁移脚本管理，优先使用 Flyway。
+- 当前首版迁移脚本为 `src/main/resources/db/migration/V1__init_schema.sql`；后续变更必须新增 `V2__...sql`、`V3__...sql` 等增量迁移，不要直接改动已发布迁移。
 - 数据访问优先使用 MyBatis / MyBatis-Plus，提高 CRUD、分页、条件查询开发效率。
 - 简单单表 CRUD、分页、批量操作优先复用 MyBatis-Plus；复杂 SQL、统计查询、联表查询优先使用 MyBatis 明确编写。
+- 禁止把业务数据结构只写在 SQL 中而不创建对应 Entity；每张业务表必须有清晰的 Entity，常规表必须有对应 Mapper。
 - 优先复用成熟插件与能力，例如分页、乐观锁、自动填充、逻辑删除、数据权限，不手写重复功能。
 - 表结构和字段命名保持清晰、可读、可维护。
 - 涉及状态流转的字段必须用枚举或明确常量定义。
 - 不在 Entity 中写业务逻辑。
+- 逻辑删除字段统一使用 `deleted`，并通过 MyBatis-Plus `@TableLogic` 管理。
+- 通用审计字段优先继承公共基类，不要在业务实体中重复定义同名字段。
+- 跨资源配置已采用 `(resource_type, resource_id)` 或 `(item_type, item_id)` 形态支持首页、专题、标签等场景；后续扩展资源关系时优先沿用该模式，避免为每类资源无限增加相似中间表。
+- 扩展性字段优先评估 `tags`、`resource_tags`、`entity_extensions` 是否满足需求；只有当字段进入核心查询、约束或强业务流程时，才新增正式列。
+- 文件与媒体元数据集中在 `file_assets`，业务表可保留 URL / key 等读路径字段；不要在各业务模块重复设计完整文件表。
+- 统计类复杂查询可以使用 MyBatis XML 或注解 SQL，但输入输出仍应通过明确 DTO / VO 承载，不要直接向 Controller 暴露数据库行结构。
 
 ## 安全
 
@@ -160,6 +174,8 @@
 - 密码必须加密存储，优先使用 BCrypt。
 - 权限控制按角色和资源粒度设计，管理员与普通用户职责分离。
 - 敏感配置通过环境变量或外部配置注入，不硬编码。
+- 当前没有内置默认管理员账号和硬编码密码；初始化管理员、角色、权限时应通过迁移脚本或受控初始化流程写入 BCrypt 哈希。
+- 认证采用 `Authorization: Bearer <token>`，后续 JWT / Token 过滤器应接入现有 `SecurityFilterChain`。
 
 ## 构建命令
 
@@ -167,6 +183,13 @@
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 ./mvnw clean package -DskipTests
 ./mvnw test
+```
+
+在受限环境或本地不希望写入用户 Maven 缓存时，优先使用项目内 Maven 仓库：
+
+```bash
+./mvnw -Dmaven.repo.local=.m2/repository test
+./mvnw -Dmaven.repo.local=.m2/repository clean package -DskipTests
 ```
 
 ## 测试与质量
@@ -190,5 +213,7 @@
 - 优先使用成熟依赖、官方推荐方案和现成 starter，必要时直接在 `pom.xml` 中补充，不要手动造轮子。
 - 优先采用 MyBatis、MyBatis-Plus 及其成熟生态提升开发效率，避免为通用 CRUD、分页、条件构造重复造基础设施。
 - 先定义接口契约，再实现服务与数据层。
+- 后续新增功能必须优先复用现有实体基类、枚举、Mapper、统一响应、异常处理和安全配置；不要重复创建平行基础设施。
+- 每次新增接口后必须同步导出最新 Swagger JSON 到 `api/api.json`。
 - 不要为了短期交付牺牲可维护性。
 - 面向上线质量开发：可观测性、异常处理、权限、回滚、兼容性都要考虑。
