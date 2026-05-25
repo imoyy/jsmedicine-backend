@@ -65,3 +65,11 @@ logging:
   level:
     root: INFO
     com.gugugaga.jsmedicine: INFO
+
+app:
+  auth:
+    token-ttl-seconds: ${AUTH_TOKEN_TTL_SECONDS:7200}
+    token-prefix: ${AUTH_TOKEN_PREFIX:admin:token:}
+    bootstrap-username: ${AUTH_BOOTSTRAP_USERNAME:superadmin}
+    bootstrap-password: ${AUTH_BOOTSTRAP_PASSWORD:}
+    bootstrap-real-name: ${AUTH_BOOTSTRAP_REAL_NAME:系统超级管理员}

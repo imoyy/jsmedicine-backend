@@ -6,3 +6,8 @@ spring:
 logging:
   level:
     com.gugugaga.jsmedicine: DEBUG
+
+app:
+  dev:
+    test-data:
+      enabled: ${APP_DEV_TEST_DATA_ENABLED:true}

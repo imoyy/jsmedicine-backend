@@ -6,6 +6,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
+import com.gugugaga.jsmedicine.module.auth.service.AdminSecurityPrincipal;
+
 import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.Optional;
@@ -17,6 +19,9 @@ public class CurrentAdminAccessor {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (!isAuthenticated(authentication)) {
             return Optional.empty();
+        }
+        if (authentication.getPrincipal() instanceof AdminSecurityPrincipal principal) {
+            return Optional.of(principal.getId());
         }
         Long principalId = extractId(authentication.getPrincipal());
         if (principalId != null) {
