@@ -6,7 +6,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
-import com.gugugaga.jsmedicine.module.auth.service.AdminSecurityPrincipal;
+import com.gugugaga.jsmedicine.module.auth.admin.service.AdminSecurityPrincipal;
 
 import java.lang.reflect.Method;
 import java.util.Map;
@@ -84,3 +84,4 @@ public class CurrentAdminAccessor {
         }
     }
 }
+

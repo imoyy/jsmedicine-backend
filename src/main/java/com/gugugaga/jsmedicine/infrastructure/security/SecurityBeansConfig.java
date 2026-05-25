@@ -1,8 +1,8 @@
 package com.gugugaga.jsmedicine.infrastructure.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.gugugaga.jsmedicine.module.auth.service.AdminUserDetailsService;
-import com.gugugaga.jsmedicine.module.auth.service.AuthProperties;
+import com.gugugaga.jsmedicine.module.auth.admin.service.AdminUserDetailsService;
+import com.gugugaga.jsmedicine.module.auth.admin.service.AuthProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -44,3 +44,4 @@ public class SecurityBeansConfig {
         return redisTemplate;
     }
 }
+

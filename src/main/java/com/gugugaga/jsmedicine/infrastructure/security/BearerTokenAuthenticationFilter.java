@@ -1,8 +1,8 @@
 package com.gugugaga.jsmedicine.infrastructure.security;
 
-import com.gugugaga.jsmedicine.module.auth.entity.AdminSession;
-import com.gugugaga.jsmedicine.module.auth.service.AdminSecurityPrincipal;
-import com.gugugaga.jsmedicine.module.auth.service.AuthTokenService;
+import com.gugugaga.jsmedicine.module.auth.admin.entity.AdminSession;
+import com.gugugaga.jsmedicine.module.auth.admin.service.AdminSecurityPrincipal;
+import com.gugugaga.jsmedicine.module.auth.admin.service.AuthTokenService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -72,3 +72,4 @@ public class BearerTokenAuthenticationFilter extends OncePerRequestFilter {
         SecurityContextHolder.getContext().setAuthentication(authentication);
     }
 }
+
