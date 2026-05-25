@@ -173,6 +173,7 @@
 - 返回统一响应结构，错误码、提示信息、数据结构必须稳定。
 - 所有接口必须写清楚请求参数、响应体、错误场景。
 - 当前已实现的 `/api/v1/auth/login`、`/api/v1/auth/logout`、`/api/v1/auth/me`、`/api/v1/auth/status` 属于管理端认证基线；后续扩展用户端认证时，不直接复用这组接口路径。
+- 当前已实现用户端账号密码登录接口：`/api/v1/app/auth/login`。
 
 ## Swagger 与接口归档
 
@@ -192,6 +193,7 @@
 - 该脚本按幂等方式设计，统一使用 `td_`、`TD_`、`[TD]` 前缀，重复启动不会无限追加同一批测试数据。
 - `application-dev.yaml` 中 `app.dev.test-data.enabled` 当前默认值为 `${APP_DEV_TEST_DATA_ENABLED:true}`，即 `dev` 环境默认导入，可通过环境变量显式关闭。
 - 当前测试管理员账号为 `td_admin / Admin@123456` 和 `td_viewer / Admin@123456`，仅用于开发联调和验收数据准备。
+- 当前测试用户端账号为 `td_user_01 / User@123456`、`td_user_02 / User@123456`；`td_user_03` 仅保留微信身份样例，不提供密码登录。
 - 测试数据覆盖管理员、角色、权限、用户、学员、首页、课程、图书、资讯、播客、专题、专家、题库、直播、答疑、反馈、学习记录、考试记录、审计记录等主要场景。
 
 ## 数据层
@@ -222,6 +224,7 @@
 - 当前没有内置默认管理员账号和硬编码密码；初始化管理员、角色、权限时应通过迁移脚本或受控初始化流程写入 BCrypt 哈希。
 - 认证采用 `Authorization: Bearer <token>`，后续 JWT / Token 过滤器应接入现有 `SecurityFilterChain`。
 - 当前认证实现采用等价 Bearer Token 会话方案，不使用 JWT；登录后将 `AdminSession` 写入 Redis，后续请求通过 `BearerTokenAuthenticationFilter` 解析令牌并恢复当前管理员上下文。
+- 用户端账号密码登录基于 `app_users.password_hash` 和独立的 Redis token 前缀实现，不复用管理端管理员角色权限链路。
 - Redis 会话序列化统一复用 Spring 的 `ObjectMapper`，必须保持对 `LocalDateTime` 等 Java Time 类型的可序列化支持，避免登录态写入 Redis 失败。
 - 管理端会话与用户端会话必须隔离命名空间、隔离上下文对象、隔离权限判断，不允许把后台 RBAC 直接套用到用户端。
 
