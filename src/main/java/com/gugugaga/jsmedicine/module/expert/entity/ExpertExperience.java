@@ -2,6 +2,7 @@ package com.gugugaga.jsmedicine.module.expert.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.gugugaga.jsmedicine.common.entity.ManagedEntity;
+import com.gugugaga.jsmedicine.common.enums.ExperienceType;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -12,7 +13,7 @@ import java.time.LocalDate;
 @EqualsAndHashCode(callSuper = true)
 public class ExpertExperience extends ManagedEntity {
     private Long expertId;
-    private String experienceType;
+    private ExperienceType experienceType;
     private String title;
     private String description;
     private LocalDate startDate;

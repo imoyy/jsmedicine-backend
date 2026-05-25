@@ -2,6 +2,7 @@ package com.gugugaga.jsmedicine.module.question.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.gugugaga.jsmedicine.common.entity.ManagedEntity;
+import com.gugugaga.jsmedicine.common.enums.Difficulty;
 import com.gugugaga.jsmedicine.common.enums.EnabledStatus;
 import com.gugugaga.jsmedicine.common.enums.QuestionType;
 import lombok.Data;
@@ -17,7 +18,7 @@ public class Question extends ManagedEntity {
     private QuestionType questionType;
     private String title;
     private String analysis;
-    private Integer difficulty;
+    private Difficulty difficulty;
     private BigDecimal score;
     private EnabledStatus status;
 }

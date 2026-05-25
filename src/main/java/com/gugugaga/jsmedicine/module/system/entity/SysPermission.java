@@ -3,6 +3,7 @@ package com.gugugaga.jsmedicine.module.system.entity;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.gugugaga.jsmedicine.common.entity.ManagedEntity;
 import com.gugugaga.jsmedicine.common.enums.EnabledStatus;
+import com.gugugaga.jsmedicine.common.enums.PermissionType;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -13,7 +14,7 @@ public class SysPermission extends ManagedEntity {
     private Long parentId;
     private String permissionCode;
     private String permissionName;
-    private Integer permissionType;
+    private PermissionType permissionType;
     private String routePath;
     private String apiMethod;
     private String apiPath;

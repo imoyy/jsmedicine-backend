@@ -2,6 +2,7 @@ package com.gugugaga.jsmedicine.module.feedback.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.gugugaga.jsmedicine.common.entity.ManagedEntity;
+import com.gugugaga.jsmedicine.common.enums.FeedbackStatus;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -16,7 +17,7 @@ public class Feedback extends ManagedEntity {
     private String feedbackType;
     private String content;
     private String contact;
-    private Integer status;
+    private FeedbackStatus status;
     private Long processedBy;
     private LocalDateTime processedAt;
     private String processNote;

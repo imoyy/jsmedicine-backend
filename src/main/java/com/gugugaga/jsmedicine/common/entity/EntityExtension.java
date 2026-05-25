@@ -1,6 +1,7 @@
 package com.gugugaga.jsmedicine.common.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.gugugaga.jsmedicine.common.enums.ValueType;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -12,5 +13,5 @@ public class EntityExtension extends ManagedEntity {
     private Long ownerId;
     private String fieldKey;
     private String fieldValue;
-    private String valueType;
+    private ValueType valueType;
 }

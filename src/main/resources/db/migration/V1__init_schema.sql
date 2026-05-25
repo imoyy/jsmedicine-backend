@@ -83,6 +83,7 @@ CREATE TABLE audit_records (
     audit_comment VARCHAR(512) NULL COMMENT 'Audit comment',
     auditor_id BIGINT NOT NULL COMMENT 'Auditor admin ID',
     audited_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Audit time',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Create time',
     KEY idx_audit_records_target (target_type, target_id),
     KEY idx_audit_records_auditor (auditor_id, audited_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Business audit records';
@@ -187,7 +188,7 @@ CREATE TABLE entity_extensions (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Create time',
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Update time',
     deleted TINYINT NOT NULL DEFAULT 0 COMMENT 'Logic delete flag',
-    UNIQUE KEY uk_entity_extensions_owner_key (owner_type, owner_id, field_key),
+    UNIQUE KEY uk_entity_extensions_owner_key (owner_type, owner_id, field_key, deleted),
     KEY idx_entity_extensions_key (owner_type, field_key, deleted)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Controlled extension fields for future requirements';
 
