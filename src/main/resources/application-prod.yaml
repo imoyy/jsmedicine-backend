@@ -1,0 +1,10 @@
+spring:
+  data:
+    redis:
+      ssl:
+        enabled: ${REDIS_SSL:false}
+
+logging:
+  level:
+    root: INFO
+    com.gugugaga.jsmedicine: INFO

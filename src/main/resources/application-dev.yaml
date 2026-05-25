@@ -1,0 +1,8 @@
+spring:
+  docker:
+    compose:
+      enabled: false
+
+logging:
+  level:
+    com.gugugaga.jsmedicine: DEBUG
