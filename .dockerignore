@@ -1,0 +1,10 @@
+.git
+.idea
+target
+.m2
+api
+node_modules
+*.log
+.env
+.env.*
+!.env.test.example

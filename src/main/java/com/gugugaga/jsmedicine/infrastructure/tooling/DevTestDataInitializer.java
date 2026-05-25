@@ -14,9 +14,6 @@ import javax.sql.DataSource;
 
 /**
  * dev 环境启动时按开关导入幂等测试数据。
- *
- * @author zhayubin
- * @since 2026-05-25
  */
 @Profile("dev")
 @Configuration

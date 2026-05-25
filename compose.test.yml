@@ -1,0 +1,94 @@
+name: jsmedicine-test
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: jsmedicine-test-app
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-test}
+      SERVER_PORT: 8080
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-jsmedicine_test}
+      DB_USERNAME: ${DB_USERNAME:-jsmedicine}
+      DB_PASSWORD: ${DB_PASSWORD:-change_me}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-change_me}
+      REDIS_DATABASE: ${REDIS_DATABASE:-0}
+      REDIS_SSL: ${REDIS_SSL:-false}
+      AUTH_TOKEN_TTL_SECONDS: ${AUTH_TOKEN_TTL_SECONDS:-7200}
+      APP_USER_AUTH_TOKEN_TTL_SECONDS: ${APP_USER_AUTH_TOKEN_TTL_SECONDS:-7200}
+      TEST_BASE_URL: ${TEST_BASE_URL:-https://api-test.example.com}
+      APP_CORS_ALLOWED_ORIGIN_PATTERNS: ${APP_CORS_ALLOWED_ORIGIN_PATTERNS:-}
+      APP_CORS_ALLOWED_METHODS: ${APP_CORS_ALLOWED_METHODS:-GET,POST,PUT,PATCH,DELETE,OPTIONS}
+      APP_CORS_ALLOWED_HEADERS: ${APP_CORS_ALLOWED_HEADERS:-*}
+      APP_CORS_EXPOSED_HEADERS: ${APP_CORS_EXPOSED_HEADERS:-Authorization,Content-Disposition}
+      APP_CORS_ALLOW_CREDENTIALS: ${APP_CORS_ALLOW_CREDENTIALS:-true}
+      APP_CORS_MAX_AGE: ${APP_CORS_MAX_AGE:-3600}
+      JAVA_OPTS: "${JAVA_OPTS:--Xms256m -Xmx512m}"
+    ports:
+      - "${APP_BIND_HOST:-127.0.0.1}:${APP_BIND_PORT:-18080}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/actuator/health > /dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
+  mysql:
+    image: mysql:8.4
+    container_name: jsmedicine-test-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-change_me_root}
+      MYSQL_DATABASE: ${DB_NAME:-jsmedicine_test}
+      MYSQL_USER: ${DB_USERNAME:-jsmedicine}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-change_me}
+      TZ: ${TZ:-Asia/Shanghai}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=+08:00
+      - --mysql-native-password=ON
+      - --max_connections=${MYSQL_MAX_CONNECTIONS:-80}
+      - --innodb-buffer-pool-size=${MYSQL_INNODB_BUFFER_POOL_SIZE:-268435456}
+    volumes:
+      - mysql_test_data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: jsmedicine-test-redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --appendonly yes
+      --requirepass ${REDIS_PASSWORD:-change_me}
+      --maxmemory ${REDIS_MAX_MEMORY:-128mb}
+      --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_test_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD:-change_me} ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  mysql_test_data:
+  redis_test_data:
