@@ -25,6 +25,10 @@ public class ApiResponse<T> {
     }
 
     public static ApiResponse<Void> fail(String code, String message) {
-        return new ApiResponse<>(false, code, message, null);
+        return fail(code, message, null);
+    }
+
+    public static <T> ApiResponse<T> fail(String code, String message, T data) {
+        return new ApiResponse<>(false, code, message, data);
     }
 }
