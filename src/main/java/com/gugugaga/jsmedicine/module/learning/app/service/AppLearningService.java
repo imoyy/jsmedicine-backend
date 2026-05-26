@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.gugugaga.jsmedicine.common.enums.EnabledStatus;
 import com.gugugaga.jsmedicine.common.enums.PublishStatus;
+import com.gugugaga.jsmedicine.common.enums.QuestionType;
 import com.gugugaga.jsmedicine.common.enums.ReviewStatus;
 import com.gugugaga.jsmedicine.common.enums.StudentCertificationStatus;
 import com.gugugaga.jsmedicine.common.exception.BusinessException;
@@ -20,6 +21,12 @@ import com.gugugaga.jsmedicine.module.learning.app.dto.AppBookChapterResponse;
 import com.gugugaga.jsmedicine.module.learning.app.dto.AppBookResponse;
 import com.gugugaga.jsmedicine.module.learning.app.dto.AppCourseResponse;
 import com.gugugaga.jsmedicine.module.learning.app.dto.AppCourseVideoResponse;
+import com.gugugaga.jsmedicine.module.learning.app.dto.AppExamAnswerResultResponse;
+import com.gugugaga.jsmedicine.module.learning.app.dto.AppExamPaperResponse;
+import com.gugugaga.jsmedicine.module.learning.app.dto.AppExamQuestionOptionResponse;
+import com.gugugaga.jsmedicine.module.learning.app.dto.AppExamQuestionResponse;
+import com.gugugaga.jsmedicine.module.learning.app.dto.AppExamRecordResponse;
+import com.gugugaga.jsmedicine.module.learning.app.dto.AppExamSubmitRequest;
 import com.gugugaga.jsmedicine.module.learning.app.dto.AppLearningPageQuery;
 import com.gugugaga.jsmedicine.module.learning.app.dto.AppLearningRecordRequest;
 import com.gugugaga.jsmedicine.module.learning.app.dto.AppLearningRecordResponse;
@@ -41,6 +48,18 @@ import com.gugugaga.jsmedicine.module.learning.podcast.entity.Podcast;
 import com.gugugaga.jsmedicine.module.learning.podcast.entity.PodcastAudio;
 import com.gugugaga.jsmedicine.module.learning.podcast.mapper.PodcastAudioMapper;
 import com.gugugaga.jsmedicine.module.learning.podcast.mapper.PodcastMapper;
+import com.gugugaga.jsmedicine.module.learning.question.entity.ExamPaper;
+import com.gugugaga.jsmedicine.module.learning.question.entity.ExamPaperQuestion;
+import com.gugugaga.jsmedicine.module.learning.question.entity.Question;
+import com.gugugaga.jsmedicine.module.learning.question.entity.QuestionOption;
+import com.gugugaga.jsmedicine.module.learning.question.mapper.ExamPaperMapper;
+import com.gugugaga.jsmedicine.module.learning.question.mapper.ExamPaperQuestionMapper;
+import com.gugugaga.jsmedicine.module.learning.question.mapper.QuestionMapper;
+import com.gugugaga.jsmedicine.module.learning.question.mapper.QuestionOptionMapper;
+import com.gugugaga.jsmedicine.module.learning.record.entity.ExamRecord;
+import com.gugugaga.jsmedicine.module.learning.record.entity.ExamRecordAnswer;
+import com.gugugaga.jsmedicine.module.learning.record.mapper.ExamRecordAnswerMapper;
+import com.gugugaga.jsmedicine.module.learning.record.mapper.ExamRecordMapper;
 import com.gugugaga.jsmedicine.module.learning.record.entity.LearningRecord;
 import com.gugugaga.jsmedicine.module.learning.record.mapper.LearningRecordMapper;
 import com.gugugaga.jsmedicine.module.user.entity.Student;
@@ -49,10 +68,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class AppLearningService {
@@ -74,6 +99,12 @@ public class AppLearningService {
     private final TopicMapper topicMapper;
     private final TopicItemMapper topicItemMapper;
     private final LearningRecordMapper learningRecordMapper;
+    private final ExamPaperMapper examPaperMapper;
+    private final ExamPaperQuestionMapper examPaperQuestionMapper;
+    private final QuestionMapper questionMapper;
+    private final QuestionOptionMapper questionOptionMapper;
+    private final ExamRecordMapper examRecordMapper;
+    private final ExamRecordAnswerMapper examRecordAnswerMapper;
 
     public AppLearningService(
             CurrentAppUserResolver currentAppUserResolver,
@@ -87,7 +118,13 @@ public class AppLearningService {
             PodcastAudioMapper podcastAudioMapper,
             TopicMapper topicMapper,
             TopicItemMapper topicItemMapper,
-            LearningRecordMapper learningRecordMapper
+            LearningRecordMapper learningRecordMapper,
+            ExamPaperMapper examPaperMapper,
+            ExamPaperQuestionMapper examPaperQuestionMapper,
+            QuestionMapper questionMapper,
+            QuestionOptionMapper questionOptionMapper,
+            ExamRecordMapper examRecordMapper,
+            ExamRecordAnswerMapper examRecordAnswerMapper
     ) {
         this.currentAppUserResolver = currentAppUserResolver;
         this.studentMapper = studentMapper;
@@ -101,6 +138,12 @@ public class AppLearningService {
         this.topicMapper = topicMapper;
         this.topicItemMapper = topicItemMapper;
         this.learningRecordMapper = learningRecordMapper;
+        this.examPaperMapper = examPaperMapper;
+        this.examPaperQuestionMapper = examPaperQuestionMapper;
+        this.questionMapper = questionMapper;
+        this.questionOptionMapper = questionOptionMapper;
+        this.examRecordMapper = examRecordMapper;
+        this.examRecordAnswerMapper = examRecordAnswerMapper;
     }
 
     public PageResponse<AppCourseResponse> pageCourses(AppLearningPageQuery query) {
@@ -183,6 +226,83 @@ public class AppLearningService {
     public AppPodcastResponse podcastDetail(Long id) {
         Podcast podcast = requireVisiblePodcast(id);
         return toPodcastResponse(podcast, true, currentStudentId().orElse(null));
+    }
+
+    public PageResponse<AppExamPaperResponse> pageExamPapers(AppLearningPageQuery query) {
+        Page<ExamPaper> page = examPaperMapper.selectPage(new Page<>(normalizePage(query.page()), normalizeSize(query.size())),
+                new LambdaQueryWrapper<ExamPaper>()
+                        .eq(ExamPaper::getDeleted, 0)
+                        .eq(ExamPaper::getStatus, EnabledStatus.ENABLED)
+                        .and(hasText(query.keyword()), wrapper -> wrapper.like(ExamPaper::getPaperName, query.keyword()))
+                        .orderByDesc(ExamPaper::getCreatedAt));
+        return pageResponse(page, page.getRecords().stream().map(paper -> toExamPaperResponse(paper, false)).toList());
+    }
+
+    public AppExamPaperResponse examPaperDetail(Long id) {
+        return toExamPaperResponse(requireVisibleExamPaper(id), true);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public AppExamRecordResponse submitExam(Long paperId, AppExamSubmitRequest request) {
+        Student student = requireCurrentStudent();
+        ExamPaper paper = requireVisibleExamPaper(paperId);
+        List<ExamPaperQuestion> paperQuestions = loadPaperQuestionRelations(paperId);
+        if (paperQuestions.isEmpty()) {
+            throw new BusinessException(ErrorCode.CONFLICT, "Exam paper has no questions");
+        }
+        Map<Long, String> submittedAnswers = request.answers().stream()
+                .collect(Collectors.toMap(AppExamSubmitRequest.Answer::questionId,
+                        answer -> normalizeAnswer(answer.answerContent()),
+                        (left, right) -> right));
+        LocalDateTime now = LocalDateTime.now();
+        ExamRecord record = new ExamRecord();
+        record.setStudentId(student.getId());
+        record.setPaperId(paperId);
+        record.setSourceType(request.sourceType());
+        record.setSourceId(request.sourceId());
+        record.setScore(BigDecimal.ZERO.setScale(2));
+        record.setPassed(0);
+        record.setStartedAt(now);
+        record.setSubmittedAt(now);
+        examRecordMapper.insert(record);
+
+        BigDecimal totalScore = BigDecimal.ZERO.setScale(2);
+        for (ExamPaperQuestion relation : paperQuestions) {
+            Question question = requireVisibleQuestion(relation.getQuestionId());
+            String answerContent = submittedAnswers.getOrDefault(question.getId(), "");
+            BigDecimal answerScore = gradeAnswer(question, relation.getScore(), answerContent);
+            totalScore = totalScore.add(answerScore);
+            ExamRecordAnswer answer = new ExamRecordAnswer();
+            answer.setExamRecordId(record.getId());
+            answer.setQuestionId(question.getId());
+            answer.setAnswerContent(answerContent);
+            answer.setScore(answerScore);
+            answer.setCorrect(answerScore.compareTo(BigDecimal.ZERO) > 0 && answerScore.compareTo(relation.getScore()) == 0 ? 1 : 0);
+            examRecordAnswerMapper.insert(answer);
+        }
+        record.setScore(totalScore.setScale(2, RoundingMode.HALF_UP));
+        record.setPassed(record.getScore().compareTo(paper.getPassScore()) >= 0 ? 1 : 0);
+        examRecordMapper.updateById(record);
+        return toExamRecordResponse(record, true);
+    }
+
+    public PageResponse<AppExamRecordResponse> pageExamRecords(long page, long size) {
+        Student student = requireCurrentStudent();
+        Page<ExamRecord> recordPage = examRecordMapper.selectPage(new Page<>(normalizePage(page), normalizeSize(size)),
+                new LambdaQueryWrapper<ExamRecord>()
+                        .eq(ExamRecord::getStudentId, student.getId())
+                        .orderByDesc(ExamRecord::getSubmittedAt)
+                        .orderByDesc(ExamRecord::getCreatedAt));
+        return pageResponse(recordPage, recordPage.getRecords().stream().map(record -> toExamRecordResponse(record, false)).toList());
+    }
+
+    public AppExamRecordResponse examRecordDetail(Long recordId) {
+        Student student = requireCurrentStudent();
+        ExamRecord record = examRecordMapper.selectById(recordId);
+        if (record == null || !Objects.equals(record.getStudentId(), student.getId())) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Exam record does not exist");
+        }
+        return toExamRecordResponse(record, true);
     }
 
     public PageResponse<AppTopicResponse> pageTopics(AppLearningPageQuery query) {
@@ -330,6 +450,22 @@ public class AppLearningService {
         return topic;
     }
 
+    private ExamPaper requireVisibleExamPaper(Long id) {
+        ExamPaper paper = examPaperMapper.selectById(id);
+        if (paper == null || !Objects.equals(paper.getDeleted(), 0) || paper.getStatus() != EnabledStatus.ENABLED) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Exam paper does not exist");
+        }
+        return paper;
+    }
+
+    private Question requireVisibleQuestion(Long id) {
+        Question question = questionMapper.selectById(id);
+        if (question == null || !Objects.equals(question.getDeleted(), 0) || question.getStatus() != EnabledStatus.ENABLED) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Question does not exist");
+        }
+        return question;
+    }
+
     private AppCourseResponse toCourseResponse(Course course, boolean includeVideos, Long studentId) {
         LearningRecord record = findLearningRecord(studentId, "course", course.getId()).orElse(null);
         return new AppCourseResponse(course.getId(), course.getCourseName(), course.getSubtitle(), course.getCoverUrl(),
@@ -401,6 +537,117 @@ public class AppLearningService {
                 .map(audio -> new AppPodcastAudioResponse(audio.getId(), audio.getPodcastId(), audio.getTitle(),
                         audio.getAudioUrl(), audio.getDurationSeconds(), audio.getSortOrder()))
                 .toList();
+    }
+
+    private AppExamPaperResponse toExamPaperResponse(ExamPaper paper, boolean includeQuestions) {
+        return new AppExamPaperResponse(paper.getId(), paper.getPaperName(), paper.getDescription(), paper.getTotalScore(),
+                paper.getPassScore(), paper.getDurationMinutes(), paper.getStatus(),
+                includeQuestions ? loadExamQuestions(paper.getId()) : List.of());
+    }
+
+    private List<AppExamQuestionResponse> loadExamQuestions(Long paperId) {
+        return loadPaperQuestionRelations(paperId).stream()
+                .map(this::toExamQuestionResponse)
+                .toList();
+    }
+
+    private List<ExamPaperQuestion> loadPaperQuestionRelations(Long paperId) {
+        return examPaperQuestionMapper.selectList(new LambdaQueryWrapper<ExamPaperQuestion>()
+                .eq(ExamPaperQuestion::getPaperId, paperId)
+                .orderByAsc(ExamPaperQuestion::getSortOrder)
+                .orderByAsc(ExamPaperQuestion::getId));
+    }
+
+    private AppExamQuestionResponse toExamQuestionResponse(ExamPaperQuestion relation) {
+        Question question = requireVisibleQuestion(relation.getQuestionId());
+        return new AppExamQuestionResponse(question.getId(), question.getQuestionType(), question.getTitle(),
+                question.getDifficulty(), relation.getScore(), relation.getSortOrder(), loadExamQuestionOptions(question.getId()));
+    }
+
+    private List<AppExamQuestionOptionResponse> loadExamQuestionOptions(Long questionId) {
+        return questionOptionMapper.selectList(new LambdaQueryWrapper<QuestionOption>()
+                        .eq(QuestionOption::getQuestionId, questionId)
+                        .orderByAsc(QuestionOption::getSortOrder)
+                        .orderByAsc(QuestionOption::getOptionKey))
+                .stream()
+                .map(option -> new AppExamQuestionOptionResponse(option.getId(), option.getOptionKey(), option.getOptionContent(), option.getSortOrder()))
+                .toList();
+    }
+
+    private AppExamRecordResponse toExamRecordResponse(ExamRecord record, boolean includeAnswers) {
+        ExamPaper paper = examPaperMapper.selectById(record.getPaperId());
+        return new AppExamRecordResponse(record.getId(), record.getStudentId(), record.getPaperId(),
+                paper == null ? null : paper.getPaperName(), record.getSourceType(), record.getSourceId(),
+                record.getScore(), record.getPassed(), record.getStartedAt(), record.getSubmittedAt(),
+                includeAnswers ? loadExamAnswerResults(record.getId()) : List.of());
+    }
+
+    private List<AppExamAnswerResultResponse> loadExamAnswerResults(Long recordId) {
+        return examRecordAnswerMapper.selectList(new LambdaQueryWrapper<ExamRecordAnswer>()
+                        .eq(ExamRecordAnswer::getExamRecordId, recordId)
+                        .orderByAsc(ExamRecordAnswer::getId))
+                .stream()
+                .map(this::toExamAnswerResultResponse)
+                .toList();
+    }
+
+    private AppExamAnswerResultResponse toExamAnswerResultResponse(ExamRecordAnswer answer) {
+        Question question = questionMapper.selectById(answer.getQuestionId());
+        if (question == null) {
+            return new AppExamAnswerResultResponse(answer.getQuestionId(), null, null, answer.getAnswerContent(),
+                    null, null, answer.getScore(), answer.getCorrect(), List.of());
+        }
+        return new AppExamAnswerResultResponse(question.getId(), question.getQuestionType(), question.getTitle(),
+                answer.getAnswerContent(), correctAnswer(question.getId()), question.getAnalysis(), answer.getScore(),
+                answer.getCorrect(), loadExamQuestionOptions(question.getId()));
+    }
+
+    private BigDecimal gradeAnswer(Question question, BigDecimal score, String answerContent) {
+        if (question.getQuestionType() == QuestionType.SHORT_ANSWER) {
+            return BigDecimal.ZERO.setScale(2);
+        }
+        Set<String> submitted = answerSet(answerContent);
+        Set<String> correct = correctAnswerSet(question.getId());
+        if (!correct.isEmpty() && submitted.equals(correct)) {
+            return score.setScale(2, RoundingMode.HALF_UP);
+        }
+        return BigDecimal.ZERO.setScale(2);
+    }
+
+    private String correctAnswer(Long questionId) {
+        return correctAnswerSet(questionId).stream()
+                .sorted()
+                .collect(Collectors.joining(","));
+    }
+
+    private Set<String> correctAnswerSet(Long questionId) {
+        return questionOptionMapper.selectList(new LambdaQueryWrapper<QuestionOption>()
+                        .eq(QuestionOption::getQuestionId, questionId)
+                        .eq(QuestionOption::getCorrect, 1))
+                .stream()
+                .map(QuestionOption::getOptionKey)
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(value -> !value.isBlank())
+                .collect(Collectors.toSet());
+    }
+
+    private Set<String> answerSet(String answerContent) {
+        return Arrays.stream(normalizeAnswer(answerContent).split(","))
+                .map(String::trim)
+                .filter(value -> !value.isBlank())
+                .collect(Collectors.toSet());
+    }
+
+    private String normalizeAnswer(String answerContent) {
+        if (answerContent == null) {
+            return "";
+        }
+        return Arrays.stream(answerContent.split(","))
+                .map(String::trim)
+                .filter(value -> !value.isBlank())
+                .sorted(Comparator.naturalOrder())
+                .collect(Collectors.joining(","));
     }
 
     private AppTopicResponse toTopicResponse(Topic topic, boolean includeItems) {

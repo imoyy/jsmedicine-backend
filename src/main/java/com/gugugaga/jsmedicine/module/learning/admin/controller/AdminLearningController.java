@@ -15,7 +15,17 @@ import com.gugugaga.jsmedicine.module.learning.admin.dto.CourseRequest;
 import com.gugugaga.jsmedicine.module.learning.admin.dto.CourseResponse;
 import com.gugugaga.jsmedicine.module.learning.admin.dto.CourseVideoRequest;
 import com.gugugaga.jsmedicine.module.learning.admin.dto.CourseVideoResponse;
+import com.gugugaga.jsmedicine.module.learning.admin.dto.ExamPaperQuestionRequest;
+import com.gugugaga.jsmedicine.module.learning.admin.dto.ExamPaperQuestionResponse;
+import com.gugugaga.jsmedicine.module.learning.admin.dto.ExamPaperRequest;
+import com.gugugaga.jsmedicine.module.learning.admin.dto.ExamPaperResponse;
 import com.gugugaga.jsmedicine.module.learning.admin.dto.LearningReviewRequest;
+import com.gugugaga.jsmedicine.module.learning.admin.dto.QuestionCategoryRequest;
+import com.gugugaga.jsmedicine.module.learning.admin.dto.QuestionCategoryResponse;
+import com.gugugaga.jsmedicine.module.learning.admin.dto.QuestionOptionRequest;
+import com.gugugaga.jsmedicine.module.learning.admin.dto.QuestionOptionResponse;
+import com.gugugaga.jsmedicine.module.learning.admin.dto.QuestionRequest;
+import com.gugugaga.jsmedicine.module.learning.admin.dto.QuestionResponse;
 import com.gugugaga.jsmedicine.module.learning.admin.service.AdminLearningService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -31,6 +41,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 @Tag(name = "管理端学习资源")
 @RestController
@@ -241,6 +253,147 @@ public class AdminLearningController {
     @DeleteMapping("/books/chapters/{id}")
     public ApiResponse<Void> deleteBookChapter(@PathVariable Long id) {
         adminLearningService.deleteBookChapter(id);
+        return ApiResponse.ok();
+    }
+
+    @Operation(summary = "分页查询题库分类")
+    @PreAuthorize("hasAuthority('learning:question:view')")
+    @GetMapping("/question-categories")
+    public ApiResponse<PageResponse<QuestionCategoryResponse>> pageQuestionCategories(
+            @RequestParam(defaultValue = "1") long page,
+            @RequestParam(defaultValue = "20") long size,
+            @RequestParam(required = false) String sort,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Long parentId,
+            @RequestParam(required = false) EnabledStatus status
+    ) {
+        return ApiResponse.ok(adminLearningService.pageQuestionCategories(new AdminLearningPageQuery(page, size, sort, keyword, parentId, status, null)));
+    }
+
+    @Operation(summary = "新增题库分类")
+    @PreAuthorize("hasAuthority('learning:question:edit')")
+    @PostMapping("/question-categories")
+    public ApiResponse<QuestionCategoryResponse> createQuestionCategory(@Valid @RequestBody QuestionCategoryRequest request) {
+        return ApiResponse.ok(adminLearningService.createQuestionCategory(request));
+    }
+
+    @Operation(summary = "修改题库分类")
+    @PreAuthorize("hasAuthority('learning:question:edit')")
+    @PutMapping("/question-categories/{id}")
+    public ApiResponse<QuestionCategoryResponse> updateQuestionCategory(@PathVariable Long id, @Valid @RequestBody QuestionCategoryRequest request) {
+        return ApiResponse.ok(adminLearningService.updateQuestionCategory(id, request));
+    }
+
+    @Operation(summary = "删除题库分类")
+    @PreAuthorize("hasAuthority('learning:question:edit')")
+    @DeleteMapping("/question-categories/{id}")
+    public ApiResponse<Void> deleteQuestionCategory(@PathVariable Long id) {
+        adminLearningService.deleteQuestionCategory(id);
+        return ApiResponse.ok();
+    }
+
+    @Operation(summary = "分页查询题目")
+    @PreAuthorize("hasAuthority('learning:question:view')")
+    @GetMapping("/questions")
+    public ApiResponse<PageResponse<QuestionResponse>> pageQuestions(
+            @RequestParam(defaultValue = "1") long page,
+            @RequestParam(defaultValue = "20") long size,
+            @RequestParam(required = false) String sort,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) EnabledStatus status
+    ) {
+        return ApiResponse.ok(adminLearningService.pageQuestions(new AdminLearningPageQuery(page, size, sort, keyword, categoryId, status, null)));
+    }
+
+    @Operation(summary = "题目详情")
+    @PreAuthorize("hasAuthority('learning:question:view')")
+    @GetMapping("/questions/{id}")
+    public ApiResponse<QuestionResponse> questionDetail(@PathVariable Long id) {
+        return ApiResponse.ok(adminLearningService.questionDetail(id));
+    }
+
+    @Operation(summary = "新增题目")
+    @PreAuthorize("hasAuthority('learning:question:edit')")
+    @PostMapping("/questions")
+    public ApiResponse<QuestionResponse> createQuestion(@Valid @RequestBody QuestionRequest request) {
+        return ApiResponse.ok(adminLearningService.createQuestion(request));
+    }
+
+    @Operation(summary = "修改题目")
+    @PreAuthorize("hasAuthority('learning:question:edit')")
+    @PutMapping("/questions/{id}")
+    public ApiResponse<QuestionResponse> updateQuestion(@PathVariable Long id, @Valid @RequestBody QuestionRequest request) {
+        return ApiResponse.ok(adminLearningService.updateQuestion(id, request));
+    }
+
+    @Operation(summary = "替换题目选项")
+    @PreAuthorize("hasAuthority('learning:question:edit')")
+    @PutMapping("/questions/{id}/options")
+    public ApiResponse<List<QuestionOptionResponse>> replaceQuestionOptions(
+            @PathVariable Long id,
+            @Valid @RequestBody List<QuestionOptionRequest> requests
+    ) {
+        return ApiResponse.ok(adminLearningService.replaceQuestionOptions(id, requests));
+    }
+
+    @Operation(summary = "删除题目")
+    @PreAuthorize("hasAuthority('learning:question:edit')")
+    @DeleteMapping("/questions/{id}")
+    public ApiResponse<Void> deleteQuestion(@PathVariable Long id) {
+        adminLearningService.deleteQuestion(id);
+        return ApiResponse.ok();
+    }
+
+    @Operation(summary = "分页查询考卷")
+    @PreAuthorize("hasAuthority('learning:exam:view')")
+    @GetMapping("/exam-papers")
+    public ApiResponse<PageResponse<ExamPaperResponse>> pageExamPapers(
+            @RequestParam(defaultValue = "1") long page,
+            @RequestParam(defaultValue = "20") long size,
+            @RequestParam(required = false) String sort,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) EnabledStatus status
+    ) {
+        return ApiResponse.ok(adminLearningService.pageExamPapers(new AdminLearningPageQuery(page, size, sort, keyword, null, status, null)));
+    }
+
+    @Operation(summary = "考卷详情")
+    @PreAuthorize("hasAuthority('learning:exam:view')")
+    @GetMapping("/exam-papers/{id}")
+    public ApiResponse<ExamPaperResponse> examPaperDetail(@PathVariable Long id) {
+        return ApiResponse.ok(adminLearningService.examPaperDetail(id));
+    }
+
+    @Operation(summary = "新增考卷")
+    @PreAuthorize("hasAuthority('learning:exam:edit')")
+    @PostMapping("/exam-papers")
+    public ApiResponse<ExamPaperResponse> createExamPaper(@Valid @RequestBody ExamPaperRequest request) {
+        return ApiResponse.ok(adminLearningService.createExamPaper(request));
+    }
+
+    @Operation(summary = "修改考卷")
+    @PreAuthorize("hasAuthority('learning:exam:edit')")
+    @PutMapping("/exam-papers/{id}")
+    public ApiResponse<ExamPaperResponse> updateExamPaper(@PathVariable Long id, @Valid @RequestBody ExamPaperRequest request) {
+        return ApiResponse.ok(adminLearningService.updateExamPaper(id, request));
+    }
+
+    @Operation(summary = "替换考卷题目")
+    @PreAuthorize("hasAuthority('learning:exam:edit')")
+    @PutMapping("/exam-papers/{id}/questions")
+    public ApiResponse<List<ExamPaperQuestionResponse>> replaceExamPaperQuestions(
+            @PathVariable Long id,
+            @Valid @RequestBody List<ExamPaperQuestionRequest> requests
+    ) {
+        return ApiResponse.ok(adminLearningService.replaceExamPaperQuestions(id, requests));
+    }
+
+    @Operation(summary = "删除考卷")
+    @PreAuthorize("hasAuthority('learning:exam:edit')")
+    @DeleteMapping("/exam-papers/{id}")
+    public ApiResponse<Void> deleteExamPaper(@PathVariable Long id) {
+        adminLearningService.deleteExamPaper(id);
         return ApiResponse.ok();
     }
 }

@@ -7,6 +7,9 @@ import com.gugugaga.jsmedicine.module.learning.app.dto.AppBookChapterResponse;
 import com.gugugaga.jsmedicine.module.learning.app.dto.AppBookResponse;
 import com.gugugaga.jsmedicine.module.learning.app.dto.AppCourseResponse;
 import com.gugugaga.jsmedicine.module.learning.app.dto.AppCourseVideoResponse;
+import com.gugugaga.jsmedicine.module.learning.app.dto.AppExamPaperResponse;
+import com.gugugaga.jsmedicine.module.learning.app.dto.AppExamRecordResponse;
+import com.gugugaga.jsmedicine.module.learning.app.dto.AppExamSubmitRequest;
 import com.gugugaga.jsmedicine.module.learning.app.dto.AppLearningPageQuery;
 import com.gugugaga.jsmedicine.module.learning.app.dto.AppLearningRecordRequest;
 import com.gugugaga.jsmedicine.module.learning.app.dto.AppLearningRecordResponse;
@@ -109,6 +112,44 @@ public class AppLearningController {
     @GetMapping("/podcasts/{id}")
     public ApiResponse<AppPodcastResponse> podcastDetail(@PathVariable Long id) {
         return ApiResponse.ok(appLearningService.podcastDetail(id));
+    }
+
+    @Operation(summary = "分页查询考卷")
+    @GetMapping("/exam-papers")
+    public ApiResponse<PageResponse<AppExamPaperResponse>> pageExamPapers(
+            @RequestParam(defaultValue = "1") long page,
+            @RequestParam(defaultValue = "20") long size,
+            @RequestParam(required = false) String sort,
+            @RequestParam(required = false) String keyword
+    ) {
+        return ApiResponse.ok(appLearningService.pageExamPapers(new AppLearningPageQuery(page, size, sort, keyword, null)));
+    }
+
+    @Operation(summary = "考卷详情")
+    @GetMapping("/exam-papers/{id}")
+    public ApiResponse<AppExamPaperResponse> examPaperDetail(@PathVariable Long id) {
+        return ApiResponse.ok(appLearningService.examPaperDetail(id));
+    }
+
+    @Operation(summary = "提交考卷答案")
+    @PostMapping("/exam-papers/{id}/submit")
+    public ApiResponse<AppExamRecordResponse> submitExam(@PathVariable Long id, @Valid @RequestBody AppExamSubmitRequest request) {
+        return ApiResponse.ok(appLearningService.submitExam(id, request));
+    }
+
+    @Operation(summary = "分页查询考试记录")
+    @GetMapping("/exam-records")
+    public ApiResponse<PageResponse<AppExamRecordResponse>> pageExamRecords(
+            @RequestParam(defaultValue = "1") long page,
+            @RequestParam(defaultValue = "20") long size
+    ) {
+        return ApiResponse.ok(appLearningService.pageExamRecords(page, size));
+    }
+
+    @Operation(summary = "考试结果与解析")
+    @GetMapping("/exam-records/{id}")
+    public ApiResponse<AppExamRecordResponse> examRecordDetail(@PathVariable Long id) {
+        return ApiResponse.ok(appLearningService.examRecordDetail(id));
     }
 
     @Operation(summary = "分页查询专题")

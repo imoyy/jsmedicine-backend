@@ -19,7 +19,17 @@ import com.gugugaga.jsmedicine.module.learning.admin.dto.CourseRequest;
 import com.gugugaga.jsmedicine.module.learning.admin.dto.CourseResponse;
 import com.gugugaga.jsmedicine.module.learning.admin.dto.CourseVideoRequest;
 import com.gugugaga.jsmedicine.module.learning.admin.dto.CourseVideoResponse;
+import com.gugugaga.jsmedicine.module.learning.admin.dto.ExamPaperQuestionRequest;
+import com.gugugaga.jsmedicine.module.learning.admin.dto.ExamPaperQuestionResponse;
+import com.gugugaga.jsmedicine.module.learning.admin.dto.ExamPaperRequest;
+import com.gugugaga.jsmedicine.module.learning.admin.dto.ExamPaperResponse;
 import com.gugugaga.jsmedicine.module.learning.admin.dto.LearningReviewRequest;
+import com.gugugaga.jsmedicine.module.learning.admin.dto.QuestionCategoryRequest;
+import com.gugugaga.jsmedicine.module.learning.admin.dto.QuestionCategoryResponse;
+import com.gugugaga.jsmedicine.module.learning.admin.dto.QuestionOptionRequest;
+import com.gugugaga.jsmedicine.module.learning.admin.dto.QuestionOptionResponse;
+import com.gugugaga.jsmedicine.module.learning.admin.dto.QuestionRequest;
+import com.gugugaga.jsmedicine.module.learning.admin.dto.QuestionResponse;
 import com.gugugaga.jsmedicine.module.learning.book.entity.Book;
 import com.gugugaga.jsmedicine.module.learning.book.entity.BookCategory;
 import com.gugugaga.jsmedicine.module.learning.book.entity.BookChapter;
@@ -30,6 +40,16 @@ import com.gugugaga.jsmedicine.module.learning.course.entity.Course;
 import com.gugugaga.jsmedicine.module.learning.course.entity.CourseVideo;
 import com.gugugaga.jsmedicine.module.learning.course.mapper.CourseMapper;
 import com.gugugaga.jsmedicine.module.learning.course.mapper.CourseVideoMapper;
+import com.gugugaga.jsmedicine.module.learning.question.entity.ExamPaper;
+import com.gugugaga.jsmedicine.module.learning.question.entity.ExamPaperQuestion;
+import com.gugugaga.jsmedicine.module.learning.question.entity.Question;
+import com.gugugaga.jsmedicine.module.learning.question.entity.QuestionCategory;
+import com.gugugaga.jsmedicine.module.learning.question.entity.QuestionOption;
+import com.gugugaga.jsmedicine.module.learning.question.mapper.ExamPaperMapper;
+import com.gugugaga.jsmedicine.module.learning.question.mapper.ExamPaperQuestionMapper;
+import com.gugugaga.jsmedicine.module.learning.question.mapper.QuestionCategoryMapper;
+import com.gugugaga.jsmedicine.module.learning.question.mapper.QuestionMapper;
+import com.gugugaga.jsmedicine.module.learning.question.mapper.QuestionOptionMapper;
 import com.gugugaga.jsmedicine.module.system.entity.AuditRecord;
 import com.gugugaga.jsmedicine.module.system.service.AuditRecordService;
 import org.springframework.stereotype.Service;
@@ -51,6 +71,11 @@ public class AdminLearningService {
     private final BookCategoryMapper bookCategoryMapper;
     private final BookMapper bookMapper;
     private final BookChapterMapper bookChapterMapper;
+    private final QuestionCategoryMapper questionCategoryMapper;
+    private final QuestionMapper questionMapper;
+    private final QuestionOptionMapper questionOptionMapper;
+    private final ExamPaperMapper examPaperMapper;
+    private final ExamPaperQuestionMapper examPaperQuestionMapper;
     private final AuditRecordService auditRecordService;
     private final CurrentAdminAccessor currentAdminAccessor;
 
@@ -60,6 +85,11 @@ public class AdminLearningService {
             BookCategoryMapper bookCategoryMapper,
             BookMapper bookMapper,
             BookChapterMapper bookChapterMapper,
+            QuestionCategoryMapper questionCategoryMapper,
+            QuestionMapper questionMapper,
+            QuestionOptionMapper questionOptionMapper,
+            ExamPaperMapper examPaperMapper,
+            ExamPaperQuestionMapper examPaperQuestionMapper,
             AuditRecordService auditRecordService,
             CurrentAdminAccessor currentAdminAccessor
     ) {
@@ -68,6 +98,11 @@ public class AdminLearningService {
         this.bookCategoryMapper = bookCategoryMapper;
         this.bookMapper = bookMapper;
         this.bookChapterMapper = bookChapterMapper;
+        this.questionCategoryMapper = questionCategoryMapper;
+        this.questionMapper = questionMapper;
+        this.questionOptionMapper = questionOptionMapper;
+        this.examPaperMapper = examPaperMapper;
+        this.examPaperQuestionMapper = examPaperQuestionMapper;
         this.auditRecordService = auditRecordService;
         this.currentAdminAccessor = currentAdminAccessor;
     }
@@ -294,6 +329,165 @@ public class AdminLearningService {
         bookChapterMapper.deleteById(id);
     }
 
+    public PageResponse<QuestionCategoryResponse> pageQuestionCategories(AdminLearningPageQuery query) {
+        Page<QuestionCategory> page = questionCategoryMapper.selectPage(new Page<>(normalizePage(query.page()), normalizeSize(query.size())),
+                new LambdaQueryWrapper<QuestionCategory>()
+                        .eq(QuestionCategory::getDeleted, 0)
+                        .eq(query.categoryId() != null, QuestionCategory::getParentId, query.categoryId())
+                        .eq(query.status() != null, QuestionCategory::getStatus, query.status())
+                        .and(hasText(query.keyword()), wrapper -> wrapper.like(QuestionCategory::getCategoryName, query.keyword()))
+                        .orderByAsc(QuestionCategory::getSortOrder)
+                        .orderByDesc(QuestionCategory::getCreatedAt));
+        return pageResponse(page, page.getRecords().stream().map(this::toQuestionCategoryResponse).toList());
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public QuestionCategoryResponse createQuestionCategory(QuestionCategoryRequest request) {
+        if (request.parentId() != null) {
+            requireQuestionCategory(request.parentId());
+        }
+        QuestionCategory category = new QuestionCategory();
+        fillQuestionCategory(category, request);
+        category.setDeleted(0);
+        questionCategoryMapper.insert(category);
+        return toQuestionCategoryResponse(category);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public QuestionCategoryResponse updateQuestionCategory(Long id, QuestionCategoryRequest request) {
+        QuestionCategory category = requireQuestionCategory(id);
+        if (request.parentId() != null) {
+            requireQuestionCategory(request.parentId());
+        }
+        fillQuestionCategory(category, request);
+        questionCategoryMapper.updateById(category);
+        return toQuestionCategoryResponse(category);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteQuestionCategory(Long id) {
+        requireQuestionCategory(id);
+        questionCategoryMapper.deleteById(id);
+    }
+
+    public PageResponse<QuestionResponse> pageQuestions(AdminLearningPageQuery query) {
+        Page<Question> page = questionMapper.selectPage(new Page<>(normalizePage(query.page()), normalizeSize(query.size())),
+                new LambdaQueryWrapper<Question>()
+                        .eq(Question::getDeleted, 0)
+                        .eq(query.categoryId() != null, Question::getCategoryId, query.categoryId())
+                        .eq(query.status() != null, Question::getStatus, query.status())
+                        .and(hasText(query.keyword()), wrapper -> wrapper.like(Question::getTitle, query.keyword()))
+                        .orderByDesc(Question::getCreatedAt));
+        return pageResponse(page, page.getRecords().stream().map(question -> toQuestionResponse(question, false)).toList());
+    }
+
+    public QuestionResponse questionDetail(Long id) {
+        return toQuestionResponse(requireQuestion(id), true);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public QuestionResponse createQuestion(QuestionRequest request) {
+        if (request.categoryId() != null) {
+            requireQuestionCategory(request.categoryId());
+        }
+        Question question = new Question();
+        fillQuestion(question, request);
+        question.setDeleted(0);
+        questionMapper.insert(question);
+        replaceQuestionOptions(question.getId(), request.options());
+        return toQuestionResponse(question, true);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public QuestionResponse updateQuestion(Long id, QuestionRequest request) {
+        Question question = requireQuestion(id);
+        if (request.categoryId() != null) {
+            requireQuestionCategory(request.categoryId());
+        }
+        fillQuestion(question, request);
+        questionMapper.updateById(question);
+        replaceQuestionOptions(question.getId(), request.options());
+        return toQuestionResponse(question, true);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public List<QuestionOptionResponse> replaceQuestionOptions(Long questionId, List<QuestionOptionRequest> requests) {
+        requireQuestion(questionId);
+        questionOptionMapper.delete(new LambdaQueryWrapper<QuestionOption>().eq(QuestionOption::getQuestionId, questionId));
+        if (requests != null) {
+            requests.forEach(request -> {
+                QuestionOption option = new QuestionOption();
+                option.setQuestionId(questionId);
+                fillQuestionOption(option, request);
+                questionOptionMapper.insert(option);
+            });
+        }
+        return loadQuestionOptions(questionId);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteQuestion(Long id) {
+        requireQuestion(id);
+        questionMapper.deleteById(id);
+    }
+
+    public PageResponse<ExamPaperResponse> pageExamPapers(AdminLearningPageQuery query) {
+        Page<ExamPaper> page = examPaperMapper.selectPage(new Page<>(normalizePage(query.page()), normalizeSize(query.size())),
+                new LambdaQueryWrapper<ExamPaper>()
+                        .eq(ExamPaper::getDeleted, 0)
+                        .eq(query.status() != null, ExamPaper::getStatus, query.status())
+                        .and(hasText(query.keyword()), wrapper -> wrapper.like(ExamPaper::getPaperName, query.keyword()))
+                        .orderByDesc(ExamPaper::getCreatedAt));
+        return pageResponse(page, page.getRecords().stream().map(paper -> toExamPaperResponse(paper, false)).toList());
+    }
+
+    public ExamPaperResponse examPaperDetail(Long id) {
+        return toExamPaperResponse(requireExamPaper(id), true);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public ExamPaperResponse createExamPaper(ExamPaperRequest request) {
+        ExamPaper paper = new ExamPaper();
+        fillExamPaper(paper, request);
+        paper.setDeleted(0);
+        examPaperMapper.insert(paper);
+        replaceExamPaperQuestions(paper.getId(), request.questions());
+        return toExamPaperResponse(paper, true);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public ExamPaperResponse updateExamPaper(Long id, ExamPaperRequest request) {
+        ExamPaper paper = requireExamPaper(id);
+        fillExamPaper(paper, request);
+        examPaperMapper.updateById(paper);
+        replaceExamPaperQuestions(paper.getId(), request.questions());
+        return toExamPaperResponse(paper, true);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public List<ExamPaperQuestionResponse> replaceExamPaperQuestions(Long paperId, List<ExamPaperQuestionRequest> requests) {
+        requireExamPaper(paperId);
+        examPaperQuestionMapper.delete(new LambdaQueryWrapper<ExamPaperQuestion>().eq(ExamPaperQuestion::getPaperId, paperId));
+        if (requests != null) {
+            requests.forEach(request -> {
+                requireQuestion(request.questionId());
+                ExamPaperQuestion relation = new ExamPaperQuestion();
+                relation.setPaperId(paperId);
+                relation.setQuestionId(request.questionId());
+                relation.setScore(request.score());
+                relation.setSortOrder(request.sortOrder() == null ? 0 : request.sortOrder());
+                examPaperQuestionMapper.insert(relation);
+            });
+        }
+        return loadExamPaperQuestions(paperId);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteExamPaper(Long id) {
+        requireExamPaper(id);
+        examPaperMapper.deleteById(id);
+    }
+
     private void fillCourse(Course course, CourseRequest request) {
         course.setCourseName(request.courseName());
         course.setSubtitle(request.subtitle());
@@ -345,6 +539,39 @@ public class AdminLearningService {
         chapter.setPaperId(request.paperId());
         chapter.setSortOrder(request.sortOrder() == null ? 0 : request.sortOrder());
         chapter.setStatus(request.status());
+    }
+
+    private void fillQuestionCategory(QuestionCategory category, QuestionCategoryRequest request) {
+        category.setParentId(request.parentId());
+        category.setCategoryName(request.categoryName());
+        category.setSortOrder(request.sortOrder() == null ? 0 : request.sortOrder());
+        category.setStatus(request.status());
+    }
+
+    private void fillQuestion(Question question, QuestionRequest request) {
+        question.setCategoryId(request.categoryId());
+        question.setQuestionType(request.questionType());
+        question.setTitle(request.title());
+        question.setAnalysis(request.analysis());
+        question.setDifficulty(request.difficulty());
+        question.setScore(request.score());
+        question.setStatus(request.status());
+    }
+
+    private void fillQuestionOption(QuestionOption option, QuestionOptionRequest request) {
+        option.setOptionKey(request.optionKey());
+        option.setOptionContent(request.optionContent());
+        option.setCorrect(Boolean.TRUE.equals(request.correct()) ? 1 : 0);
+        option.setSortOrder(request.sortOrder() == null ? 0 : request.sortOrder());
+    }
+
+    private void fillExamPaper(ExamPaper paper, ExamPaperRequest request) {
+        paper.setPaperName(request.paperName());
+        paper.setDescription(request.description());
+        paper.setTotalScore(request.totalScore());
+        paper.setPassScore(request.passScore());
+        paper.setDurationMinutes(request.durationMinutes());
+        paper.setStatus(request.status());
     }
 
     private void applyReview(Course course, ReviewStatus reviewStatus) {
@@ -409,6 +636,30 @@ public class AdminLearningService {
         return chapter;
     }
 
+    private QuestionCategory requireQuestionCategory(Long id) {
+        QuestionCategory category = questionCategoryMapper.selectById(id);
+        if (category == null || !Objects.equals(category.getDeleted(), 0)) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Question category does not exist");
+        }
+        return category;
+    }
+
+    private Question requireQuestion(Long id) {
+        Question question = questionMapper.selectById(id);
+        if (question == null || !Objects.equals(question.getDeleted(), 0)) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Question does not exist");
+        }
+        return question;
+    }
+
+    private ExamPaper requireExamPaper(Long id) {
+        ExamPaper paper = examPaperMapper.selectById(id);
+        if (paper == null || !Objects.equals(paper.getDeleted(), 0)) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Exam paper does not exist");
+        }
+        return paper;
+    }
+
     private void saveAudit(String targetType, Long targetId, ReviewStatus before, ReviewStatus after, String comment) {
         AuditRecord auditRecord = new AuditRecord();
         auditRecord.setTargetType(targetType);
@@ -447,6 +698,54 @@ public class AdminLearningService {
         return new BookChapterResponse(chapter.getId(), chapter.getBookId(), chapter.getParentId(),
                 chapter.getChapterTitle(), chapter.getContent(), chapter.getPaperId(), chapter.getSortOrder(),
                 chapter.getStatus());
+    }
+
+    private QuestionCategoryResponse toQuestionCategoryResponse(QuestionCategory category) {
+        return new QuestionCategoryResponse(category.getId(), category.getParentId(), category.getCategoryName(),
+                category.getSortOrder(), category.getStatus());
+    }
+
+    private QuestionResponse toQuestionResponse(Question question, boolean includeOptions) {
+        return new QuestionResponse(question.getId(), question.getCategoryId(), question.getQuestionType(),
+                question.getTitle(), question.getAnalysis(), question.getDifficulty(), question.getScore(),
+                question.getStatus(), includeOptions ? loadQuestionOptions(question.getId()) : List.of());
+    }
+
+    private List<QuestionOptionResponse> loadQuestionOptions(Long questionId) {
+        return questionOptionMapper.selectList(new LambdaQueryWrapper<QuestionOption>()
+                        .eq(QuestionOption::getQuestionId, questionId)
+                        .orderByAsc(QuestionOption::getSortOrder)
+                        .orderByAsc(QuestionOption::getOptionKey))
+                .stream()
+                .map(this::toQuestionOptionResponse)
+                .toList();
+    }
+
+    private QuestionOptionResponse toQuestionOptionResponse(QuestionOption option) {
+        return new QuestionOptionResponse(option.getId(), option.getQuestionId(), option.getOptionKey(),
+                option.getOptionContent(), option.getCorrect(), option.getSortOrder());
+    }
+
+    private ExamPaperResponse toExamPaperResponse(ExamPaper paper, boolean includeQuestions) {
+        return new ExamPaperResponse(paper.getId(), paper.getPaperName(), paper.getDescription(), paper.getTotalScore(),
+                paper.getPassScore(), paper.getDurationMinutes(), paper.getStatus(),
+                includeQuestions ? loadExamPaperQuestions(paper.getId()) : List.of());
+    }
+
+    private List<ExamPaperQuestionResponse> loadExamPaperQuestions(Long paperId) {
+        return examPaperQuestionMapper.selectList(new LambdaQueryWrapper<ExamPaperQuestion>()
+                        .eq(ExamPaperQuestion::getPaperId, paperId)
+                        .orderByAsc(ExamPaperQuestion::getSortOrder)
+                        .orderByAsc(ExamPaperQuestion::getId))
+                .stream()
+                .map(this::toExamPaperQuestionResponse)
+                .toList();
+    }
+
+    private ExamPaperQuestionResponse toExamPaperQuestionResponse(ExamPaperQuestion relation) {
+        Question question = questionMapper.selectById(relation.getQuestionId());
+        return new ExamPaperQuestionResponse(relation.getId(), relation.getPaperId(), relation.getQuestionId(),
+                relation.getScore(), relation.getSortOrder(), question == null ? null : toQuestionResponse(question, true));
     }
 
     private <E, R> PageResponse<R> pageResponse(Page<E> page, List<R> records) {
