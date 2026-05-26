@@ -1,0 +1,246 @@
+package com.gugugaga.jsmedicine.module.learning.admin.controller;
+
+import com.gugugaga.jsmedicine.common.enums.EnabledStatus;
+import com.gugugaga.jsmedicine.common.enums.ReviewStatus;
+import com.gugugaga.jsmedicine.common.response.ApiResponse;
+import com.gugugaga.jsmedicine.common.response.PageResponse;
+import com.gugugaga.jsmedicine.module.learning.admin.dto.AdminLearningPageQuery;
+import com.gugugaga.jsmedicine.module.learning.admin.dto.BookCategoryRequest;
+import com.gugugaga.jsmedicine.module.learning.admin.dto.BookCategoryResponse;
+import com.gugugaga.jsmedicine.module.learning.admin.dto.BookChapterRequest;
+import com.gugugaga.jsmedicine.module.learning.admin.dto.BookChapterResponse;
+import com.gugugaga.jsmedicine.module.learning.admin.dto.BookRequest;
+import com.gugugaga.jsmedicine.module.learning.admin.dto.BookResponse;
+import com.gugugaga.jsmedicine.module.learning.admin.dto.CourseRequest;
+import com.gugugaga.jsmedicine.module.learning.admin.dto.CourseResponse;
+import com.gugugaga.jsmedicine.module.learning.admin.dto.CourseVideoRequest;
+import com.gugugaga.jsmedicine.module.learning.admin.dto.CourseVideoResponse;
+import com.gugugaga.jsmedicine.module.learning.admin.dto.LearningReviewRequest;
+import com.gugugaga.jsmedicine.module.learning.admin.service.AdminLearningService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+@Tag(name = "管理端学习资源")
+@RestController
+@RequestMapping("/api/v1/admin/learning")
+public class AdminLearningController {
+
+    private final AdminLearningService adminLearningService;
+
+    public AdminLearningController(AdminLearningService adminLearningService) {
+        this.adminLearningService = adminLearningService;
+    }
+
+    @Operation(summary = "分页查询课程")
+    @PreAuthorize("hasAuthority('learning:course:view')")
+    @GetMapping("/courses")
+    public ApiResponse<PageResponse<CourseResponse>> pageCourses(
+            @RequestParam(defaultValue = "1") long page,
+            @RequestParam(defaultValue = "20") long size,
+            @RequestParam(required = false) String sort,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) ReviewStatus reviewStatus
+    ) {
+        return ApiResponse.ok(adminLearningService.pageCourses(new AdminLearningPageQuery(page, size, sort, keyword, null, null, reviewStatus)));
+    }
+
+    @Operation(summary = "查询课程详情")
+    @PreAuthorize("hasAuthority('learning:course:view')")
+    @GetMapping("/courses/{id}")
+    public ApiResponse<CourseResponse> courseDetail(@PathVariable Long id) {
+        return ApiResponse.ok(adminLearningService.courseDetail(id));
+    }
+
+    @Operation(summary = "新增课程")
+    @PreAuthorize("hasAuthority('learning:course:edit')")
+    @PostMapping("/courses")
+    public ApiResponse<CourseResponse> createCourse(@Valid @RequestBody CourseRequest request) {
+        return ApiResponse.ok(adminLearningService.createCourse(request));
+    }
+
+    @Operation(summary = "修改课程")
+    @PreAuthorize("hasAuthority('learning:course:edit')")
+    @PutMapping("/courses/{id}")
+    public ApiResponse<CourseResponse> updateCourse(@PathVariable Long id, @Valid @RequestBody CourseRequest request) {
+        return ApiResponse.ok(adminLearningService.updateCourse(id, request));
+    }
+
+    @Operation(summary = "审核课程")
+    @PreAuthorize("hasAuthority('learning:course:review')")
+    @PatchMapping("/courses/{id}/review")
+    public ApiResponse<CourseResponse> reviewCourse(@PathVariable Long id, @Valid @RequestBody LearningReviewRequest request) {
+        return ApiResponse.ok(adminLearningService.reviewCourse(id, request));
+    }
+
+    @Operation(summary = "删除课程")
+    @PreAuthorize("hasAuthority('learning:course:edit')")
+    @DeleteMapping("/courses/{id}")
+    public ApiResponse<Void> deleteCourse(@PathVariable Long id) {
+        adminLearningService.deleteCourse(id);
+        return ApiResponse.ok();
+    }
+
+    @Operation(summary = "分页查询课程视频")
+    @PreAuthorize("hasAuthority('learning:course:view')")
+    @GetMapping("/courses/{courseId}/videos")
+    public ApiResponse<PageResponse<CourseVideoResponse>> pageCourseVideos(
+            @PathVariable Long courseId,
+            @RequestParam(defaultValue = "1") long page,
+            @RequestParam(defaultValue = "20") long size
+    ) {
+        return ApiResponse.ok(adminLearningService.pageCourseVideos(courseId, page, size));
+    }
+
+    @Operation(summary = "新增课程视频")
+    @PreAuthorize("hasAuthority('learning:course:edit')")
+    @PostMapping("/courses/videos")
+    public ApiResponse<CourseVideoResponse> createCourseVideo(@Valid @RequestBody CourseVideoRequest request) {
+        return ApiResponse.ok(adminLearningService.createCourseVideo(request));
+    }
+
+    @Operation(summary = "修改课程视频")
+    @PreAuthorize("hasAuthority('learning:course:edit')")
+    @PutMapping("/courses/videos/{id}")
+    public ApiResponse<CourseVideoResponse> updateCourseVideo(@PathVariable Long id, @Valid @RequestBody CourseVideoRequest request) {
+        return ApiResponse.ok(adminLearningService.updateCourseVideo(id, request));
+    }
+
+    @Operation(summary = "删除课程视频")
+    @PreAuthorize("hasAuthority('learning:course:edit')")
+    @DeleteMapping("/courses/videos/{id}")
+    public ApiResponse<Void> deleteCourseVideo(@PathVariable Long id) {
+        adminLearningService.deleteCourseVideo(id);
+        return ApiResponse.ok();
+    }
+
+    @Operation(summary = "分页查询图书分类")
+    @PreAuthorize("hasAuthority('learning:book:view')")
+    @GetMapping("/book-categories")
+    public ApiResponse<PageResponse<BookCategoryResponse>> pageBookCategories(
+            @RequestParam(defaultValue = "1") long page,
+            @RequestParam(defaultValue = "20") long size,
+            @RequestParam(required = false) String sort,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Long parentId,
+            @RequestParam(required = false) EnabledStatus status
+    ) {
+        return ApiResponse.ok(adminLearningService.pageBookCategories(new AdminLearningPageQuery(page, size, sort, keyword, parentId, status, null)));
+    }
+
+    @Operation(summary = "新增图书分类")
+    @PreAuthorize("hasAuthority('learning:book:edit')")
+    @PostMapping("/book-categories")
+    public ApiResponse<BookCategoryResponse> createBookCategory(@Valid @RequestBody BookCategoryRequest request) {
+        return ApiResponse.ok(adminLearningService.createBookCategory(request));
+    }
+
+    @Operation(summary = "修改图书分类")
+    @PreAuthorize("hasAuthority('learning:book:edit')")
+    @PutMapping("/book-categories/{id}")
+    public ApiResponse<BookCategoryResponse> updateBookCategory(@PathVariable Long id, @Valid @RequestBody BookCategoryRequest request) {
+        return ApiResponse.ok(adminLearningService.updateBookCategory(id, request));
+    }
+
+    @Operation(summary = "删除图书分类")
+    @PreAuthorize("hasAuthority('learning:book:edit')")
+    @DeleteMapping("/book-categories/{id}")
+    public ApiResponse<Void> deleteBookCategory(@PathVariable Long id) {
+        adminLearningService.deleteBookCategory(id);
+        return ApiResponse.ok();
+    }
+
+    @Operation(summary = "分页查询图书")
+    @PreAuthorize("hasAuthority('learning:book:view')")
+    @GetMapping("/books")
+    public ApiResponse<PageResponse<BookResponse>> pageBooks(
+            @RequestParam(defaultValue = "1") long page,
+            @RequestParam(defaultValue = "20") long size,
+            @RequestParam(required = false) String sort,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) ReviewStatus reviewStatus
+    ) {
+        return ApiResponse.ok(adminLearningService.pageBooks(new AdminLearningPageQuery(page, size, sort, keyword, categoryId, null, reviewStatus)));
+    }
+
+    @Operation(summary = "查询图书详情")
+    @PreAuthorize("hasAuthority('learning:book:view')")
+    @GetMapping("/books/{id}")
+    public ApiResponse<BookResponse> bookDetail(@PathVariable Long id) {
+        return ApiResponse.ok(adminLearningService.bookDetail(id));
+    }
+
+    @Operation(summary = "新增图书")
+    @PreAuthorize("hasAuthority('learning:book:edit')")
+    @PostMapping("/books")
+    public ApiResponse<BookResponse> createBook(@Valid @RequestBody BookRequest request) {
+        return ApiResponse.ok(adminLearningService.createBook(request));
+    }
+
+    @Operation(summary = "修改图书")
+    @PreAuthorize("hasAuthority('learning:book:edit')")
+    @PutMapping("/books/{id}")
+    public ApiResponse<BookResponse> updateBook(@PathVariable Long id, @Valid @RequestBody BookRequest request) {
+        return ApiResponse.ok(adminLearningService.updateBook(id, request));
+    }
+
+    @Operation(summary = "审核图书")
+    @PreAuthorize("hasAuthority('learning:book:review')")
+    @PatchMapping("/books/{id}/review")
+    public ApiResponse<BookResponse> reviewBook(@PathVariable Long id, @Valid @RequestBody LearningReviewRequest request) {
+        return ApiResponse.ok(adminLearningService.reviewBook(id, request));
+    }
+
+    @Operation(summary = "删除图书")
+    @PreAuthorize("hasAuthority('learning:book:edit')")
+    @DeleteMapping("/books/{id}")
+    public ApiResponse<Void> deleteBook(@PathVariable Long id) {
+        adminLearningService.deleteBook(id);
+        return ApiResponse.ok();
+    }
+
+    @Operation(summary = "分页查询图书章节")
+    @PreAuthorize("hasAuthority('learning:book:view')")
+    @GetMapping("/books/{bookId}/chapters")
+    public ApiResponse<PageResponse<BookChapterResponse>> pageBookChapters(
+            @PathVariable Long bookId,
+            @RequestParam(defaultValue = "1") long page,
+            @RequestParam(defaultValue = "20") long size
+    ) {
+        return ApiResponse.ok(adminLearningService.pageBookChapters(bookId, page, size));
+    }
+
+    @Operation(summary = "新增图书章节")
+    @PreAuthorize("hasAuthority('learning:book:edit')")
+    @PostMapping("/books/chapters")
+    public ApiResponse<BookChapterResponse> createBookChapter(@Valid @RequestBody BookChapterRequest request) {
+        return ApiResponse.ok(adminLearningService.createBookChapter(request));
+    }
+
+    @Operation(summary = "修改图书章节")
+    @PreAuthorize("hasAuthority('learning:book:edit')")
+    @PutMapping("/books/chapters/{id}")
+    public ApiResponse<BookChapterResponse> updateBookChapter(@PathVariable Long id, @Valid @RequestBody BookChapterRequest request) {
+        return ApiResponse.ok(adminLearningService.updateBookChapter(id, request));
+    }
+
+    @Operation(summary = "删除图书章节")
+    @PreAuthorize("hasAuthority('learning:book:edit')")
+    @DeleteMapping("/books/chapters/{id}")
+    public ApiResponse<Void> deleteBookChapter(@PathVariable Long id) {
+        adminLearningService.deleteBookChapter(id);
+        return ApiResponse.ok();
+    }
+}

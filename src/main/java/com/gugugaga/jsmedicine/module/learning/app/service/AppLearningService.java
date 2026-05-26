@@ -1,0 +1,522 @@
+package com.gugugaga.jsmedicine.module.learning.app.service;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.gugugaga.jsmedicine.common.enums.EnabledStatus;
+import com.gugugaga.jsmedicine.common.enums.PublishStatus;
+import com.gugugaga.jsmedicine.common.enums.ReviewStatus;
+import com.gugugaga.jsmedicine.common.enums.StudentCertificationStatus;
+import com.gugugaga.jsmedicine.common.exception.BusinessException;
+import com.gugugaga.jsmedicine.common.exception.ErrorCode;
+import com.gugugaga.jsmedicine.common.response.PageResponse;
+import com.gugugaga.jsmedicine.module.auth.app.entity.AppUserSession;
+import com.gugugaga.jsmedicine.module.auth.app.service.CurrentAppUserResolver;
+import com.gugugaga.jsmedicine.module.content.topic.entity.Topic;
+import com.gugugaga.jsmedicine.module.content.topic.entity.TopicItem;
+import com.gugugaga.jsmedicine.module.content.topic.mapper.TopicItemMapper;
+import com.gugugaga.jsmedicine.module.content.topic.mapper.TopicMapper;
+import com.gugugaga.jsmedicine.module.learning.app.dto.AppBookCategoryResponse;
+import com.gugugaga.jsmedicine.module.learning.app.dto.AppBookChapterResponse;
+import com.gugugaga.jsmedicine.module.learning.app.dto.AppBookResponse;
+import com.gugugaga.jsmedicine.module.learning.app.dto.AppCourseResponse;
+import com.gugugaga.jsmedicine.module.learning.app.dto.AppCourseVideoResponse;
+import com.gugugaga.jsmedicine.module.learning.app.dto.AppLearningPageQuery;
+import com.gugugaga.jsmedicine.module.learning.app.dto.AppLearningRecordRequest;
+import com.gugugaga.jsmedicine.module.learning.app.dto.AppLearningRecordResponse;
+import com.gugugaga.jsmedicine.module.learning.app.dto.AppPodcastAudioResponse;
+import com.gugugaga.jsmedicine.module.learning.app.dto.AppPodcastResponse;
+import com.gugugaga.jsmedicine.module.learning.app.dto.AppTopicItemResponse;
+import com.gugugaga.jsmedicine.module.learning.app.dto.AppTopicResponse;
+import com.gugugaga.jsmedicine.module.learning.book.entity.Book;
+import com.gugugaga.jsmedicine.module.learning.book.entity.BookCategory;
+import com.gugugaga.jsmedicine.module.learning.book.entity.BookChapter;
+import com.gugugaga.jsmedicine.module.learning.book.mapper.BookCategoryMapper;
+import com.gugugaga.jsmedicine.module.learning.book.mapper.BookChapterMapper;
+import com.gugugaga.jsmedicine.module.learning.book.mapper.BookMapper;
+import com.gugugaga.jsmedicine.module.learning.course.entity.Course;
+import com.gugugaga.jsmedicine.module.learning.course.entity.CourseVideo;
+import com.gugugaga.jsmedicine.module.learning.course.mapper.CourseMapper;
+import com.gugugaga.jsmedicine.module.learning.course.mapper.CourseVideoMapper;
+import com.gugugaga.jsmedicine.module.learning.podcast.entity.Podcast;
+import com.gugugaga.jsmedicine.module.learning.podcast.entity.PodcastAudio;
+import com.gugugaga.jsmedicine.module.learning.podcast.mapper.PodcastAudioMapper;
+import com.gugugaga.jsmedicine.module.learning.podcast.mapper.PodcastMapper;
+import com.gugugaga.jsmedicine.module.learning.record.entity.LearningRecord;
+import com.gugugaga.jsmedicine.module.learning.record.mapper.LearningRecordMapper;
+import com.gugugaga.jsmedicine.module.user.entity.Student;
+import com.gugugaga.jsmedicine.module.user.mapper.StudentMapper;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+
+@Service
+public class AppLearningService {
+
+    private static final long DEFAULT_PAGE = 1L;
+    private static final long DEFAULT_SIZE = 20L;
+    private static final long MAX_SIZE = 100L;
+    private static final BigDecimal ZERO_PROGRESS = BigDecimal.ZERO.setScale(2);
+
+    private final CurrentAppUserResolver currentAppUserResolver;
+    private final StudentMapper studentMapper;
+    private final CourseMapper courseMapper;
+    private final CourseVideoMapper courseVideoMapper;
+    private final BookCategoryMapper bookCategoryMapper;
+    private final BookMapper bookMapper;
+    private final BookChapterMapper bookChapterMapper;
+    private final PodcastMapper podcastMapper;
+    private final PodcastAudioMapper podcastAudioMapper;
+    private final TopicMapper topicMapper;
+    private final TopicItemMapper topicItemMapper;
+    private final LearningRecordMapper learningRecordMapper;
+
+    public AppLearningService(
+            CurrentAppUserResolver currentAppUserResolver,
+            StudentMapper studentMapper,
+            CourseMapper courseMapper,
+            CourseVideoMapper courseVideoMapper,
+            BookCategoryMapper bookCategoryMapper,
+            BookMapper bookMapper,
+            BookChapterMapper bookChapterMapper,
+            PodcastMapper podcastMapper,
+            PodcastAudioMapper podcastAudioMapper,
+            TopicMapper topicMapper,
+            TopicItemMapper topicItemMapper,
+            LearningRecordMapper learningRecordMapper
+    ) {
+        this.currentAppUserResolver = currentAppUserResolver;
+        this.studentMapper = studentMapper;
+        this.courseMapper = courseMapper;
+        this.courseVideoMapper = courseVideoMapper;
+        this.bookCategoryMapper = bookCategoryMapper;
+        this.bookMapper = bookMapper;
+        this.bookChapterMapper = bookChapterMapper;
+        this.podcastMapper = podcastMapper;
+        this.podcastAudioMapper = podcastAudioMapper;
+        this.topicMapper = topicMapper;
+        this.topicItemMapper = topicItemMapper;
+        this.learningRecordMapper = learningRecordMapper;
+    }
+
+    public PageResponse<AppCourseResponse> pageCourses(AppLearningPageQuery query) {
+        Page<Course> page = courseMapper.selectPage(new Page<>(normalizePage(query.page()), normalizeSize(query.size())),
+                visibleCourseWrapper()
+                        .and(hasText(query.keyword()), wrapper -> wrapper
+                                .like(Course::getCourseName, query.keyword())
+                                .or()
+                                .like(Course::getLecturerName, query.keyword()))
+                        .orderByAsc("sortOrderAsc".equals(query.sort()), Course::getSortOrder)
+                        .orderByDesc(!"sortOrderAsc".equals(query.sort()), Course::getPublishedAt));
+        Long studentId = currentStudentId().orElse(null);
+        return pageResponse(page, page.getRecords().stream().map(course -> toCourseResponse(course, false, studentId)).toList());
+    }
+
+    public AppCourseResponse courseDetail(Long id) {
+        Course course = requireVisibleCourse(id);
+        return toCourseResponse(course, true, currentStudentId().orElse(null));
+    }
+
+    public AppCourseVideoResponse courseVideoDetail(Long courseId, Long videoId) {
+        requireVisibleCourse(courseId);
+        CourseVideo video = requireVisibleCourseVideo(videoId);
+        if (!Objects.equals(video.getCourseId(), courseId)) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Course video does not exist");
+        }
+        return toCourseVideoResponse(video);
+    }
+
+    public PageResponse<AppBookCategoryResponse> pageBookCategories(AppLearningPageQuery query) {
+        Page<BookCategory> page = bookCategoryMapper.selectPage(new Page<>(normalizePage(query.page()), normalizeSize(query.size())),
+                new LambdaQueryWrapper<BookCategory>()
+                        .eq(BookCategory::getDeleted, 0)
+                        .eq(BookCategory::getStatus, EnabledStatus.ENABLED)
+                        .eq(query.categoryId() != null, BookCategory::getParentId, query.categoryId())
+                        .and(hasText(query.keyword()), wrapper -> wrapper.like(BookCategory::getCategoryName, query.keyword()))
+                        .orderByAsc(BookCategory::getSortOrder)
+                        .orderByDesc(BookCategory::getCreatedAt));
+        return pageResponse(page, page.getRecords().stream().map(this::toBookCategoryResponse).toList());
+    }
+
+    public PageResponse<AppBookResponse> pageBooks(AppLearningPageQuery query) {
+        Page<Book> page = bookMapper.selectPage(new Page<>(normalizePage(query.page()), normalizeSize(query.size())),
+                visibleBookWrapper()
+                        .eq(query.categoryId() != null, Book::getCategoryId, query.categoryId())
+                        .and(hasText(query.keyword()), wrapper -> wrapper
+                                .like(Book::getBookName, query.keyword())
+                                .or()
+                                .like(Book::getAuthor, query.keyword()))
+                        .orderByAsc("sortOrderAsc".equals(query.sort()), Book::getSortOrder)
+                        .orderByDesc(!"sortOrderAsc".equals(query.sort()), Book::getPublishedAt));
+        Long studentId = currentStudentId().orElse(null);
+        return pageResponse(page, page.getRecords().stream().map(book -> toBookResponse(book, false, studentId)).toList());
+    }
+
+    public AppBookResponse bookDetail(Long id) {
+        Book book = requireVisibleBook(id);
+        return toBookResponse(book, true, currentStudentId().orElse(null));
+    }
+
+    public AppBookChapterResponse bookChapterDetail(Long bookId, Long chapterId) {
+        requireVisibleBook(bookId);
+        BookChapter chapter = requireVisibleBookChapter(chapterId);
+        if (!Objects.equals(chapter.getBookId(), bookId)) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Book chapter does not exist");
+        }
+        return toBookChapterResponse(chapter);
+    }
+
+    public PageResponse<AppPodcastResponse> pagePodcasts(AppLearningPageQuery query) {
+        Page<Podcast> page = podcastMapper.selectPage(new Page<>(normalizePage(query.page()), normalizeSize(query.size())),
+                visiblePodcastWrapper()
+                        .and(hasText(query.keyword()), wrapper -> wrapper.like(Podcast::getTitle, query.keyword()))
+                        .orderByAsc("sortOrderAsc".equals(query.sort()), Podcast::getSortOrder)
+                        .orderByDesc(!"sortOrderAsc".equals(query.sort()), Podcast::getPublishedAt));
+        Long studentId = currentStudentId().orElse(null);
+        return pageResponse(page, page.getRecords().stream().map(podcast -> toPodcastResponse(podcast, false, studentId)).toList());
+    }
+
+    public AppPodcastResponse podcastDetail(Long id) {
+        Podcast podcast = requireVisiblePodcast(id);
+        return toPodcastResponse(podcast, true, currentStudentId().orElse(null));
+    }
+
+    public PageResponse<AppTopicResponse> pageTopics(AppLearningPageQuery query) {
+        Page<Topic> page = topicMapper.selectPage(new Page<>(normalizePage(query.page()), normalizeSize(query.size())),
+                visibleTopicWrapper()
+                        .and(hasText(query.keyword()), wrapper -> wrapper.like(Topic::getTitle, query.keyword()))
+                        .orderByAsc("sortOrderAsc".equals(query.sort()), Topic::getSortOrder)
+                        .orderByDesc(!"sortOrderAsc".equals(query.sort()), Topic::getPublishedAt));
+        return pageResponse(page, page.getRecords().stream().map(topic -> toTopicResponse(topic, false)).toList());
+    }
+
+    public AppTopicResponse topicDetail(Long id) {
+        Topic topic = requireVisibleTopic(id);
+        topic.setViewCount((topic.getViewCount() == null ? 0 : topic.getViewCount()) + 1);
+        topicMapper.updateById(topic);
+        return toTopicResponse(topic, true);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public AppLearningRecordResponse syncLearningRecord(AppLearningRecordRequest request) {
+        Student student = requireCurrentStudent();
+        validateVisibleResource(request.resourceType(), request.resourceId());
+        LearningRecord record = learningRecordMapper.selectOne(new LambdaQueryWrapper<LearningRecord>()
+                .eq(LearningRecord::getStudentId, student.getId())
+                .eq(LearningRecord::getResourceType, request.resourceType())
+                .eq(LearningRecord::getResourceId, request.resourceId())
+                .last("LIMIT 1"));
+        LocalDateTime now = LocalDateTime.now();
+        if (record == null) {
+            record = new LearningRecord();
+            record.setStudentId(student.getId());
+            record.setResourceType(request.resourceType());
+            record.setResourceId(request.resourceId());
+            record.setStudySeconds(0);
+            record.setProgressPercent(ZERO_PROGRESS);
+            record.setCompleted(0);
+        }
+        record.setStudySeconds(Math.max(0, request.studySeconds() == null ? record.getStudySeconds() : request.studySeconds()));
+        record.setProgressPercent(normalizeProgress(request.progressPercent() == null ? record.getProgressPercent() : request.progressPercent()));
+        boolean completed = Boolean.TRUE.equals(request.completed()) || record.getProgressPercent().compareTo(BigDecimal.valueOf(100)) >= 0;
+        record.setCompleted(completed ? 1 : 0);
+        record.setCompletedAt(completed && record.getCompletedAt() == null ? now : record.getCompletedAt());
+        record.setLastStudiedAt(now);
+        record.setUpdatedAt(now);
+        if (record.getId() == null) {
+            learningRecordMapper.insert(record);
+        } else {
+            learningRecordMapper.updateById(record);
+        }
+        return toLearningRecordResponse(record);
+    }
+
+    private void validateVisibleResource(String resourceType, Long resourceId) {
+        switch (resourceType) {
+            case "course" -> requireVisibleCourse(resourceId);
+            case "course_video" -> requireVisibleCourseVideo(resourceId);
+            case "book" -> requireVisibleBook(resourceId);
+            case "book_chapter" -> requireVisibleBookChapter(resourceId);
+            case "podcast" -> requireVisiblePodcast(resourceId);
+            case "podcast_audio" -> requireVisiblePodcastAudio(resourceId);
+            case "topic" -> requireVisibleTopic(resourceId);
+            default -> throw new BusinessException(ErrorCode.BAD_REQUEST, "Unsupported learning resource type");
+        }
+    }
+
+    private Optional<Long> currentStudentId() {
+        return currentAppUserResolver.currentSession()
+                .flatMap(session -> findStudent(session.userId()))
+                .map(Student::getId);
+    }
+
+    private Student requireCurrentStudent() {
+        AppUserSession session = currentAppUserResolver.requireCurrentUser();
+        Student student = findStudent(session.userId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN, "Student certification is required"));
+        if (student.getStatus() != EnabledStatus.ENABLED || student.getCertificationStatus() != StudentCertificationStatus.APPROVED) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "Student certification is not approved");
+        }
+        return student;
+    }
+
+    private Optional<Student> findStudent(Long userId) {
+        return Optional.ofNullable(studentMapper.selectOne(new LambdaQueryWrapper<Student>()
+                .eq(Student::getUserId, userId)
+                .eq(Student::getDeleted, 0)
+                .last("LIMIT 1")));
+    }
+
+    private Course requireVisibleCourse(Long id) {
+        Course course = courseMapper.selectById(id);
+        if (course == null || !isVisible(course.getDeleted(), course.getReviewStatus(), course.getPublishStatus())) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Course does not exist");
+        }
+        return course;
+    }
+
+    private CourseVideo requireVisibleCourseVideo(Long id) {
+        CourseVideo video = courseVideoMapper.selectById(id);
+        if (video == null || !Objects.equals(video.getDeleted(), 0) || video.getStatus() != EnabledStatus.ENABLED) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Course video does not exist");
+        }
+        requireVisibleCourse(video.getCourseId());
+        return video;
+    }
+
+    private Book requireVisibleBook(Long id) {
+        Book book = bookMapper.selectById(id);
+        if (book == null || !isVisible(book.getDeleted(), book.getReviewStatus(), book.getPublishStatus())) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Book does not exist");
+        }
+        return book;
+    }
+
+    private BookChapter requireVisibleBookChapter(Long id) {
+        BookChapter chapter = bookChapterMapper.selectById(id);
+        if (chapter == null || !Objects.equals(chapter.getDeleted(), 0) || chapter.getStatus() != EnabledStatus.ENABLED) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Book chapter does not exist");
+        }
+        requireVisibleBook(chapter.getBookId());
+        return chapter;
+    }
+
+    private Podcast requireVisiblePodcast(Long id) {
+        Podcast podcast = podcastMapper.selectById(id);
+        if (podcast == null || !isVisible(podcast.getDeleted(), podcast.getReviewStatus(), podcast.getPublishStatus())) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Podcast does not exist");
+        }
+        return podcast;
+    }
+
+    private PodcastAudio requireVisiblePodcastAudio(Long id) {
+        PodcastAudio audio = podcastAudioMapper.selectById(id);
+        if (audio == null || !Objects.equals(audio.getDeleted(), 0) || audio.getStatus() != EnabledStatus.ENABLED) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Podcast audio does not exist");
+        }
+        requireVisiblePodcast(audio.getPodcastId());
+        return audio;
+    }
+
+    private Topic requireVisibleTopic(Long id) {
+        Topic topic = topicMapper.selectById(id);
+        if (topic == null || !isVisible(topic.getDeleted(), topic.getReviewStatus(), topic.getPublishStatus())) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Topic does not exist");
+        }
+        return topic;
+    }
+
+    private AppCourseResponse toCourseResponse(Course course, boolean includeVideos, Long studentId) {
+        LearningRecord record = findLearningRecord(studentId, "course", course.getId()).orElse(null);
+        return new AppCourseResponse(course.getId(), course.getCourseName(), course.getSubtitle(), course.getCoverUrl(),
+                course.getLecturerName(), course.getIntroduction(), course.getPaperId(), course.getPublishedAt(),
+                progress(record), studySeconds(record), includeVideos ? loadCourseVideos(course.getId()) : List.of());
+    }
+
+    private List<AppCourseVideoResponse> loadCourseVideos(Long courseId) {
+        return courseVideoMapper.selectList(new LambdaQueryWrapper<CourseVideo>()
+                        .eq(CourseVideo::getDeleted, 0)
+                        .eq(CourseVideo::getCourseId, courseId)
+                        .eq(CourseVideo::getStatus, EnabledStatus.ENABLED)
+                        .orderByAsc(CourseVideo::getSortOrder)
+                        .orderByDesc(CourseVideo::getCreatedAt))
+                .stream()
+                .map(this::toCourseVideoResponse)
+                .toList();
+    }
+
+    private AppCourseVideoResponse toCourseVideoResponse(CourseVideo video) {
+        return new AppCourseVideoResponse(video.getId(), video.getCourseId(), video.getTitle(), video.getVideoUrl(),
+                video.getDurationSeconds(), video.getSortOrder());
+    }
+
+    private AppBookCategoryResponse toBookCategoryResponse(BookCategory category) {
+        return new AppBookCategoryResponse(category.getId(), category.getParentId(), category.getCategoryName(),
+                category.getSortOrder());
+    }
+
+    private AppBookResponse toBookResponse(Book book, boolean includeChapters, Long studentId) {
+        LearningRecord record = findLearningRecord(studentId, "book", book.getId()).orElse(null);
+        return new AppBookResponse(book.getId(), book.getCategoryId(), book.getBookName(), book.getAuthor(),
+                book.getPublisher(), book.getCoverUrl(), book.getIntroduction(), book.getPaperId(), book.getPublishedAt(),
+                progress(record), studySeconds(record), includeChapters ? loadBookChapters(book.getId()) : List.of());
+    }
+
+    private List<AppBookChapterResponse> loadBookChapters(Long bookId) {
+        return bookChapterMapper.selectList(new LambdaQueryWrapper<BookChapter>()
+                        .eq(BookChapter::getDeleted, 0)
+                        .eq(BookChapter::getBookId, bookId)
+                        .eq(BookChapter::getStatus, EnabledStatus.ENABLED)
+                        .orderByAsc(BookChapter::getSortOrder)
+                        .orderByDesc(BookChapter::getCreatedAt))
+                .stream()
+                .map(this::toBookChapterResponse)
+                .toList();
+    }
+
+    private AppBookChapterResponse toBookChapterResponse(BookChapter chapter) {
+        return new AppBookChapterResponse(chapter.getId(), chapter.getBookId(), chapter.getParentId(),
+                chapter.getChapterTitle(), chapter.getContent(), chapter.getPaperId(), chapter.getSortOrder());
+    }
+
+    private AppPodcastResponse toPodcastResponse(Podcast podcast, boolean includeAudios, Long studentId) {
+        LearningRecord record = findLearningRecord(studentId, "podcast", podcast.getId()).orElse(null);
+        return new AppPodcastResponse(podcast.getId(), podcast.getTitle(), podcast.getSummary(), podcast.getCoverUrl(),
+                podcast.getPublishedAt(), progress(record), studySeconds(record),
+                includeAudios ? loadPodcastAudios(podcast.getId()) : List.of());
+    }
+
+    private List<AppPodcastAudioResponse> loadPodcastAudios(Long podcastId) {
+        return podcastAudioMapper.selectList(new LambdaQueryWrapper<PodcastAudio>()
+                        .eq(PodcastAudio::getDeleted, 0)
+                        .eq(PodcastAudio::getPodcastId, podcastId)
+                        .eq(PodcastAudio::getStatus, EnabledStatus.ENABLED)
+                        .orderByAsc(PodcastAudio::getSortOrder)
+                        .orderByDesc(PodcastAudio::getCreatedAt))
+                .stream()
+                .map(audio -> new AppPodcastAudioResponse(audio.getId(), audio.getPodcastId(), audio.getTitle(),
+                        audio.getAudioUrl(), audio.getDurationSeconds(), audio.getSortOrder()))
+                .toList();
+    }
+
+    private AppTopicResponse toTopicResponse(Topic topic, boolean includeItems) {
+        return new AppTopicResponse(topic.getId(), topic.getTitle(), topic.getSummary(), topic.getLearningRequirements(),
+                topic.getCoverUrl(), topic.getViewCount(), topic.getPublishedAt(), includeItems ? loadTopicItems(topic.getId()) : List.of());
+    }
+
+    private List<AppTopicItemResponse> loadTopicItems(Long topicId) {
+        return topicItemMapper.selectList(new LambdaQueryWrapper<TopicItem>()
+                        .eq(TopicItem::getTopicId, topicId)
+                        .orderByAsc(TopicItem::getSortOrder))
+                .stream()
+                .map(item -> new AppTopicItemResponse(item.getId(), item.getTopicId(), item.getItemType(),
+                        item.getItemId(), item.getSortOrder(), resolveTopicItemResource(item)))
+                .toList();
+    }
+
+    private Object resolveTopicItemResource(TopicItem item) {
+        try {
+            return switch (item.getItemType()) {
+                case "course" -> toCourseResponse(requireVisibleCourse(item.getItemId()), false, currentStudentId().orElse(null));
+                case "book" -> toBookResponse(requireVisibleBook(item.getItemId()), false, currentStudentId().orElse(null));
+                case "podcast" -> toPodcastResponse(requireVisiblePodcast(item.getItemId()), false, currentStudentId().orElse(null));
+                case "topic" -> toTopicResponse(requireVisibleTopic(item.getItemId()), false);
+                default -> null;
+            };
+        } catch (BusinessException ignored) {
+            return null;
+        }
+    }
+
+    private Optional<LearningRecord> findLearningRecord(Long studentId, String resourceType, Long resourceId) {
+        if (studentId == null) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(learningRecordMapper.selectOne(new LambdaQueryWrapper<LearningRecord>()
+                .eq(LearningRecord::getStudentId, studentId)
+                .eq(LearningRecord::getResourceType, resourceType)
+                .eq(LearningRecord::getResourceId, resourceId)
+                .last("LIMIT 1")));
+    }
+
+    private AppLearningRecordResponse toLearningRecordResponse(LearningRecord record) {
+        return new AppLearningRecordResponse(record.getId(), record.getStudentId(), record.getResourceType(),
+                record.getResourceId(), record.getStudySeconds(), record.getProgressPercent(), record.getCompleted(),
+                record.getCompletedAt(), record.getLastStudiedAt());
+    }
+
+    private BigDecimal progress(LearningRecord record) {
+        return record == null || record.getProgressPercent() == null ? ZERO_PROGRESS : record.getProgressPercent();
+    }
+
+    private Integer studySeconds(LearningRecord record) {
+        return record == null || record.getStudySeconds() == null ? 0 : record.getStudySeconds();
+    }
+
+    private BigDecimal normalizeProgress(BigDecimal value) {
+        if (value.compareTo(BigDecimal.ZERO) < 0) {
+            return ZERO_PROGRESS;
+        }
+        if (value.compareTo(BigDecimal.valueOf(100)) > 0) {
+            return BigDecimal.valueOf(100).setScale(2);
+        }
+        return value.setScale(2, java.math.RoundingMode.HALF_UP);
+    }
+
+    private boolean isVisible(Integer deleted, ReviewStatus reviewStatus, PublishStatus publishStatus) {
+        return Objects.equals(deleted, 0)
+                && reviewStatus == ReviewStatus.APPROVED
+                && publishStatus == PublishStatus.PUBLISHED;
+    }
+
+    private LambdaQueryWrapper<Course> visibleCourseWrapper() {
+        return new LambdaQueryWrapper<Course>()
+                .eq(Course::getDeleted, 0)
+                .eq(Course::getReviewStatus, ReviewStatus.APPROVED)
+                .eq(Course::getPublishStatus, PublishStatus.PUBLISHED);
+    }
+
+    private LambdaQueryWrapper<Book> visibleBookWrapper() {
+        return new LambdaQueryWrapper<Book>()
+                .eq(Book::getDeleted, 0)
+                .eq(Book::getReviewStatus, ReviewStatus.APPROVED)
+                .eq(Book::getPublishStatus, PublishStatus.PUBLISHED);
+    }
+
+    private LambdaQueryWrapper<Podcast> visiblePodcastWrapper() {
+        return new LambdaQueryWrapper<Podcast>()
+                .eq(Podcast::getDeleted, 0)
+                .eq(Podcast::getReviewStatus, ReviewStatus.APPROVED)
+                .eq(Podcast::getPublishStatus, PublishStatus.PUBLISHED);
+    }
+
+    private LambdaQueryWrapper<Topic> visibleTopicWrapper() {
+        return new LambdaQueryWrapper<Topic>()
+                .eq(Topic::getDeleted, 0)
+                .eq(Topic::getReviewStatus, ReviewStatus.APPROVED)
+                .eq(Topic::getPublishStatus, PublishStatus.PUBLISHED);
+    }
+
+    private <E, R> PageResponse<R> pageResponse(Page<E> page, List<R> records) {
+        return new PageResponse<>(records, page.getTotal(), page.getCurrent(), page.getSize());
+    }
+
+    private long normalizePage(long page) {
+        return page < 1 ? DEFAULT_PAGE : page;
+    }
+
+    private long normalizeSize(long size) {
+        if (size < 1) {
+            return DEFAULT_SIZE;
+        }
+        return Math.min(size, MAX_SIZE);
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
+    }
+}
