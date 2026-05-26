@@ -1,20 +1,25 @@
 package com.gugugaga.jsmedicine.module.auth.app.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.gugugaga.jsmedicine.common.enums.EnabledStatus;
 import com.gugugaga.jsmedicine.common.exception.BusinessException;
 import com.gugugaga.jsmedicine.common.exception.ErrorCode;
+import com.gugugaga.jsmedicine.module.auth.app.dto.CurrentAppUserResponse;
 import com.gugugaga.jsmedicine.module.auth.app.dto.AppLoginRequest;
 import com.gugugaga.jsmedicine.module.auth.app.dto.AppLoginResponse;
 import com.gugugaga.jsmedicine.module.auth.app.entity.AppUserSession;
 import com.gugugaga.jsmedicine.module.user.entity.AppUser;
+import com.gugugaga.jsmedicine.module.user.entity.Student;
 import com.gugugaga.jsmedicine.module.user.mapper.AppUserMapper;
+import com.gugugaga.jsmedicine.module.user.mapper.StudentMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,15 +31,21 @@ public class AppAuthService {
     private final DaoAuthenticationProvider appUserAuthenticationProvider;
     private final AppUserMapper appUserMapper;
     private final AppUserTokenService appUserTokenService;
+    private final CurrentAppUserResolver currentAppUserResolver;
+    private final StudentMapper studentMapper;
 
     public AppAuthService(
             DaoAuthenticationProvider appUserAuthenticationProvider,
             AppUserMapper appUserMapper,
-            AppUserTokenService appUserTokenService
+            AppUserTokenService appUserTokenService,
+            CurrentAppUserResolver currentAppUserResolver,
+            StudentMapper studentMapper
     ) {
         this.appUserAuthenticationProvider = appUserAuthenticationProvider;
         this.appUserMapper = appUserMapper;
         this.appUserTokenService = appUserTokenService;
+        this.currentAppUserResolver = currentAppUserResolver;
+        this.studentMapper = studentMapper;
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -79,6 +90,40 @@ public class AppAuthService {
                         appUser.getAvatarUrl(),
                         now
                 )
+        );
+    }
+
+    public void logout(String authorizationHeader) {
+        String token = currentAppUserResolver.resolveRawToken(authorizationHeader)
+                .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED, "Missing bearer token"));
+        appUserTokenService.delete(token);
+        SecurityContextHolder.clearContext();
+    }
+
+    public boolean validateCurrentToken() {
+        return currentAppUserResolver.currentSession().isPresent();
+    }
+
+    public CurrentAppUserResponse currentUser() {
+        AppUserSession session = currentAppUserResolver.requireCurrentUser();
+        AppUser appUser = appUserMapper.selectById(session.userId());
+        if (appUser == null || appUser.getStatus() != EnabledStatus.ENABLED) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED, "App user account does not exist");
+        }
+        Student student = studentMapper.selectOne(new LambdaQueryWrapper<Student>()
+                .eq(Student::getUserId, appUser.getId())
+                .eq(Student::getDeleted, 0)
+                .last("LIMIT 1"));
+        return new CurrentAppUserResponse(
+                appUser.getId(),
+                appUser.getUsername(),
+                appUser.getNickname(),
+                appUser.getAvatarUrl(),
+                appUser.getMobile(),
+                appUser.getEmail(),
+                appUser.getProfileCompleted(),
+                student == null ? null : student.getId(),
+                student == null ? null : student.getCertificationStatus()
         );
     }
 

@@ -1,5 +1,8 @@
 package com.gugugaga.jsmedicine.infrastructure.security;
 
+import com.gugugaga.jsmedicine.module.auth.app.entity.AppUserSession;
+import com.gugugaga.jsmedicine.module.auth.app.service.AppUserPrincipal;
+import com.gugugaga.jsmedicine.module.auth.app.service.AppUserTokenService;
 import com.gugugaga.jsmedicine.module.auth.admin.entity.AdminSession;
 import com.gugugaga.jsmedicine.module.auth.admin.service.AdminSecurityPrincipal;
 import com.gugugaga.jsmedicine.module.auth.admin.service.AuthTokenService;
@@ -24,9 +27,14 @@ public class BearerTokenAuthenticationFilter extends OncePerRequestFilter {
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final AuthTokenService authTokenService;
+    private final AppUserTokenService appUserTokenService;
 
-    public BearerTokenAuthenticationFilter(AuthTokenService authTokenService) {
+    public BearerTokenAuthenticationFilter(
+            AuthTokenService authTokenService,
+            AppUserTokenService appUserTokenService
+    ) {
         this.authTokenService = authTokenService;
+        this.appUserTokenService = appUserTokenService;
     }
 
     @Override
@@ -35,8 +43,7 @@ public class BearerTokenAuthenticationFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain
     ) throws ServletException, IOException {
-        resolveToken(request)
-                .ifPresent(token -> authTokenService.getSession(token).ifPresent(session -> setAuthentication(session, token)));
+        resolveToken(request).ifPresent(this::authenticateByToken);
         filterChain.doFilter(request, response);
     }
 
@@ -49,7 +56,19 @@ public class BearerTokenAuthenticationFilter extends OncePerRequestFilter {
         return token.isBlank() ? Optional.empty() : Optional.of(token);
     }
 
-    private void setAuthentication(AdminSession session, String token) {
+    private void authenticateByToken(String token) {
+        if (SecurityContextHolder.getContext().getAuthentication() != null) {
+            return;
+        }
+        Optional<AdminSession> adminSession = authTokenService.getSession(token);
+        if (adminSession.isPresent()) {
+            setAdminAuthentication(adminSession.get(), token);
+            return;
+        }
+        appUserTokenService.getSession(token).ifPresent(session -> setAppUserAuthentication(session, token));
+    }
+
+    private void setAdminAuthentication(AdminSession session, String token) {
         if (SecurityContextHolder.getContext().getAuthentication() != null) {
             return;
         }
@@ -58,6 +77,27 @@ public class BearerTokenAuthenticationFilter extends OncePerRequestFilter {
         session.permissionCodes().forEach(permissionCode -> authorities.add(new SimpleGrantedAuthority(permissionCode)));
         AdminSecurityPrincipal principal = new AdminSecurityPrincipal(
                 session.adminId(),
+                session.username(),
+                "",
+                true,
+                authorities
+        );
+        UsernamePasswordAuthenticationToken authentication = UsernamePasswordAuthenticationToken.authenticated(
+                principal,
+                token,
+                authorities
+        );
+        authentication.setDetails(session);
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+    }
+
+    private void setAppUserAuthentication(AppUserSession session, String token) {
+        if (SecurityContextHolder.getContext().getAuthentication() != null) {
+            return;
+        }
+        List<SimpleGrantedAuthority> authorities = List.of(new SimpleGrantedAuthority("ROLE_APP_USER"));
+        AppUserPrincipal principal = new AppUserPrincipal(
+                session.userId(),
                 session.username(),
                 "",
                 true,

@@ -90,8 +90,13 @@
 ├── src/main/resources/
 │   ├── application.yaml
 │   ├── application-dev.yaml
+│   ├── application-test.yaml
 │   ├── application-prod.yaml
 │   └── db/migration/
+├── docker/
+│   ├── mysql/
+│   └── nginx/
+├── compose.test.yml
 ├── docs/
 ├── src/test/java/
 └── api/
@@ -196,6 +201,15 @@
 - 当前测试用户端账号为 `td_user_01 / User@123456`、`td_user_02 / User@123456`；`td_user_03` 仅保留微信身份样例，不提供密码登录。
 - 测试数据覆盖管理员、角色、权限、用户、学员、首页、课程、图书、资讯、播客、专题、专家、题库、直播、答疑、反馈、学习记录、考试记录、审计记录等主要场景。
 
+## 共享联调环境
+
+- 当前多人共享联调环境固定使用 `test` profile，禁止直接把共享环境运行在 `dev` profile。
+- 当前联调地址为 `https://api-test.arez.cc.cd`，Swagger UI 为 `https://api-test.arez.cc.cd/swagger-ui.html`，OpenAPI JSON 为 `https://api-test.arez.cc.cd/api/docs`。
+- 当前服务器部署目录为 `/root/jsmedicine-test`，应用通过 Docker Compose 启动，宿主机 Nginx 反向代理到 `127.0.0.1:18080`。
+- 联调部署文件以 `compose.test.yml`、`.env.test`、`docker/nginx/jsmedicine-test.conf.template` 为准；变更联调域名时优先修改 `.env.test` 中的 `TEST_DOMAIN` 与 `TEST_BASE_URL`。
+- 共享联调环境已手动导入 `seed_test_data.sql`，当前可用测试账号包括管理端 `td_admin / Admin@123456`、`td_viewer / Admin@123456`，以及用户端 `td_user_01 / User@123456`、`td_user_02 / User@123456`。
+- 共享联调环境禁止随意清库、改表或重置种子数据；需要刷新数据时，先说明影响范围，再执行受控导入。
+
 ## 数据层
 
 - 优先使用 MySQL。
@@ -257,6 +271,7 @@
 - 日志消息使用英文，代码注释使用英文。
 - 开发环境优先 DEBUG，生产环境 INFO。
 - 配置分环境管理，避免将密钥、口令、地址写死在代码里。
+- JavaDoc 和普通注释不添加 `@author`、`@since`、创建时间等作者信息标签。
 
 ## 重要事项
 
