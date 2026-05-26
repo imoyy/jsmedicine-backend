@@ -44,16 +44,16 @@ public class AuthBootstrapService {
     @PostConstruct
     @Transactional(rollbackFor = Exception.class)
     public void bootstrapSuperAdmin() {
+        if (authProperties.getBootstrapPassword() == null || authProperties.getBootstrapPassword().isBlank()) {
+            log.warn("Bootstrap super admin skipped because app.auth.bootstrap-password is not configured");
+            return;
+        }
         SysAdmin existingAdmin = sysAdminMapper.selectOne(new LambdaQueryWrapper<SysAdmin>()
                 .eq(SysAdmin::getUsername, authProperties.getBootstrapUsername())
                 .eq(SysAdmin::getDeleted, 0)
                 .last("LIMIT 1"));
         if (existingAdmin != null) {
             bindSuperAdminRoleIfNecessary(existingAdmin.getId());
-            return;
-        }
-        if (authProperties.getBootstrapPassword() == null || authProperties.getBootstrapPassword().isBlank()) {
-            log.warn("Bootstrap super admin skipped because app.auth.bootstrap-password is not configured");
             return;
         }
         SysAdmin admin = new SysAdmin();
@@ -88,4 +88,3 @@ public class AuthBootstrapService {
         sysAdminRoleMapper.insert(relation);
     }
 }
-
