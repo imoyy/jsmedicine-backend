@@ -1,5 +1,6 @@
 package com.gugugaga.jsmedicine.common.config;
 
+import com.gugugaga.jsmedicine.common.exception.BusinessException;
 import com.gugugaga.jsmedicine.infrastructure.security.CurrentAdminAccessor;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -93,10 +94,16 @@ public class RequestLogAspect {
     }
 
     private int resolveStatus(HttpServletResponse response, Throwable failure) {
+        if (failure instanceof BusinessException businessException) {
+            return businessException.getErrorCode().getHttpStatus().value();
+        }
+        if (failure != null) {
+            return HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
+        }
         if (response != null && response.getStatus() > 0) {
             return response.getStatus();
         }
-        return failure == null ? HttpServletResponse.SC_OK : HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
+        return HttpServletResponse.SC_OK;
     }
 
     private String resolveClientIp(HttpServletRequest request) {

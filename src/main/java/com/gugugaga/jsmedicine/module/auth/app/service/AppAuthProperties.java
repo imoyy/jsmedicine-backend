@@ -1,5 +1,7 @@
 package com.gugugaga.jsmedicine.module.auth.app.service;
 
+import java.nio.charset.StandardCharsets;
+
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "app.user-auth")
@@ -93,7 +95,8 @@ public class AppAuthProperties {
     public static class Aliyun {
         private String accessKeyId;
         private String accessKeySecret;
-        private String endpoint = "dysmsapi.aliyuncs.com";
+        private String regionId = "ap-southeast-1";
+        private String endpoint = "dypnsapi.aliyuncs.com";
         private String signName;
         private String templateCode;
 
@@ -113,6 +116,14 @@ public class AppAuthProperties {
             this.accessKeySecret = accessKeySecret;
         }
 
+        public String getRegionId() {
+            return regionId;
+        }
+
+        public void setRegionId(String regionId) {
+            this.regionId = regionId;
+        }
+
         public String getEndpoint() {
             return endpoint;
         }
@@ -126,7 +137,7 @@ public class AppAuthProperties {
         }
 
         public void setSignName(String signName) {
-            this.signName = signName;
+            this.signName = normalizePropertyEncoding(signName);
         }
 
         public String getTemplateCode() {
@@ -166,5 +177,22 @@ public class AppAuthProperties {
         public void setMockEnabled(boolean mockEnabled) {
             this.mockEnabled = mockEnabled;
         }
+    }
+
+    private static String normalizePropertyEncoding(String value) {
+        if (value == null || value.isBlank() || !containsLatin1Supplement(value)) {
+            return value;
+        }
+        String decoded = new String(value.getBytes(StandardCharsets.ISO_8859_1), StandardCharsets.UTF_8);
+        // Spring imports extensionless .env files as Java properties. Raw UTF-8 Chinese text can be read as ISO-8859-1.
+        return containsCjk(decoded) ? decoded : value;
+    }
+
+    private static boolean containsLatin1Supplement(String value) {
+        return value.chars().anyMatch(codePoint -> codePoint >= 0x00C0 && codePoint <= 0x00FF);
+    }
+
+    private static boolean containsCjk(String value) {
+        return value.chars().anyMatch(codePoint -> codePoint >= 0x4E00 && codePoint <= 0x9FFF);
     }
 }

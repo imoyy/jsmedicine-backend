@@ -18,6 +18,8 @@ import com.gugugaga.jsmedicine.module.user.entity.Student;
 import com.gugugaga.jsmedicine.module.user.mapper.AppUserMapper;
 import com.gugugaga.jsmedicine.module.user.mapper.StudentMapper;
 import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -36,6 +38,7 @@ import java.util.Optional;
 @Service
 public class AppAuthService {
 
+    private static final Logger log = LoggerFactory.getLogger(AppAuthService.class);
     private static final int SMS_CODE_BOUND = 1_000_000;
     private static final String SMS_CODE_FORMAT = "%06d";
 
@@ -118,15 +121,29 @@ public class AppAuthService {
     }
 
     public void sendSmsCode(String mobile) {
-        String code = resolveSmsCode();
+        boolean mockMode = !aliyunSmsCodeSender.isConfigured();
+        long ttlSeconds = appAuthProperties.getSms().getCodeTtlSeconds();
+        if (mockMode) {
+            String code = resolveSmsCode();
+            redisTemplate.opsForValue().set(
+                    buildSmsCodeKey(mobile),
+                    code,
+                    Duration.ofSeconds(ttlSeconds)
+            );
+            log.info("App sms verification code generated in mock mode because aliyun sms is not configured mobile={} ttlSeconds={}",
+                    maskMobile(mobile),
+                    ttlSeconds);
+            return;
+        }
+        String code = aliyunSmsCodeSender.sendCode(mobile, ttlSeconds);
         redisTemplate.opsForValue().set(
                 buildSmsCodeKey(mobile),
                 code,
-                Duration.ofSeconds(appAuthProperties.getSms().getCodeTtlSeconds())
+                Duration.ofSeconds(ttlSeconds)
         );
-        if (!appAuthProperties.getSms().isMockEnabled()) {
-            aliyunSmsCodeSender.sendCode(mobile, code);
-        }
+        log.info("App sms verification code sent mobile={} provider=aliyun-dypns ttlSeconds={}",
+                maskMobile(mobile),
+                ttlSeconds);
     }
 
     @Transactional(rollbackFor = Exception.class)

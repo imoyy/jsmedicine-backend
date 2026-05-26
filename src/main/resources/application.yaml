@@ -1,6 +1,10 @@
 spring:
   application:
     name: jsmedicine
+  config:
+    import:
+      - optional:file:.env[.properties]
+      - optional:file:.env.test[.properties]
   profiles:
     active: dev
   datasource:
@@ -84,7 +88,8 @@ app:
       aliyun:
         access-key-id: ${ALIYUN_SMS_ACCESS_KEY_ID:}
         access-key-secret: ${ALIYUN_SMS_ACCESS_KEY_SECRET:}
-        endpoint: ${ALIYUN_SMS_ENDPOINT:dysmsapi.aliyuncs.com}
+        region-id: ${ALIYUN_SMS_REGION_ID:ap-southeast-1}
+        endpoint: ${ALIYUN_SMS_ENDPOINT:dypnsapi.aliyuncs.com}
         sign-name: ${ALIYUN_SMS_SIGN_NAME:}
         template-code: ${ALIYUN_SMS_TEMPLATE_CODE:}
     wechat:

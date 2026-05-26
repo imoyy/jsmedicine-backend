@@ -17,3 +17,23 @@
 2. 合并到共享联调分支。
 3. 更新测试环境。
 4. 通知前端和测试开始验证。
+
+## 4. 短信配置
+
+共享联调环境从 `.env.test` 读取阿里云短信配置。Docker Compose 会通过 `compose.test.yml` 注入应用容器；直接运行 Spring Boot 时，`application.yaml` 也会可选读取项目根目录下的 `.env.test`。
+
+必填项：
+
+- `ALIYUN_SMS_ACCESS_KEY_ID`
+- `ALIYUN_SMS_ACCESS_KEY_SECRET`
+- `ALIYUN_SMS_SIGN_NAME`
+- `ALIYUN_SMS_TEMPLATE_CODE`
+
+可选项：
+
+- `ALIYUN_SMS_REGION_ID`，默认 `ap-southeast-1`
+- `ALIYUN_SMS_ENDPOINT`，默认 `dypnsapi.aliyuncs.com`
+
+当以上必填项配置完整时，用户端 `/api/v1/app/auth/sms-code` 会通过阿里云 Dypnsapi `SendSmsVerifyCode` 真实发送；配置不完整时才使用 mock。
+
+如果 `.env.test` 中的中文签名在日志中出现 `éé...` 这类乱码，说明 UTF-8 被 properties 方式读取成 ISO-8859-1。后端会自动修正常见中文误读；也可以显式写 Unicode escape，例如 `速通互联验证码` 写作 `\u901F\u901A\u4E92\u8054\u9A8C\u8BC1\u7801`。
