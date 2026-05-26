@@ -11,3 +11,9 @@ app:
   dev:
     test-data:
       enabled: ${APP_DEV_TEST_DATA_ENABLED:true}
+  user-auth:
+    sms:
+      mock-enabled: ${APP_USER_AUTH_SMS_MOCK_ENABLED:true}
+      mock-code: ${APP_USER_AUTH_SMS_MOCK_CODE:123456}
+    wechat:
+      mock-enabled: ${WECHAT_MINIAPP_MOCK_ENABLED:true}

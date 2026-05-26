@@ -4,6 +4,9 @@ import com.gugugaga.jsmedicine.common.response.ApiResponse;
 import com.gugugaga.jsmedicine.module.auth.app.dto.CurrentAppUserResponse;
 import com.gugugaga.jsmedicine.module.auth.app.dto.AppLoginRequest;
 import com.gugugaga.jsmedicine.module.auth.app.dto.AppLoginResponse;
+import com.gugugaga.jsmedicine.module.auth.app.dto.AppSmsCodeRequest;
+import com.gugugaga.jsmedicine.module.auth.app.dto.AppSmsLoginRequest;
+import com.gugugaga.jsmedicine.module.auth.app.dto.AppWechatLoginRequest;
 import com.gugugaga.jsmedicine.module.auth.app.service.AppAuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -34,6 +37,31 @@ public class AppAuthController {
             HttpServletRequest httpServletRequest
     ) {
         return ApiResponse.ok(appAuthService.login(request, httpServletRequest));
+    }
+
+    @Operation(summary = "发送用户端手机号验证码")
+    @PostMapping("/sms-code")
+    public ApiResponse<Void> sendSmsCode(@Valid @RequestBody AppSmsCodeRequest request) {
+        appAuthService.sendSmsCode(request.mobile());
+        return ApiResponse.ok();
+    }
+
+    @Operation(summary = "用户端手机号验证码登录")
+    @PostMapping("/sms-login")
+    public ApiResponse<AppLoginResponse> smsLogin(
+            @Valid @RequestBody AppSmsLoginRequest request,
+            HttpServletRequest httpServletRequest
+    ) {
+        return ApiResponse.ok(appAuthService.loginBySms(request, httpServletRequest));
+    }
+
+    @Operation(summary = "用户端微信授权登录")
+    @PostMapping("/wechat-login")
+    public ApiResponse<AppLoginResponse> wechatLogin(
+            @Valid @RequestBody AppWechatLoginRequest request,
+            HttpServletRequest httpServletRequest
+    ) {
+        return ApiResponse.ok(appAuthService.loginByWechat(request, httpServletRequest));
     }
 
     @Operation(summary = "用户端退出登录")

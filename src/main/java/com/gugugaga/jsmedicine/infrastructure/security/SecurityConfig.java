@@ -40,7 +40,10 @@ public class SecurityConfig {
                                 "/swagger-ui.html",
                                 "/actuator/health",
                                 "/api/v1/auth/login",
-                                "/api/v1/app/auth/login"
+                                "/api/v1/app/auth/login",
+                                "/api/v1/app/auth/sms-code",
+                                "/api/v1/app/auth/sms-login",
+                                "/api/v1/app/auth/wechat-login"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
