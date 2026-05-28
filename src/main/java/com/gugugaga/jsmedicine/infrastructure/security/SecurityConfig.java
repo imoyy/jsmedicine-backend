@@ -43,7 +43,8 @@ public class SecurityConfig {
                                 "/api/v1/app/auth/login",
                                 "/api/v1/app/auth/sms-code",
                                 "/api/v1/app/auth/sms-login",
-                                "/api/v1/app/auth/wechat-login"
+                                "/api/v1/app/auth/wechat-login",
+                                "/api/v1/app/auth/wechat-bind-mobile"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )

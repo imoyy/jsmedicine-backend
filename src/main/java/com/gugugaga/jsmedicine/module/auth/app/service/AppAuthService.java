@@ -11,7 +11,9 @@ import com.gugugaga.jsmedicine.module.auth.app.dto.CurrentAppUserResponse;
 import com.gugugaga.jsmedicine.module.auth.app.dto.AppLoginRequest;
 import com.gugugaga.jsmedicine.module.auth.app.dto.AppLoginResponse;
 import com.gugugaga.jsmedicine.module.auth.app.dto.AppSmsLoginRequest;
+import com.gugugaga.jsmedicine.module.auth.app.dto.AppWechatBindMobileRequest;
 import com.gugugaga.jsmedicine.module.auth.app.dto.AppWechatLoginRequest;
+import com.gugugaga.jsmedicine.module.auth.app.dto.AppWechatLoginResponse;
 import com.gugugaga.jsmedicine.module.auth.app.entity.AppUserSession;
 import com.gugugaga.jsmedicine.module.user.entity.AppUser;
 import com.gugugaga.jsmedicine.module.user.entity.Student;
@@ -51,6 +53,7 @@ public class AppAuthService {
     private final RedisTemplate<String, Object> redisTemplate;
     private final AliyunSmsCodeSender aliyunSmsCodeSender;
     private final WechatMiniappClient wechatMiniappClient;
+    private final WechatBindTokenService wechatBindTokenService;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public AppAuthService(
@@ -62,7 +65,8 @@ public class AppAuthService {
             AppAuthProperties appAuthProperties,
             RedisTemplate<String, Object> redisTemplate,
             AliyunSmsCodeSender aliyunSmsCodeSender,
-            WechatMiniappClient wechatMiniappClient
+            WechatMiniappClient wechatMiniappClient,
+            WechatBindTokenService wechatBindTokenService
     ) {
         this.appUserAuthenticationProvider = appUserAuthenticationProvider;
         this.appUserMapper = appUserMapper;
@@ -73,6 +77,7 @@ public class AppAuthService {
         this.redisTemplate = redisTemplate;
         this.aliyunSmsCodeSender = aliyunSmsCodeSender;
         this.wechatMiniappClient = wechatMiniappClient;
+        this.wechatBindTokenService = wechatBindTokenService;
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -159,29 +164,45 @@ public class AppAuthService {
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public AppLoginResponse loginByWechat(AppWechatLoginRequest request, HttpServletRequest httpServletRequest) {
+    public AppWechatLoginResponse loginByWechat(AppWechatLoginRequest request, HttpServletRequest httpServletRequest) {
         WechatMiniappClient.WechatSession session = wechatMiniappClient.codeToSession(request.code());
-        AppUser appUser = findUserByWechatOpenId(session.openId())
-                .orElseGet(() -> createWechatUser(session, request));
-        boolean shouldUpdateProfile = false;
-        if (request.nickname() != null && !request.nickname().isBlank()
-                && (appUser.getNickname() == null || appUser.getNickname().isBlank())) {
-            appUser.setNickname(request.nickname());
-            shouldUpdateProfile = true;
+        Optional<AppUser> existingUser = findUserByWechatOpenId(session.openId());
+        if (existingUser.isPresent()) {
+            AppUser appUser = existingUser.get();
+            applyWechatProfileIfAbsent(appUser, request.nickname(), request.avatarUrl(), session.unionId());
+            AppLoginResponse loginResponse = issueLoginResponse(appUser, httpServletRequest);
+            return toWechatLoginResponse(loginResponse);
         }
-        if (request.avatarUrl() != null && !request.avatarUrl().isBlank()
-                && (appUser.getAvatarUrl() == null || appUser.getAvatarUrl().isBlank())) {
-            appUser.setAvatarUrl(request.avatarUrl());
-            shouldUpdateProfile = true;
+        WechatBindTokenService.PendingWechatBinding pendingBinding = new WechatBindTokenService.PendingWechatBinding(
+                session.openId(),
+                session.unionId(),
+                request.nickname(),
+                request.avatarUrl()
+        );
+        WechatBindTokenService.TokenIssueResult bindTokenResult = wechatBindTokenService.issue(pendingBinding);
+        return new AppWechatLoginResponse(
+                false,
+                true,
+                bindTokenResult.token(),
+                null,
+                null,
+                bindTokenResult.expiresInSeconds(),
+                null
+        );
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public AppLoginResponse bindWechatMobile(AppWechatBindMobileRequest request, HttpServletRequest httpServletRequest) {
+        validateSmsCode(request.mobile(), request.code());
+        WechatBindTokenService.PendingWechatBinding pendingBinding = wechatBindTokenService.get(request.bindToken())
+                .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED, "WeChat binding token is invalid"));
+        if (findUserByWechatOpenId(pendingBinding.openId()).isPresent()) {
+            throw new BusinessException(ErrorCode.CONFLICT, "WeChat account is already linked");
         }
-        if (session.unionId() != null && !session.unionId().isBlank()
-                && (appUser.getWechatUnionId() == null || appUser.getWechatUnionId().isBlank())) {
-            appUser.setWechatUnionId(session.unionId());
-            shouldUpdateProfile = true;
-        }
-        if (shouldUpdateProfile) {
-            appUserMapper.updateById(appUser);
-        }
+        AppUser appUser = findUserByMobile(request.mobile())
+                .map(existingUser -> bindWechatToExistingUser(existingUser, pendingBinding))
+                .orElseGet(() -> createWechatUserWithMobile(pendingBinding, request.mobile()));
+        wechatBindTokenService.delete(request.bindToken());
         return issueLoginResponse(appUser, httpServletRequest);
     }
 
@@ -281,21 +302,49 @@ public class AppAuthService {
         return appUser;
     }
 
-    private AppUser createWechatUser(WechatMiniappClient.WechatSession session, AppWechatLoginRequest request) {
+    private AppUser createWechatUserWithMobile(WechatBindTokenService.PendingWechatBinding pendingBinding, String mobile) {
         LocalDateTime now = LocalDateTime.now();
         AppUser appUser = new AppUser();
-        appUser.setUsername("wx_" + session.openId());
-        appUser.setNickname(resolveWechatNickname(request, session));
-        appUser.setAvatarUrl(request.avatarUrl());
+        appUser.setUsername("u" + mobile);
+        appUser.setMobile(mobile);
+        appUser.setNickname(resolveWechatNickname(pendingBinding));
+        appUser.setAvatarUrl(pendingBinding.avatarUrl());
         appUser.setAuthProvider(UserAuthProvider.WECHAT_MINIAPP);
-        appUser.setWechatOpenId(session.openId());
-        appUser.setWechatUnionId(session.unionId());
+        appUser.setWechatOpenId(pendingBinding.openId());
+        appUser.setWechatUnionId(pendingBinding.unionId());
         appUser.setGender(Gender.UNKNOWN);
         appUser.setStatus(EnabledStatus.ENABLED);
         appUser.setRegisteredAt(now);
-        appUser.setProfileCompleted(false);
+        appUser.setProfileCompleted(hasText(appUser.getNickname()) && hasText(appUser.getAvatarUrl()));
         appUser.setDeleted(0);
         appUserMapper.insert(appUser);
+        return appUser;
+    }
+
+    private AppUser bindWechatToExistingUser(AppUser appUser, WechatBindTokenService.PendingWechatBinding pendingBinding) {
+        if (appUser.getStatus() != EnabledStatus.ENABLED) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "App user account is disabled");
+        }
+        if (hasText(appUser.getWechatOpenId()) && !appUser.getWechatOpenId().equals(pendingBinding.openId())) {
+            throw new BusinessException(ErrorCode.CONFLICT, "Mobile number is already linked to another WeChat account");
+        }
+        appUser.setWechatOpenId(pendingBinding.openId());
+        if (hasText(pendingBinding.unionId())) {
+            appUser.setWechatUnionId(pendingBinding.unionId());
+        }
+        if (!hasText(appUser.getNickname()) && hasText(pendingBinding.nickname())) {
+            appUser.setNickname(pendingBinding.nickname());
+        }
+        if (!hasText(appUser.getAvatarUrl()) && hasText(pendingBinding.avatarUrl())) {
+            appUser.setAvatarUrl(pendingBinding.avatarUrl());
+        }
+        if (appUser.getAuthProvider() == null) {
+            appUser.setAuthProvider(UserAuthProvider.WECHAT_MINIAPP);
+        }
+        if (Boolean.FALSE.equals(appUser.getProfileCompleted())) {
+            appUser.setProfileCompleted(hasText(appUser.getNickname()) && hasText(appUser.getAvatarUrl()));
+        }
+        appUserMapper.updateById(appUser);
         return appUser;
     }
 
@@ -315,11 +364,53 @@ public class AppAuthService {
         return mobile.substring(0, 3) + "****" + mobile.substring(7);
     }
 
-    private String resolveWechatNickname(AppWechatLoginRequest request, WechatMiniappClient.WechatSession session) {
-        if (request.nickname() != null && !request.nickname().isBlank()) {
-            return request.nickname();
+    private void validateSmsCode(String mobile, String code) {
+        Object cachedCode = redisTemplate.opsForValue().get(buildSmsCodeKey(mobile));
+        if (!(cachedCode instanceof String actualCode) || !actualCode.equals(code)) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED, "Sms verification code is invalid");
         }
-        return "wx_" + session.openId().substring(Math.max(0, session.openId().length() - 8));
+        redisTemplate.delete(buildSmsCodeKey(mobile));
+    }
+
+    private void applyWechatProfileIfAbsent(AppUser appUser, String nickname, String avatarUrl, String unionId) {
+        boolean shouldUpdateProfile = false;
+        if (hasText(nickname) && !hasText(appUser.getNickname())) {
+            appUser.setNickname(nickname);
+            shouldUpdateProfile = true;
+        }
+        if (hasText(avatarUrl) && !hasText(appUser.getAvatarUrl())) {
+            appUser.setAvatarUrl(avatarUrl);
+            shouldUpdateProfile = true;
+        }
+        if (hasText(unionId) && !hasText(appUser.getWechatUnionId())) {
+            appUser.setWechatUnionId(unionId);
+            shouldUpdateProfile = true;
+        }
+        if (shouldUpdateProfile) {
+            if (Boolean.FALSE.equals(appUser.getProfileCompleted())) {
+                appUser.setProfileCompleted(hasText(appUser.getNickname()) && hasText(appUser.getAvatarUrl()));
+            }
+            appUserMapper.updateById(appUser);
+        }
+    }
+
+    private AppWechatLoginResponse toWechatLoginResponse(AppLoginResponse loginResponse) {
+        return new AppWechatLoginResponse(
+                true,
+                false,
+                null,
+                loginResponse.tokenType(),
+                loginResponse.accessToken(),
+                loginResponse.expiresIn(),
+                loginResponse.user()
+        );
+    }
+
+    private String resolveWechatNickname(WechatBindTokenService.PendingWechatBinding pendingBinding) {
+        if (hasText(pendingBinding.nickname())) {
+            return pendingBinding.nickname();
+        }
+        return "wx_" + pendingBinding.openId().substring(Math.max(0, pendingBinding.openId().length() - 8));
     }
 
     private String resolveClientIp(HttpServletRequest request) {
@@ -328,5 +419,9 @@ public class AppAuthService {
             return forwardedFor.split(",")[0].trim();
         }
         return request.getRemoteAddr();
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 }

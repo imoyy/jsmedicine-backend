@@ -98,6 +98,7 @@
 
 - `[ ]` 验证管理端登录、退出、`/api/v1/auth/me`、`/api/v1/auth/status`。
 - `[ ]` 验证用户端账号密码登录、短信登录、微信登录、退出、`/api/v1/app/auth/me`、`/api/v1/app/auth/status`。
+- `[x]` 调整用户端微信登录首登链路：新用户先绑定手机号再入库，老用户按 `wechat_open_id` 直接恢复登录态。
 - `[ ]` 验证 Redis 中管理端与用户端 token key 前缀隔离。
 - `[ ]` 验证 token 过期、无效 token、缺失 token 的统一错误响应。
 - `[ ]` 检查所有管理端敏感接口是否具备 `@PreAuthorize`。

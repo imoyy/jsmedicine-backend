@@ -18,13 +18,19 @@
 - 管理端专家新增可选 `userId`，用于把专家主数据绑定到前台登录用户；绑定后后端会同步维护用户 `EXPERT` 身份。
 - 管理端新增 `PUT /api/v1/admin/users/{id}`，用于支撑“修改用户信息”弹窗一次性保存昵称、口号、状态、角色、学员绑定、地区和医院。
 - 管理端新增基础数据接口 `/api/v1/admin/references/organizations`、`/api/v1/admin/references/practice-types`，用于机构和执业类型下拉。
+- 学员管理新增 `POST /api/v1/admin/students`、`DELETE /api/v1/admin/students/{id}`、`POST /api/v1/admin/students/batch-delete`，并补齐 `gender`、`age`、`educationLevel` 字段。
+- 系统管理新增管理员删除和角色删除接口，删除时分别带有“不可自删”和“不可删除 SUPER_ADMIN / 已绑定角色”的约束。
+- 内容配置新增资讯 `source`、`tags`，播客 `speakerName`、`tags`，播客音频新增 `paperId`。
+- 学习资源新增课程视频 `paperId`、图书 `totalPages`、图书章节 `startPage` / `pageCount`。
+- 专家新增 `gender`、`birthDate`、`mobile`、`coverUrl` 展示字段。
+- 直播新增 `speakerName`、`tags` 和直播视频子资源接口，用于支撑管理端直播配置弹窗和用户端回放列表展示。
 
 ## 端侧划分
 
 - 管理员端：`/api/v1/auth/**`、`/api/v1/admin/**`
 - 用户端：`/api/v1/app/**`
 - 用户端网页端与小程序共用：除微信授权外的大部分用户端接口
-- 用户端小程序独有：当前只有微信授权登录接口
+- 用户端小程序独有：微信授权登录与微信授权后绑定手机号接口
 - 用户端网页端独有：当前未发现单独面向网页端的专属接口
 
 ## 管理员端 API
@@ -46,6 +52,7 @@
 | POST | `/api/v1/admin/system/admins` | 新增管理员 |
 | GET | `/api/v1/admin/system/admins/{id}` | 查询管理员详情 |
 | PUT | `/api/v1/admin/system/admins/{id}` | 修改管理员 |
+| DELETE | `/api/v1/admin/system/admins/{id}` | 删除管理员 |
 | PATCH | `/api/v1/admin/system/admins/{id}/password/reset` | 重置管理员密码 |
 | PUT | `/api/v1/admin/system/admins/{id}/roles` | 绑定管理员角色 |
 | PATCH | `/api/v1/admin/system/admins/{id}/status` | 修改管理员状态 |
@@ -55,6 +62,7 @@
 | POST | `/api/v1/admin/system/roles` | 新增角色 |
 | GET | `/api/v1/admin/system/roles/{id}` | 查询角色详情 |
 | PUT | `/api/v1/admin/system/roles/{id}` | 修改角色 |
+| DELETE | `/api/v1/admin/system/roles/{id}` | 删除角色 |
 | PUT | `/api/v1/admin/system/roles/{id}/permissions` | 绑定角色权限 |
 | PATCH | `/api/v1/admin/system/roles/{id}/status` | 修改角色状态 |
 
@@ -67,8 +75,11 @@
 | PUT | `/api/v1/admin/users/{id}` | 修改用户信息 |
 | PATCH | `/api/v1/admin/users/{id}/status` | 修改用户状态 |
 | GET | `/api/v1/admin/students` | 分页查询学员 |
+| POST | `/api/v1/admin/students` | 新增学员 |
 | GET | `/api/v1/admin/students/{id}` | 查询学员详情 |
 | PUT | `/api/v1/admin/students/{id}` | 维护学员信息 |
+| DELETE | `/api/v1/admin/students/{id}` | 删除学员 |
+| POST | `/api/v1/admin/students/batch-delete` | 批量删除学员 |
 | PATCH | `/api/v1/admin/students/{id}/certification` | 审核学员认证 |
 
 #### 3.1 用户字段补充
@@ -114,6 +125,9 @@
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
+| `gender` | `integer` | 性别枚举，详见 `Gender` |
+| `age` | `integer` | 年龄，非负整数 |
+| `educationLevel` | `string` | 文化程度/学历，最长 64 字符 |
 | `provinceCode` | `string` | 省级行政区编码 |
 | `cityCode` | `string` | 市级行政区编码 |
 | `districtCode` | `string` | 区县行政区编码 |
@@ -130,6 +144,8 @@
 | `certificationFiles[].sourceUrl` | `string` | 外部或历史材料 URL，可为空 |
 | `certificationFiles[].materialType` | `string` | 材料类型，如 `id_card`、`qualification`、`other` |
 | `certificationFiles[].sortOrder` | `integer` | 展示顺序 |
+
+`POST /api/v1/admin/students` 与 `PUT /api/v1/admin/students/{id}` 使用相同的 `AdminStudentUpsertRequest` 结构；`POST /api/v1/admin/students/batch-delete` 请求体为学员 ID 数组封装对象。
 
 ### 4. 内容配置
 
@@ -166,6 +182,32 @@
 | DELETE | `/api/v1/admin/content/topics/{id}` | 删除专题 |
 | PUT | `/api/v1/admin/content/topics/{id}/items` | 替换专题关联项 |
 | PATCH | `/api/v1/admin/content/topics/{id}/review` | 审核专题 |
+
+#### 4.1 资讯与播客字段补充
+
+`POST /api/v1/admin/content/articles`、`PUT /api/v1/admin/content/articles/{id}` 额外支持：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `source` | `string` | 资讯来源，最长 128 字符 |
+| `tags` | `array<string>` | 标签列表，最多 20 个，每个标签最长 32 字符 |
+
+`GET /api/v1/admin/content/articles`、`GET /api/v1/admin/content/articles/{id}` 响应同步返回 `source`、`tags`。
+
+`POST /api/v1/admin/content/podcasts`、`PUT /api/v1/admin/content/podcasts/{id}` 额外支持：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `speakerName` | `string` | 主讲人/主播名，最长 128 字符 |
+| `tags` | `array<string>` | 标签列表，最多 20 个，每个标签最长 32 字符 |
+
+`GET /api/v1/admin/content/podcasts`、`GET /api/v1/admin/content/podcasts/{id}` 响应同步返回 `speakerName`、`tags`。
+
+`POST /api/v1/admin/content/podcasts/audios`、`PUT /api/v1/admin/content/podcasts/audios/{id}` 额外支持：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `paperId` | `integer` | 关联考卷 ID，可为空 |
 
 ### 5. 学习资源
 
@@ -212,6 +254,29 @@
 | DELETE | `/api/v1/admin/learning/questions/{id}` | 删除题目 |
 | PUT | `/api/v1/admin/learning/questions/{id}/options` | 替换题目选项 |
 
+#### 5.1 学习资源字段补充
+
+`POST /api/v1/admin/learning/courses/videos`、`PUT /api/v1/admin/learning/courses/videos/{id}` 额外支持：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `paperId` | `integer` | 关联考卷 ID，可为空 |
+
+`POST /api/v1/admin/learning/books`、`PUT /api/v1/admin/learning/books/{id}` 额外支持：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `totalPages` | `integer` | 图书总页数，非负整数 |
+
+`POST /api/v1/admin/learning/books/chapters`、`PUT /api/v1/admin/learning/books/chapters/{id}` 额外支持：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `startPage` | `integer` | 章节起始页码，最小为 1 |
+| `pageCount` | `integer` | 章节页数，非负整数 |
+
+相关响应 `CourseVideoResponse`、`BookResponse`、`BookChapterResponse` 会同步返回这些字段。
+
 ### 6. 专家管理
 
 | 方法 | 路径 | 说明 |
@@ -235,10 +300,14 @@
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
 | `userId` | `integer` | 绑定的前台用户 ID，可为空；非空时同一用户只能绑定一个专家 |
+| `gender` | `integer` | 性别枚举，详见 `Gender` |
+| `birthDate` | `string(date)` | 出生日期 |
+| `mobile` | `string` | 手机号，最长 32 字符 |
 | `organizationId` | `integer` | 机构 ID，对应 `organizations.id` |
 | `practiceTypeId` | `integer` | 执业类型 ID，对应 `practice_types.id` |
+| `coverUrl` | `string` | 专家封面图，最长 512 字符 |
 
-专家响应同步返回 `userId`、`organizationId`、`practiceTypeId`。当 `userId` 非空时，后端会确保该前台用户存在激活的 `EXPERT` 身份记录。
+专家响应同步返回 `userId`、`gender`、`birthDate`、`mobile`、`organizationId`、`practiceTypeId`、`coverUrl`。当 `userId` 非空时，后端会确保该前台用户存在激活的 `EXPERT` 身份记录。
 
 ### 7. 互动处理
 
@@ -275,9 +344,41 @@
 | GET | `/api/v1/admin/live-sessions` | 分页查询直播 |
 | POST | `/api/v1/admin/live-sessions` | 新增直播 |
 | GET | `/api/v1/admin/live-sessions/{id}` | 直播详情 |
+| GET | `/api/v1/admin/live-sessions/{liveSessionId}/videos` | 分页查询直播视频 |
 | PUT | `/api/v1/admin/live-sessions/{id}` | 修改直播 |
 | DELETE | `/api/v1/admin/live-sessions/{id}` | 删除直播 |
 | PATCH | `/api/v1/admin/live-sessions/{id}/review` | 审核直播 |
+| POST | `/api/v1/admin/live-sessions/videos` | 新增直播视频 |
+| PUT | `/api/v1/admin/live-sessions/videos/{id}` | 修改直播视频 |
+| DELETE | `/api/v1/admin/live-sessions/videos/{id}` | 删除直播视频 |
+
+#### 9.1 直播字段补充
+
+`POST /api/v1/admin/live-sessions`、`PUT /api/v1/admin/live-sessions/{id}` 额外支持：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `speakerName` | `string` | 主讲人姓名，最长 128 字符；未传时回退为 `anchorName` |
+| `tags` | `array<string>` | 标签列表，最多 20 个，每个标签最长 32 字符 |
+
+直播响应同步返回：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `speakerName` | `string` | 主讲人姓名 |
+| `tags` | `array<string>` | 标签列表 |
+| `videos` | `array` | 直播视频列表；详情接口默认返回，分页接口不返回 |
+
+直播视频子资源 `POST /api/v1/admin/live-sessions/videos`、`PUT /api/v1/admin/live-sessions/videos/{id}` 请求字段：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `liveSessionId` | `integer` | 直播 ID |
+| `title` | `string` | 视频标题 |
+| `videoUrl` | `string` | 视频地址 |
+| `durationSeconds` | `integer` | 视频时长，单位秒 |
+| `sortOrder` | `integer` | 排序值 |
+| `status` | `integer` | 状态：`1` 启用，`0` 禁用 |
 
 ### 10. 统计管理
 
@@ -296,7 +397,15 @@
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
 | GET | `/api/v1/admin/references/organizations` | 查询机构列表，支持按 `keyword`、`provinceCode`、`cityCode`、`districtCode`、`status` 过滤 |
-| GET | `/api/v1/admin/references/practice-types` | 查询执业类型列表，支持按 `parentId`、`status` 过滤 |
+| POST | `/api/v1/admin/references/organizations` | 新增机构 |
+| GET | `/api/v1/admin/references/organizations/{id}` | 查询机构详情 |
+| PUT | `/api/v1/admin/references/organizations/{id}` | 修改机构 |
+| DELETE | `/api/v1/admin/references/organizations/{id}` | 删除机构 |
+| GET | `/api/v1/admin/references/practice-types` | 查询执业类型列表，支持按 `keyword`、`parentId`、`status` 过滤 |
+| POST | `/api/v1/admin/references/practice-types` | 新增执业类型 |
+| GET | `/api/v1/admin/references/practice-types/{id}` | 查询执业类型详情 |
+| PUT | `/api/v1/admin/references/practice-types/{id}` | 修改执业类型 |
+| DELETE | `/api/v1/admin/references/practice-types/{id}` | 删除执业类型 |
 
 ## 用户端 API
 
@@ -309,6 +418,7 @@
 | POST | `/api/v1/app/auth/login` | 用户端账号密码登录 |
 | POST | `/api/v1/app/auth/sms-code` | 发送用户端手机号验证码 |
 | POST | `/api/v1/app/auth/sms-login` | 用户端手机号验证码登录 |
+| POST | `/api/v1/app/auth/wechat-bind-mobile` | 用户端微信授权后绑定手机号并完成登录 |
 | POST | `/api/v1/app/auth/logout` | 用户端退出登录 |
 | GET | `/api/v1/app/auth/me` | 获取当前登录用户 |
 | GET | `/api/v1/app/auth/status` | 校验用户端登录状态 |
@@ -374,6 +484,18 @@
 | GET | `/api/v1/app/learning/topics` | 分页查询专题 |
 | GET | `/api/v1/app/learning/topics/{id}` | 专题详情 |
 
+##### 1.3.1 用户端学习资源返回字段补充
+
+用户端学习资源相关响应同步补齐以下字段：
+
+| 资源 | 字段 | 说明 |
+| --- | --- | --- |
+| 课程视频 | `paperId` | 视频关联考卷 ID |
+| 图书 | `totalPages` | 图书总页数 |
+| 图书章节 | `startPage` / `pageCount` | 章节起始页和页数 |
+| 播客 | `speakerName` / `tags` | 主讲人和标签列表 |
+| 播客音频 | `paperId` | 音频关联考卷 ID |
+
 #### 1.4 专家
 
 | 方法 | 路径 | 说明 |
@@ -381,6 +503,8 @@
 | GET | `/api/v1/app/experts` | 分页查询可咨询专家 |
 | GET | `/api/v1/app/experts/categories` | 分页查询专家分类 |
 | GET | `/api/v1/app/experts/{id}` | 专家详情 |
+
+用户端专家响应同步返回 `gender`、`birthDate`、`mobile`、`coverUrl`，便于详情页展示专家基础画像。
 
 #### 1.5 互动
 
@@ -406,17 +530,42 @@
 | GET | `/api/v1/app/live-sessions` | 分页查询直播 |
 | GET | `/api/v1/app/live-sessions/{id}` | 直播详情 |
 
+用户端直播响应同步返回 `speakerName`、`tags`，详情接口还会返回已启用的 `videos` 列表，便于直播结束后展示回放。
+
 ### 2. 小程序独有 API
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
 | POST | `/api/v1/app/auth/wechat-login` | 用户端微信授权登录 |
+| POST | `/api/v1/app/auth/wechat-bind-mobile` | 用户端微信授权后绑定手机号 |
 
 说明：
 
-- 该接口用于小程序 `wx.login()` 后的微信授权登录。
+- `POST /api/v1/app/auth/wechat-login` 用于小程序 `wx.login()` 后的微信授权登录。
+- 老用户：后端通过 `openid` 命中已存在的 `app_users.wechat_open_id`，直接返回登录态。
+- 新用户：后端不立即写入 `app_users`，而是返回临时绑定态，前端跳转手机号绑定页。
+- `POST /api/v1/app/auth/wechat-bind-mobile` 复用现有短信验证码能力；前端先调用 `/api/v1/app/auth/sms-code`，再提交 `bindToken + mobile + code` 完成入库或补绑。
 - 当前仓库中未发现网页端专属登录接口。
-- 当前仓库中未发现“微信手机号换取”独立接口。
+
+`POST /api/v1/app/auth/wechat-login` 响应要点：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `registered` | `boolean` | 是否已注册并直接登录成功 |
+| `needBindMobile` | `boolean` | 是否需要先绑定手机号 |
+| `bindToken` | `string` | 新用户绑定手机号时使用的临时令牌，老用户为空 |
+| `tokenType` | `string` | 老用户直接登录时返回，固定为 `Bearer` |
+| `accessToken` | `string` | 老用户直接登录时返回 |
+| `expiresIn` | `integer` | 老用户直接登录时为 token 过期秒数；新用户场景下为 `bindToken` 过期秒数 |
+| `user` | `object` | 老用户直接登录时返回的用户概要，新用户场景为空 |
+
+`POST /api/v1/app/auth/wechat-bind-mobile` 请求字段：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `bindToken` | `string` | `wechat-login` 返回的临时绑定令牌 |
+| `mobile` | `string` | 11 位中国大陆手机号 |
+| `code` | `string` | 通过 `/api/v1/app/auth/sms-code` 获取的短信验证码 |
 
 ## 测试账号
 
@@ -511,6 +660,8 @@
 | 答疑问题 | `[TD]四物汤与八珍汤如何区分？` |
 | 直播 | `[TD]针灸实操直播` |
 | 直播 | `[TD]方剂答疑直播` |
+| 直播视频 | `[TD]针灸手法演示回放` |
+| 直播视频 | `[TD]课后答疑回放` |
 | 反馈 | `测试反馈：希望增加针灸案例演示。` |
 | 反馈 | `测试反馈：移动端播放有轻微卡顿。` |
 
@@ -592,8 +743,65 @@ Content-Type: application/json
 }
 ```
 
+老用户响应示例：
+
+```json
+{
+  "success": true,
+  "code": "OK",
+  "message": "Success",
+  "data": {
+    "registered": true,
+    "needBindMobile": false,
+    "bindToken": null,
+    "tokenType": "Bearer",
+    "accessToken": "app-user-token",
+    "expiresIn": 7200,
+    "user": {
+      "id": 1001,
+      "username": "u13900000001",
+      "nickname": "杏林新苗",
+      "avatarUrl": "https://example.com/avatar.png",
+      "lastLoginAt": "2026-05-28T18:30:00"
+    }
+  }
+}
+```
+
+新用户响应示例：
+
+```json
+{
+  "success": true,
+  "code": "OK",
+  "message": "Success",
+  "data": {
+    "registered": false,
+    "needBindMobile": true,
+    "bindToken": "wechat-bind-token",
+    "tokenType": null,
+    "accessToken": null,
+    "expiresIn": 600,
+    "user": null
+  }
+}
+```
+
+### 5. 用户端小程序微信绑定手机号
+
+```http
+POST /api/v1/app/auth/wechat-bind-mobile
+Content-Type: application/json
+
+{
+  "bindToken": "wechat-bind-token",
+  "mobile": "13900000003",
+  "code": "123456"
+}
+```
+
 ## 使用建议
 
 - 联调时优先搜索 `[TD]` 前缀资源，不要依赖固定数据库 ID。
-- 用户端如果要做网页端和小程序端适配，可以直接按“共用 API + 小程序独有微信登录 API”拆分。
+- 用户端如果要做网页端和小程序端适配，可以直接按“共用 API + 小程序独有微信登录 / 绑定手机号 API”拆分。
 - 真正的字段结构、请求体和响应体，以 `api/api.json` 和 Swagger UI 为准。

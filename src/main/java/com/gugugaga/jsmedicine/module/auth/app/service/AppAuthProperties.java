@@ -153,6 +153,8 @@ public class AppAuthProperties {
         private String appId;
         private String appSecret;
         private boolean mockEnabled;
+        private long bindTokenTtlSeconds = 600;
+        private String bindTokenPrefix = "app:user:wechat:bind:";
 
         public String getAppId() {
             return appId;
@@ -176,6 +178,22 @@ public class AppAuthProperties {
 
         public void setMockEnabled(boolean mockEnabled) {
             this.mockEnabled = mockEnabled;
+        }
+
+        public long getBindTokenTtlSeconds() {
+            return bindTokenTtlSeconds;
+        }
+
+        public void setBindTokenTtlSeconds(long bindTokenTtlSeconds) {
+            this.bindTokenTtlSeconds = bindTokenTtlSeconds;
+        }
+
+        public String getBindTokenPrefix() {
+            return bindTokenPrefix;
+        }
+
+        public void setBindTokenPrefix(String bindTokenPrefix) {
+            this.bindTokenPrefix = bindTokenPrefix;
         }
     }
 
