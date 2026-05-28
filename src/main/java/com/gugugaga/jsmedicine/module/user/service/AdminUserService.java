@@ -13,7 +13,7 @@ import com.gugugaga.jsmedicine.common.response.PageResponse;
 import com.gugugaga.jsmedicine.infrastructure.security.CurrentAdminAccessor;
 import com.gugugaga.jsmedicine.module.user.dto.AdminStudentPageQuery;
 import com.gugugaga.jsmedicine.module.user.dto.AdminStudentResponse;
-import com.gugugaga.jsmedicine.module.user.dto.AdminStudentUpdateRequest;
+import com.gugugaga.jsmedicine.module.user.dto.AdminStudentUpsertRequest;
 import com.gugugaga.jsmedicine.module.user.dto.AdminUserPageQuery;
 import com.gugugaga.jsmedicine.module.user.dto.AdminUserResponse;
 import com.gugugaga.jsmedicine.module.user.dto.AdminUserUpdateRequest;
@@ -141,28 +141,44 @@ public class AdminUserService {
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public AdminStudentResponse updateStudent(Long id, AdminStudentUpdateRequest request) {
+    public AdminStudentResponse createStudent(AdminStudentUpsertRequest request) {
+        if (hasText(request.studentNo())) {
+            ensureStudentNoAvailable(request.studentNo(), null);
+        }
+        Student student = new Student();
+        student.setCertificationStatus(StudentCertificationStatus.APPROVED);
+        student.setEnrolledAt(LocalDateTime.now());
+        applyStudent(student, request);
+        studentMapper.insert(student);
+        return getStudent(student.getId());
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public AdminStudentResponse updateStudent(Long id, AdminStudentUpsertRequest request) {
         Student student = requireStudent(id);
         if (hasText(request.studentNo())) {
             ensureStudentNoAvailable(request.studentNo(), id);
         }
-        student.setStudentNo(request.studentNo());
-        student.setRealName(request.realName());
-        student.setMobile(request.mobile());
-        student.setIdCardNo(request.idCardNo());
-        student.setProvince(request.province());
-        student.setProvinceCode(request.provinceCode());
-        student.setCity(request.city());
-        student.setCityCode(request.cityCode());
-        student.setDistrict(request.district());
-        student.setDistrictCode(request.districtCode());
-        student.setOrganization(request.organization());
-        student.setOrganizationId(request.organizationId());
-        student.setPositionTitle(request.positionTitle());
-        student.setPracticeTypeId(request.practiceTypeId());
-        student.setStatus(request.status());
+        applyStudent(student, request);
         studentMapper.updateById(student);
         return getStudent(id);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteStudent(Long id) {
+        Student student = requireStudent(id);
+        clearStudentAssociations(student);
+        studentCertificationFileMapper.delete(new LambdaUpdateWrapper<StudentCertificationFile>()
+                .eq(StudentCertificationFile::getStudentId, id));
+        studentMapper.deleteById(id);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void batchDeleteStudents(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "ids must not be empty");
+        }
+        ids.stream().distinct().forEach(this::deleteStudent);
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -206,6 +222,35 @@ public class AdminUserService {
                 .last("LIMIT 1"));
         if (existing != null && !Objects.equals(existing.getId(), ignoredId)) {
             throw new BusinessException(ErrorCode.CONFLICT, "Student number already exists");
+        }
+    }
+
+    private void applyStudent(Student student, AdminStudentUpsertRequest request) {
+        student.setStudentNo(normalizeText(request.studentNo()));
+        student.setRealName(request.realName().trim());
+        student.setGender(request.gender());
+        student.setAge(request.age());
+        student.setEducationLevel(normalizeText(request.educationLevel()));
+        student.setMobile(normalizeText(request.mobile()));
+        student.setIdCardNo(normalizeText(request.idCardNo()));
+        student.setProvince(normalizeText(request.province()));
+        student.setProvinceCode(normalizeText(request.provinceCode()));
+        student.setCity(normalizeText(request.city()));
+        student.setCityCode(normalizeText(request.cityCode()));
+        student.setDistrict(normalizeText(request.district()));
+        student.setDistrictCode(normalizeText(request.districtCode()));
+        student.setOrganization(normalizeText(request.organization()));
+        student.setOrganizationId(request.organizationId());
+        student.setPositionTitle(normalizeText(request.positionTitle()));
+        student.setPracticeTypeId(request.practiceTypeId());
+        student.setStatus(request.status());
+    }
+
+    private void clearStudentAssociations(Student student) {
+        if (student.getUserId() != null) {
+            deactivateIdentity(student.getUserId(), AppUserIdentityType.STUDENT);
+            student.setUserId(null);
+            studentMapper.updateById(student);
         }
     }
 
@@ -375,6 +420,9 @@ public class AdminUserService {
                 student.getUserId(),
                 student.getStudentNo(),
                 student.getRealName(),
+                student.getGender(),
+                student.getAge(),
+                student.getEducationLevel(),
                 student.getMobile(),
                 student.getIdCardNo(),
                 student.getProvince(),
@@ -428,5 +476,9 @@ public class AdminUserService {
 
     private boolean hasText(String value) {
         return value != null && !value.isBlank();
+    }
+
+    private String normalizeText(String value) {
+        return hasText(value) ? value.trim() : null;
     }
 }

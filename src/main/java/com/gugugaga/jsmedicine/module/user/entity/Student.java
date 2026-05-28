@@ -3,6 +3,7 @@ package com.gugugaga.jsmedicine.module.user.entity;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.gugugaga.jsmedicine.common.entity.ManagedEntity;
 import com.gugugaga.jsmedicine.common.enums.EnabledStatus;
+import com.gugugaga.jsmedicine.common.enums.Gender;
 import com.gugugaga.jsmedicine.common.enums.StudentCertificationStatus;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -16,6 +17,9 @@ public class Student extends ManagedEntity {
     private Long userId;
     private String studentNo;
     private String realName;
+    private Gender gender;
+    private Integer age;
+    private String educationLevel;
     private String mobile;
     private String idCardNo;
     private String province;

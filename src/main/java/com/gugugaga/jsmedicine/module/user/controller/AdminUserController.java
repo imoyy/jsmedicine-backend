@@ -4,10 +4,11 @@ import com.gugugaga.jsmedicine.common.enums.EnabledStatus;
 import com.gugugaga.jsmedicine.common.enums.StudentCertificationStatus;
 import com.gugugaga.jsmedicine.common.response.ApiResponse;
 import com.gugugaga.jsmedicine.common.response.PageResponse;
+import com.gugugaga.jsmedicine.module.system.dto.IdListRequest;
 import com.gugugaga.jsmedicine.module.system.dto.StatusUpdateRequest;
 import com.gugugaga.jsmedicine.module.user.dto.AdminStudentPageQuery;
 import com.gugugaga.jsmedicine.module.user.dto.AdminStudentResponse;
-import com.gugugaga.jsmedicine.module.user.dto.AdminStudentUpdateRequest;
+import com.gugugaga.jsmedicine.module.user.dto.AdminStudentUpsertRequest;
 import com.gugugaga.jsmedicine.module.user.dto.AdminUserPageQuery;
 import com.gugugaga.jsmedicine.module.user.dto.AdminUserResponse;
 import com.gugugaga.jsmedicine.module.user.dto.AdminUserUpdateRequest;
@@ -17,9 +18,11 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -101,14 +104,37 @@ public class AdminUserController {
         return ApiResponse.ok(adminUserService.getStudent(id));
     }
 
+    @Operation(summary = "新增学员")
+    @PreAuthorize("hasAuthority('sys:student:create')")
+    @PostMapping("/students")
+    public ApiResponse<AdminStudentResponse> createStudent(@Valid @RequestBody AdminStudentUpsertRequest request) {
+        return ApiResponse.ok(adminUserService.createStudent(request));
+    }
+
     @Operation(summary = "维护学员信息")
     @PreAuthorize("hasAuthority('sys:student:update')")
     @PutMapping("/students/{id}")
     public ApiResponse<AdminStudentResponse> updateStudent(
             @PathVariable Long id,
-            @Valid @RequestBody AdminStudentUpdateRequest request
+            @Valid @RequestBody AdminStudentUpsertRequest request
     ) {
         return ApiResponse.ok(adminUserService.updateStudent(id, request));
+    }
+
+    @Operation(summary = "删除学员")
+    @PreAuthorize("hasAuthority('sys:student:delete')")
+    @DeleteMapping("/students/{id}")
+    public ApiResponse<Void> deleteStudent(@PathVariable Long id) {
+        adminUserService.deleteStudent(id);
+        return ApiResponse.ok();
+    }
+
+    @Operation(summary = "批量删除学员")
+    @PreAuthorize("hasAuthority('sys:student:batch-delete')")
+    @PostMapping("/students/batch-delete")
+    public ApiResponse<Void> batchDeleteStudents(@Valid @RequestBody IdListRequest request) {
+        adminUserService.batchDeleteStudents(request.ids());
+        return ApiResponse.ok();
     }
 
     @Operation(summary = "审核学员认证")

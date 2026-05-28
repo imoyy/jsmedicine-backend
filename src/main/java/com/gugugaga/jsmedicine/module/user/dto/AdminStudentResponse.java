@@ -1,6 +1,7 @@
 package com.gugugaga.jsmedicine.module.user.dto;
 
 import com.gugugaga.jsmedicine.common.enums.EnabledStatus;
+import com.gugugaga.jsmedicine.common.enums.Gender;
 import com.gugugaga.jsmedicine.common.enums.StudentCertificationStatus;
 
 import java.time.LocalDateTime;
@@ -11,6 +12,9 @@ public record AdminStudentResponse(
         Long userId,
         String studentNo,
         String realName,
+        Gender gender,
+        Integer age,
+        String educationLevel,
         String mobile,
         String idCardNo,
         String province,
