@@ -11,6 +11,7 @@ public record AppProfileResponse(
         String mobile,
         String email,
         String nickname,
+        String profileSignature,
         String avatarUrl,
         UserAuthProvider authProvider,
         Gender gender,

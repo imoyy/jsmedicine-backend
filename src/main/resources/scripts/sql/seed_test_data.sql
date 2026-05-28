@@ -52,8 +52,12 @@ DELETE FROM resource_tags WHERE resource_type LIKE 'td_%';
 DELETE FROM tags WHERE tag_name LIKE '[TD]%';
 DELETE FROM file_assets WHERE object_key LIKE 'td/%';
 DELETE FROM audit_records WHERE target_type LIKE 'td_%';
+DELETE FROM student_certification_files WHERE student_id IN (SELECT id FROM students WHERE student_no LIKE 'TD-%');
 DELETE FROM students WHERE student_no LIKE 'TD-%';
+DELETE FROM app_user_identities WHERE user_id IN (SELECT id FROM app_users WHERE username LIKE 'td_%');
 DELETE FROM app_users WHERE username LIKE 'td_%';
+DELETE FROM organizations WHERE org_code LIKE 'TD_%';
+DELETE FROM practice_types WHERE type_code LIKE 'TD_%';
 DELETE FROM sys_admin_roles WHERE admin_id IN (SELECT id FROM sys_admins WHERE username IN ('td_admin', 'td_viewer'));
 DELETE FROM sys_admins WHERE username IN ('td_admin', 'td_viewer');
 DELETE FROM sys_role_permissions WHERE role_id IN (SELECT id FROM sys_roles WHERE role_code IN ('TD_CONTENT_EDITOR', 'TD_READONLY'));
@@ -204,15 +208,47 @@ SET @user_01 = (SELECT id FROM app_users WHERE username = 'td_user_01' AND delet
 SET @user_02 = (SELECT id FROM app_users WHERE username = 'td_user_02' AND deleted = 0 LIMIT 1);
 SET @user_03 = (SELECT id FROM app_users WHERE username = 'td_user_03' AND deleted = 0 LIMIT 1);
 
-INSERT INTO students (user_id, student_no, real_name, mobile, id_card_no, province, city, district, organization, position_title, status, certification_status, certification_submitted_at, certification_reviewed_at, certification_reviewed_by, reject_reason, certification_materials, enrolled_at, created_by, updated_by, deleted)
+INSERT INTO organizations (org_code, org_name, org_type, province_code, city_code, district_code, address, status, sort_order, created_by, updated_by, deleted)
 VALUES
-(@user_01, 'TD-STU-001', '张青云', '13900000001', '110101199001010011', '浙江省', '杭州市', '西湖区', '国医馆一部', '住院医师', 1, 2, NOW() - INTERVAL 21 DAY, NOW() - INTERVAL 20 DAY, @admin_td_admin, NULL, '["https://example.com/assets/td/cert-1-a.jpg","https://example.com/assets/td/cert-1-b.jpg"]', NOW() - INTERVAL 20 DAY, @admin_td_admin, @admin_td_admin, 0),
-(@user_02, 'TD-STU-002', '李若水', '13900000002', '110101199202020022', '江苏省', '苏州市', '姑苏区', '针灸研究所', '主治医师', 1, 1, NOW() - INTERVAL 19 DAY, NULL, NULL, NULL, '["https://example.com/assets/td/cert-2-a.jpg"]', NOW() - INTERVAL 18 DAY, @admin_td_admin, @admin_td_admin, 0),
-(@user_03, 'TD-STU-003', '王知秋', '13900000003', '110101199303030033', '四川省', '成都市', '高新区', '中医药大学', '讲师', 1, 3, NOW() - INTERVAL 16 DAY, NOW() - INTERVAL 15 DAY, @admin_td_admin, '身份证照片不清晰', '["https://example.com/assets/td/cert-3-a.jpg"]', NOW() - INTERVAL 15 DAY, @admin_td_admin, @admin_td_admin, 0);
+('TD_ORG_ZJ_HOSPITAL', '省中医院', 'hospital', '330000', '330100', '330106', '杭州市西湖区测试路 1 号', 1, 1, @admin_td_admin, @admin_td_admin, 0),
+('TD_ORG_JS_INSTITUTE', '针灸研究所', 'school', '320000', '320500', '320508', '苏州市姑苏区测试路 2 号', 1, 2, @admin_td_admin, @admin_td_admin, 0),
+('TD_ORG_SC_UNIVERSITY', '中医药大学', 'school', '510000', '510100', '510190', '成都市高新区测试路 3 号', 1, 3, @admin_td_admin, @admin_td_admin, 0);
+
+INSERT INTO practice_types (parent_id, type_code, type_name, status, sort_order, created_by, updated_by, deleted)
+VALUES
+(NULL, 'TD_PRACTICE_CLINICAL', '临床执业', 1, 1, @admin_td_admin, @admin_td_admin, 0),
+(NULL, 'TD_PRACTICE_TEACHING', '教学科研', 1, 2, @admin_td_admin, @admin_td_admin, 0),
+(NULL, 'TD_PRACTICE_ACUPUNCTURE', '针灸推拿', 1, 3, @admin_td_admin, @admin_td_admin, 0);
+
+SET @org_zj_hospital = (SELECT id FROM organizations WHERE org_code = 'TD_ORG_ZJ_HOSPITAL' AND deleted = 0 LIMIT 1);
+SET @org_js_institute = (SELECT id FROM organizations WHERE org_code = 'TD_ORG_JS_INSTITUTE' AND deleted = 0 LIMIT 1);
+SET @org_sc_university = (SELECT id FROM organizations WHERE org_code = 'TD_ORG_SC_UNIVERSITY' AND deleted = 0 LIMIT 1);
+SET @practice_clinical = (SELECT id FROM practice_types WHERE type_code = 'TD_PRACTICE_CLINICAL' AND deleted = 0 LIMIT 1);
+SET @practice_teaching = (SELECT id FROM practice_types WHERE type_code = 'TD_PRACTICE_TEACHING' AND deleted = 0 LIMIT 1);
+SET @practice_acupuncture = (SELECT id FROM practice_types WHERE type_code = 'TD_PRACTICE_ACUPUNCTURE' AND deleted = 0 LIMIT 1);
+
+INSERT INTO students (user_id, student_no, real_name, mobile, id_card_no, province, province_code, city, city_code, district, district_code, organization, organization_id, position_title, practice_type_id, status, certification_status, certification_submitted_at, certification_reviewed_at, certification_reviewed_by, reject_reason, certification_materials, enrolled_at, created_by, updated_by, deleted)
+VALUES
+(@user_01, 'TD-STU-001', '张青云', '13900000001', '110101199001010011', '浙江省', '330000', '杭州市', '330100', '西湖区', '330106', '省中医院', @org_zj_hospital, '住院医师', @practice_clinical, 1, 2, NOW() - INTERVAL 21 DAY, NOW() - INTERVAL 20 DAY, @admin_td_admin, NULL, '["https://example.com/assets/td/cert-1-a.jpg","https://example.com/assets/td/cert-1-b.jpg"]', NOW() - INTERVAL 20 DAY, @admin_td_admin, @admin_td_admin, 0),
+(@user_02, 'TD-STU-002', '李若水', '13900000002', '110101199202020022', '江苏省', '320000', '苏州市', '320500', '姑苏区', '320508', '针灸研究所', @org_js_institute, '主治医师', @practice_acupuncture, 1, 1, NOW() - INTERVAL 19 DAY, NULL, NULL, NULL, '["https://example.com/assets/td/cert-2-a.jpg"]', NOW() - INTERVAL 18 DAY, @admin_td_admin, @admin_td_admin, 0),
+(@user_03, 'TD-STU-003', '王知秋', '13900000003', '110101199303030033', '四川省', '510000', '成都市', '510100', '高新区', '510190', '中医药大学', @org_sc_university, '讲师', @practice_teaching, 1, 3, NOW() - INTERVAL 16 DAY, NOW() - INTERVAL 15 DAY, @admin_td_admin, '身份证照片不清晰', '["https://example.com/assets/td/cert-3-a.jpg"]', NOW() - INTERVAL 15 DAY, @admin_td_admin, @admin_td_admin, 0);
 
 SET @student_01 = (SELECT id FROM students WHERE student_no = 'TD-STU-001' AND deleted = 0 LIMIT 1);
 SET @student_02 = (SELECT id FROM students WHERE student_no = 'TD-STU-002' AND deleted = 0 LIMIT 1);
 SET @student_03 = (SELECT id FROM students WHERE student_no = 'TD-STU-003' AND deleted = 0 LIMIT 1);
+
+INSERT INTO app_user_identities (user_id, identity_type, identity_status, is_primary, activated_at, created_by, updated_by, deleted)
+VALUES
+(@user_01, 'STUDENT', 1, 1, NOW() - INTERVAL 20 DAY, @admin_td_admin, @admin_td_admin, 0),
+(@user_02, 'STUDENT', 1, 1, NOW() - INTERVAL 18 DAY, @admin_td_admin, @admin_td_admin, 0),
+(@user_03, 'STUDENT', 1, 1, NOW() - INTERVAL 15 DAY, @admin_td_admin, @admin_td_admin, 0);
+
+INSERT INTO student_certification_files (student_id, file_asset_id, source_url, material_type, sort_order, created_by, updated_by, deleted)
+VALUES
+(@student_01, NULL, 'https://example.com/assets/td/cert-1-a.jpg', 'id_card', 1, @admin_td_admin, @admin_td_admin, 0),
+(@student_01, NULL, 'https://example.com/assets/td/cert-1-b.jpg', 'qualification', 2, @admin_td_admin, @admin_td_admin, 0),
+(@student_02, NULL, 'https://example.com/assets/td/cert-2-a.jpg', 'qualification', 1, @admin_td_admin, @admin_td_admin, 0),
+(@student_03, NULL, 'https://example.com/assets/td/cert-3-a.jpg', 'id_card', 1, @admin_td_admin, @admin_td_admin, 0);
 
 INSERT INTO home_categories (parent_id, category_name, category_code, icon_url, description, sort_order, status, created_by, updated_by, deleted)
 VALUES
@@ -344,13 +380,17 @@ VALUES
 SET @expert_category_01 = (SELECT id FROM expert_categories WHERE category_name = '[TD]针灸专家' AND deleted = 0 LIMIT 1);
 SET @expert_category_02 = (SELECT id FROM expert_categories WHERE category_name = '[TD]方剂专家' AND deleted = 0 LIMIT 1);
 
-INSERT INTO experts (real_name, avatar_url, title, organization, specialty, introduction, status, consult_enabled, consultation_notice, sort_order, created_by, updated_by, deleted)
+INSERT INTO experts (user_id, real_name, avatar_url, title, organization, organization_id, specialty, practice_type_id, introduction, status, consult_enabled, consultation_notice, sort_order, created_by, updated_by, deleted)
 VALUES
-('[TD]陈景岐', 'https://example.com/assets/td/expert-1.jpg', '主任医师', '省中医院', '针灸与经络', '测试专家简介一。', 1, 1, '每周二、周四开放图文咨询。', 1, @admin_td_admin, @admin_td_admin, 0),
-('[TD]宋本草', 'https://example.com/assets/td/expert-2.jpg', '教授', '中医药大学', '方剂配伍', '测试专家简介二。', 1, 1, '方剂配伍咨询需先完成基础问卷。', 2, @admin_td_admin, @admin_td_admin, 0);
+(@user_03, '[TD]陈景岐', 'https://example.com/assets/td/expert-1.jpg', '主任医师', '省中医院', @org_zj_hospital, '针灸与经络', @practice_acupuncture, '测试专家简介一。', 1, 1, '每周二、周四开放图文咨询。', 1, @admin_td_admin, @admin_td_admin, 0),
+ (NULL, '[TD]宋本草', 'https://example.com/assets/td/expert-2.jpg', '教授', '中医药大学', @org_sc_university, '方剂配伍', @practice_teaching, '测试专家简介二。', 1, 1, '方剂配伍咨询需先完成基础问卷。', 2, @admin_td_admin, @admin_td_admin, 0);
 
 SET @expert_01 = (SELECT id FROM experts WHERE real_name = '[TD]陈景岐' AND deleted = 0 LIMIT 1);
 SET @expert_02 = (SELECT id FROM experts WHERE real_name = '[TD]宋本草' AND deleted = 0 LIMIT 1);
+
+INSERT INTO app_user_identities (user_id, identity_type, identity_status, is_primary, activated_at, created_by, updated_by, deleted)
+VALUES
+(@user_03, 'EXPERT', 1, 0, NOW() - INTERVAL 10 DAY, @admin_td_admin, @admin_td_admin, 0);
 
 INSERT INTO expert_category_relations (expert_id, category_id)
 VALUES

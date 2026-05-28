@@ -15,14 +15,19 @@ import com.gugugaga.jsmedicine.module.user.dto.AdminStudentUpdateRequest;
 import com.gugugaga.jsmedicine.module.user.dto.AdminUserPageQuery;
 import com.gugugaga.jsmedicine.module.user.dto.AdminUserResponse;
 import com.gugugaga.jsmedicine.module.user.dto.StudentCertificationReviewRequest;
+import com.gugugaga.jsmedicine.module.user.dto.StudentCertificationFileResponse;
 import com.gugugaga.jsmedicine.module.user.entity.AppUser;
 import com.gugugaga.jsmedicine.module.user.entity.Student;
+import com.gugugaga.jsmedicine.module.user.entity.StudentCertificationFile;
 import com.gugugaga.jsmedicine.module.user.mapper.AppUserMapper;
+import com.gugugaga.jsmedicine.module.user.mapper.StudentCertificationFileMapper;
 import com.gugugaga.jsmedicine.module.user.mapper.StudentMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Objects;
 
 @Service
@@ -34,15 +39,18 @@ public class AdminUserService {
 
     private final AppUserMapper appUserMapper;
     private final StudentMapper studentMapper;
+    private final StudentCertificationFileMapper studentCertificationFileMapper;
     private final CurrentAdminAccessor currentAdminAccessor;
 
     public AdminUserService(
             AppUserMapper appUserMapper,
             StudentMapper studentMapper,
+            StudentCertificationFileMapper studentCertificationFileMapper,
             CurrentAdminAccessor currentAdminAccessor
     ) {
         this.appUserMapper = appUserMapper;
         this.studentMapper = studentMapper;
+        this.studentCertificationFileMapper = studentCertificationFileMapper;
         this.currentAdminAccessor = currentAdminAccessor;
     }
 
@@ -118,10 +126,15 @@ public class AdminUserService {
         student.setMobile(request.mobile());
         student.setIdCardNo(request.idCardNo());
         student.setProvince(request.province());
+        student.setProvinceCode(request.provinceCode());
         student.setCity(request.city());
+        student.setCityCode(request.cityCode());
         student.setDistrict(request.district());
+        student.setDistrictCode(request.districtCode());
         student.setOrganization(request.organization());
+        student.setOrganizationId(request.organizationId());
         student.setPositionTitle(request.positionTitle());
+        student.setPracticeTypeId(request.practiceTypeId());
         student.setStatus(request.status());
         studentMapper.updateById(student);
         return getStudent(id);
@@ -178,6 +191,7 @@ public class AdminUserService {
                 user.getMobile(),
                 user.getEmail(),
                 user.getNickname(),
+                user.getProfileSignature(),
                 user.getAvatarUrl(),
                 user.getAuthProvider(),
                 user.getWechatOpenId(),
@@ -200,10 +214,15 @@ public class AdminUserService {
                 student.getMobile(),
                 student.getIdCardNo(),
                 student.getProvince(),
+                student.getProvinceCode(),
                 student.getCity(),
+                student.getCityCode(),
                 student.getDistrict(),
+                student.getDistrictCode(),
                 student.getOrganization(),
+                student.getOrganizationId(),
                 student.getPositionTitle(),
+                student.getPracticeTypeId(),
                 student.getStatus(),
                 student.getCertificationStatus(),
                 student.getCertificationSubmittedAt(),
@@ -211,8 +230,25 @@ public class AdminUserService {
                 student.getCertificationReviewedBy(),
                 student.getRejectReason(),
                 student.getCertificationMaterials(),
+                loadCertificationFiles(student.getId()),
                 student.getEnrolledAt()
         );
+    }
+
+    private List<StudentCertificationFileResponse> loadCertificationFiles(Long studentId) {
+        return studentCertificationFileMapper.selectList(new LambdaQueryWrapper<StudentCertificationFile>()
+                        .eq(StudentCertificationFile::getStudentId, studentId))
+                .stream()
+                .sorted(Comparator.comparing(StudentCertificationFile::getSortOrder, Comparator.nullsLast(Integer::compareTo))
+                        .thenComparing(StudentCertificationFile::getId))
+                .map(file -> new StudentCertificationFileResponse(
+                        file.getId(),
+                        file.getFileAssetId(),
+                        file.getSourceUrl(),
+                        file.getMaterialType(),
+                        file.getSortOrder()
+                ))
+                .toList();
     }
 
     private long normalizePage(long page) {

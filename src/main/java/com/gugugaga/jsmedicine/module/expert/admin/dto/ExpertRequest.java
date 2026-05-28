@@ -6,6 +6,8 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 public record ExpertRequest(
+        Long userId,
+
         @NotBlank(message = "realName must not be blank")
         @Size(max = 64, message = "realName length must be less than 64")
         String realName,
@@ -19,8 +21,12 @@ public record ExpertRequest(
         @Size(max = 128, message = "organization length must be less than 128")
         String organization,
 
+        Long organizationId,
+
         @Size(max = 255, message = "specialty length must be less than 255")
         String specialty,
+
+        Long practiceTypeId,
 
         String introduction,
 

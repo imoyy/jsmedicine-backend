@@ -2,6 +2,8 @@ package com.gugugaga.jsmedicine.module.user.app.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.gugugaga.jsmedicine.common.enums.AppUserIdentityStatus;
+import com.gugugaga.jsmedicine.common.enums.AppUserIdentityType;
 import com.gugugaga.jsmedicine.common.enums.EnabledStatus;
 import com.gugugaga.jsmedicine.common.enums.Gender;
 import com.gugugaga.jsmedicine.common.enums.StudentCertificationStatus;
@@ -19,15 +21,23 @@ import com.gugugaga.jsmedicine.module.user.app.dto.AppProfileSummaryResponse;
 import com.gugugaga.jsmedicine.module.user.app.dto.AppProfileUpdateRequest;
 import com.gugugaga.jsmedicine.module.user.app.dto.AppResourceRecordResponse;
 import com.gugugaga.jsmedicine.module.user.app.dto.AppStudentCertificationRequest;
+import com.gugugaga.jsmedicine.module.user.app.dto.AppStudentCertificationFileRequest;
+import com.gugugaga.jsmedicine.module.user.app.dto.AppStudentCertificationFileResponse;
 import com.gugugaga.jsmedicine.module.user.app.dto.AppStudentCertificationResponse;
 import com.gugugaga.jsmedicine.module.user.entity.AppUser;
+import com.gugugaga.jsmedicine.module.user.entity.AppUserIdentity;
 import com.gugugaga.jsmedicine.module.user.entity.Student;
+import com.gugugaga.jsmedicine.module.user.entity.StudentCertificationFile;
+import com.gugugaga.jsmedicine.module.user.mapper.AppUserIdentityMapper;
 import com.gugugaga.jsmedicine.module.user.mapper.AppUserMapper;
+import com.gugugaga.jsmedicine.module.user.mapper.StudentCertificationFileMapper;
 import com.gugugaga.jsmedicine.module.user.mapper.StudentMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -40,20 +50,26 @@ public class AppProfileService {
 
     private final CurrentAppUserResolver currentAppUserResolver;
     private final AppUserMapper appUserMapper;
+    private final AppUserIdentityMapper appUserIdentityMapper;
     private final StudentMapper studentMapper;
+    private final StudentCertificationFileMapper studentCertificationFileMapper;
     private final UserFavoriteMapper userFavoriteMapper;
     private final UserBrowseHistoryMapper userBrowseHistoryMapper;
 
     public AppProfileService(
             CurrentAppUserResolver currentAppUserResolver,
             AppUserMapper appUserMapper,
+            AppUserIdentityMapper appUserIdentityMapper,
             StudentMapper studentMapper,
+            StudentCertificationFileMapper studentCertificationFileMapper,
             UserFavoriteMapper userFavoriteMapper,
             UserBrowseHistoryMapper userBrowseHistoryMapper
     ) {
         this.currentAppUserResolver = currentAppUserResolver;
         this.appUserMapper = appUserMapper;
+        this.appUserIdentityMapper = appUserIdentityMapper;
         this.studentMapper = studentMapper;
+        this.studentCertificationFileMapper = studentCertificationFileMapper;
         this.userFavoriteMapper = userFavoriteMapper;
         this.userBrowseHistoryMapper = userBrowseHistoryMapper;
     }
@@ -67,6 +83,7 @@ public class AppProfileService {
     public AppProfileResponse updateProfile(AppProfileUpdateRequest request) {
         AppUser user = requireCurrentUser();
         user.setNickname(request.nickname());
+        user.setProfileSignature(request.profileSignature());
         user.setAvatarUrl(request.avatarUrl());
         user.setEmail(request.email());
         user.setGender(request.gender() == null ? Gender.UNKNOWN : request.gender());
@@ -86,10 +103,15 @@ public class AppProfileService {
         student.setMobile(hasText(request.mobile()) ? request.mobile() : user.getMobile());
         student.setIdCardNo(request.idCardNo());
         student.setProvince(request.province());
+        student.setProvinceCode(request.provinceCode());
         student.setCity(request.city());
+        student.setCityCode(request.cityCode());
         student.setDistrict(request.district());
+        student.setDistrictCode(request.districtCode());
         student.setOrganization(request.organization());
+        student.setOrganizationId(request.organizationId());
         student.setPositionTitle(request.positionTitle());
+        student.setPracticeTypeId(request.practiceTypeId());
         student.setStatus(EnabledStatus.ENABLED);
         student.setCertificationStatus(StudentCertificationStatus.PENDING);
         student.setCertificationSubmittedAt(LocalDateTime.now());
@@ -102,6 +124,8 @@ public class AppProfileService {
         } else {
             studentMapper.updateById(student);
         }
+        replaceCertificationFiles(student.getId(), request.certificationFiles());
+        ensureIdentity(user.getId(), AppUserIdentityType.STUDENT, true);
         return certificationStatus();
     }
 
@@ -186,6 +210,52 @@ public class AppProfileService {
         return student;
     }
 
+    private void ensureIdentity(Long userId, AppUserIdentityType identityType, boolean primary) {
+        AppUserIdentity identity = appUserIdentityMapper.selectOne(new LambdaQueryWrapper<AppUserIdentity>()
+                .eq(AppUserIdentity::getUserId, userId)
+                .eq(AppUserIdentity::getIdentityType, identityType)
+                .eq(AppUserIdentity::getDeleted, 0)
+                .last("LIMIT 1"));
+        if (identity == null) {
+            identity = new AppUserIdentity();
+            identity.setUserId(userId);
+            identity.setIdentityType(identityType);
+            identity.setDeleted(0);
+        }
+        identity.setIdentityStatus(AppUserIdentityStatus.ACTIVE);
+        identity.setIsPrimary(primary);
+        if (identity.getActivatedAt() == null) {
+            identity.setActivatedAt(LocalDateTime.now());
+        }
+        identity.setDeactivatedAt(null);
+        if (identity.getId() == null) {
+            appUserIdentityMapper.insert(identity);
+        } else {
+            appUserIdentityMapper.updateById(identity);
+        }
+    }
+
+    private void replaceCertificationFiles(Long studentId, List<AppStudentCertificationFileRequest> files) {
+        studentCertificationFileMapper.delete(new LambdaQueryWrapper<StudentCertificationFile>()
+                .eq(StudentCertificationFile::getStudentId, studentId));
+        if (files == null || files.isEmpty()) {
+            return;
+        }
+        for (int i = 0; i < files.size(); i++) {
+            AppStudentCertificationFileRequest fileRequest = files.get(i);
+            if (fileRequest.fileAssetId() == null && !hasText(fileRequest.sourceUrl())) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST, "Certification file requires fileAssetId or sourceUrl");
+            }
+            StudentCertificationFile file = new StudentCertificationFile();
+            file.setStudentId(studentId);
+            file.setFileAssetId(fileRequest.fileAssetId());
+            file.setSourceUrl(fileRequest.sourceUrl());
+            file.setMaterialType(fileRequest.materialType());
+            file.setSortOrder(fileRequest.sortOrder() == null ? i : fileRequest.sortOrder());
+            studentCertificationFileMapper.insert(file);
+        }
+    }
+
     private AppProfileResponse toProfileResponse(AppUser user, Student student) {
         return new AppProfileResponse(
                 user.getId(),
@@ -193,6 +263,7 @@ public class AppProfileService {
                 user.getMobile(),
                 user.getEmail(),
                 user.getNickname(),
+                user.getProfileSignature(),
                 user.getAvatarUrl(),
                 user.getAuthProvider(),
                 user.getGender(),
@@ -210,18 +281,40 @@ public class AppProfileService {
                 student.getRealName(),
                 student.getMobile(),
                 student.getProvince(),
+                student.getProvinceCode(),
                 student.getCity(),
+                student.getCityCode(),
                 student.getDistrict(),
+                student.getDistrictCode(),
                 student.getOrganization(),
+                student.getOrganizationId(),
                 student.getPositionTitle(),
+                student.getPracticeTypeId(),
                 student.getStatus(),
                 student.getCertificationStatus(),
                 student.getCertificationSubmittedAt(),
                 student.getCertificationReviewedAt(),
                 student.getRejectReason(),
                 student.getCertificationMaterials(),
+                loadCertificationFiles(student.getId()),
                 student.getEnrolledAt()
         );
+    }
+
+    private List<AppStudentCertificationFileResponse> loadCertificationFiles(Long studentId) {
+        return studentCertificationFileMapper.selectList(new LambdaQueryWrapper<StudentCertificationFile>()
+                        .eq(StudentCertificationFile::getStudentId, studentId))
+                .stream()
+                .sorted(Comparator.comparing(StudentCertificationFile::getSortOrder, Comparator.nullsLast(Integer::compareTo))
+                        .thenComparing(StudentCertificationFile::getId))
+                .map(file -> new AppStudentCertificationFileResponse(
+                        file.getId(),
+                        file.getFileAssetId(),
+                        file.getSourceUrl(),
+                        file.getMaterialType(),
+                        file.getSortOrder()
+                ))
+                .toList();
     }
 
     private AppResourceRecordResponse toFavoriteResponse(UserFavorite favorite) {

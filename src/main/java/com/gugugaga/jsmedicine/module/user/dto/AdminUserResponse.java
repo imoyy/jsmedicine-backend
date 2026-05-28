@@ -12,6 +12,7 @@ public record AdminUserResponse(
         String mobile,
         String email,
         String nickname,
+        String profileSignature,
         String avatarUrl,
         UserAuthProvider authProvider,
         String wechatOpenId,

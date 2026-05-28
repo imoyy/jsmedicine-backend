@@ -10,11 +10,14 @@ import lombok.EqualsAndHashCode;
 @TableName("experts")
 @EqualsAndHashCode(callSuper = true)
 public class Expert extends ManagedEntity {
+    private Long userId;
     private String realName;
     private String avatarUrl;
     private String title;
     private String organization;
+    private Long organizationId;
     private String specialty;
+    private Long practiceTypeId;
     private String introduction;
     private EnabledStatus status;
     private EnabledStatus consultEnabled;

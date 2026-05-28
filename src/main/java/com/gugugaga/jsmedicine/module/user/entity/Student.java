@@ -19,10 +19,15 @@ public class Student extends ManagedEntity {
     private String mobile;
     private String idCardNo;
     private String province;
+    private String provinceCode;
     private String city;
+    private String cityCode;
     private String district;
+    private String districtCode;
     private String organization;
+    private Long organizationId;
     private String positionTitle;
+    private Long practiceTypeId;
     private EnabledStatus status;
     private StudentCertificationStatus certificationStatus;
     private LocalDateTime certificationSubmittedAt;

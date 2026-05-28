@@ -2,6 +2,8 @@ package com.gugugaga.jsmedicine.module.expert.admin.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.gugugaga.jsmedicine.common.enums.AppUserIdentityStatus;
+import com.gugugaga.jsmedicine.common.enums.AppUserIdentityType;
 import com.gugugaga.jsmedicine.common.enums.EnabledStatus;
 import com.gugugaga.jsmedicine.common.exception.BusinessException;
 import com.gugugaga.jsmedicine.common.exception.ErrorCode;
@@ -20,9 +22,14 @@ import com.gugugaga.jsmedicine.module.expert.mapper.ExpertCategoryMapper;
 import com.gugugaga.jsmedicine.module.expert.mapper.ExpertCategoryRelationMapper;
 import com.gugugaga.jsmedicine.module.expert.mapper.ExpertExperienceMapper;
 import com.gugugaga.jsmedicine.module.expert.mapper.ExpertMapper;
+import com.gugugaga.jsmedicine.module.user.entity.AppUser;
+import com.gugugaga.jsmedicine.module.user.entity.AppUserIdentity;
+import com.gugugaga.jsmedicine.module.user.mapper.AppUserIdentityMapper;
+import com.gugugaga.jsmedicine.module.user.mapper.AppUserMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 
@@ -37,17 +44,23 @@ public class AdminExpertService {
     private final ExpertMapper expertMapper;
     private final ExpertCategoryRelationMapper expertCategoryRelationMapper;
     private final ExpertExperienceMapper expertExperienceMapper;
+    private final AppUserMapper appUserMapper;
+    private final AppUserIdentityMapper appUserIdentityMapper;
 
     public AdminExpertService(
             ExpertCategoryMapper expertCategoryMapper,
             ExpertMapper expertMapper,
             ExpertCategoryRelationMapper expertCategoryRelationMapper,
-            ExpertExperienceMapper expertExperienceMapper
+            ExpertExperienceMapper expertExperienceMapper,
+            AppUserMapper appUserMapper,
+            AppUserIdentityMapper appUserIdentityMapper
     ) {
         this.expertCategoryMapper = expertCategoryMapper;
         this.expertMapper = expertMapper;
         this.expertCategoryRelationMapper = expertCategoryRelationMapper;
         this.expertExperienceMapper = expertExperienceMapper;
+        this.appUserMapper = appUserMapper;
+        this.appUserIdentityMapper = appUserIdentityMapper;
     }
 
     public PageResponse<ExpertCategoryResponse> pageCategories(long page, long size, String keyword, Long parentId, EnabledStatus status) {
@@ -124,6 +137,9 @@ public class AdminExpertService {
         fillExpert(expert, request);
         expert.setDeleted(0);
         expertMapper.insert(expert);
+        if (expert.getUserId() != null) {
+            ensureExpertIdentity(expert.getUserId());
+        }
         return toExpertResponse(expert, true);
     }
 
@@ -132,6 +148,9 @@ public class AdminExpertService {
         Expert expert = requireExpert(id);
         fillExpert(expert, request);
         expertMapper.updateById(expert);
+        if (expert.getUserId() != null) {
+            ensureExpertIdentity(expert.getUserId());
+        }
         return toExpertResponse(expert, true);
     }
 
@@ -182,11 +201,14 @@ public class AdminExpertService {
     }
 
     private void fillExpert(Expert expert, ExpertRequest request) {
+        expert.setUserId(validateAndNormalizeUserId(request.userId(), expert.getId()));
         expert.setRealName(request.realName());
         expert.setAvatarUrl(request.avatarUrl());
         expert.setTitle(request.title());
         expert.setOrganization(request.organization());
+        expert.setOrganizationId(request.organizationId());
         expert.setSpecialty(request.specialty());
+        expert.setPracticeTypeId(request.practiceTypeId());
         expert.setIntroduction(request.introduction());
         expert.setStatus(request.status());
         expert.setConsultEnabled(request.consultEnabled());
@@ -219,14 +241,56 @@ public class AdminExpertService {
         return expert;
     }
 
+    private Long validateAndNormalizeUserId(Long userId, Long currentExpertId) {
+        if (userId == null) {
+            return null;
+        }
+        AppUser user = appUserMapper.selectById(userId);
+        if (user == null || !Objects.equals(user.getDeleted(), 0)) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "App user does not exist");
+        }
+        Expert existing = expertMapper.selectOne(new LambdaQueryWrapper<Expert>()
+                .eq(Expert::getUserId, userId)
+                .eq(Expert::getDeleted, 0)
+                .last("LIMIT 1"));
+        if (existing != null && !Objects.equals(existing.getId(), currentExpertId)) {
+            throw new BusinessException(ErrorCode.CONFLICT, "App user is already bound to another expert");
+        }
+        return userId;
+    }
+
+    private void ensureExpertIdentity(Long userId) {
+        AppUserIdentity identity = appUserIdentityMapper.selectOne(new LambdaQueryWrapper<AppUserIdentity>()
+                .eq(AppUserIdentity::getUserId, userId)
+                .eq(AppUserIdentity::getIdentityType, AppUserIdentityType.EXPERT)
+                .eq(AppUserIdentity::getDeleted, 0)
+                .last("LIMIT 1"));
+        if (identity == null) {
+            identity = new AppUserIdentity();
+            identity.setUserId(userId);
+            identity.setIdentityType(AppUserIdentityType.EXPERT);
+            identity.setDeleted(0);
+        }
+        identity.setIdentityStatus(AppUserIdentityStatus.ACTIVE);
+        if (identity.getActivatedAt() == null) {
+            identity.setActivatedAt(LocalDateTime.now());
+        }
+        identity.setDeactivatedAt(null);
+        if (identity.getId() == null) {
+            appUserIdentityMapper.insert(identity);
+        } else {
+            appUserIdentityMapper.updateById(identity);
+        }
+    }
+
     private ExpertCategoryResponse toCategoryResponse(ExpertCategory category) {
         return new ExpertCategoryResponse(category.getId(), category.getParentId(), category.getCategoryName(),
                 category.getSortOrder(), category.getStatus());
     }
 
     private ExpertResponse toExpertResponse(Expert expert, boolean includeDetails) {
-        return new ExpertResponse(expert.getId(), expert.getRealName(), expert.getAvatarUrl(), expert.getTitle(),
-                expert.getOrganization(), expert.getSpecialty(), expert.getIntroduction(), expert.getStatus(),
+        return new ExpertResponse(expert.getId(), expert.getUserId(), expert.getRealName(), expert.getAvatarUrl(), expert.getTitle(),
+                expert.getOrganization(), expert.getOrganizationId(), expert.getSpecialty(), expert.getPracticeTypeId(), expert.getIntroduction(), expert.getStatus(),
                 expert.getConsultEnabled(), expert.getConsultationNotice(), expert.getSortOrder(),
                 includeDetails ? loadCategoryIds(expert.getId()) : List.of(),
                 includeDetails ? loadExperiences(expert.getId()) : List.of());

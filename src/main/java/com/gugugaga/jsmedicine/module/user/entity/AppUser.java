@@ -19,6 +19,7 @@ public class AppUser extends ManagedEntity {
     private String mobile;
     private String email;
     private String nickname;
+    private String profileSignature;
     private String avatarUrl;
     private UserAuthProvider authProvider;
     private String wechatOpenId;
