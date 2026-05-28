@@ -10,6 +10,7 @@ import com.gugugaga.jsmedicine.module.user.dto.AdminStudentResponse;
 import com.gugugaga.jsmedicine.module.user.dto.AdminStudentUpdateRequest;
 import com.gugugaga.jsmedicine.module.user.dto.AdminUserPageQuery;
 import com.gugugaga.jsmedicine.module.user.dto.AdminUserResponse;
+import com.gugugaga.jsmedicine.module.user.dto.AdminUserUpdateRequest;
 import com.gugugaga.jsmedicine.module.user.dto.StudentCertificationReviewRequest;
 import com.gugugaga.jsmedicine.module.user.service.AdminUserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -54,6 +55,16 @@ public class AdminUserController {
     @GetMapping("/users/{id}")
     public ApiResponse<AdminUserResponse> getUser(@PathVariable Long id) {
         return ApiResponse.ok(adminUserService.getUser(id));
+    }
+
+    @Operation(summary = "修改用户信息")
+    @PreAuthorize("hasAuthority('sys:user:update')")
+    @PutMapping("/users/{id}")
+    public ApiResponse<AdminUserResponse> updateUser(
+            @PathVariable Long id,
+            @Valid @RequestBody AdminUserUpdateRequest request
+    ) {
+        return ApiResponse.ok(adminUserService.updateUser(id, request));
     }
 
     @Operation(summary = "修改用户状态")

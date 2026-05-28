@@ -16,6 +16,8 @@
 - 学员认证新增结构化材料字段 `certificationFiles`，旧字段 `certificationMaterials` 暂时保留为兼容字段。
 - 学员和专家新增基础数据关联字段：`organizationId`、`practiceTypeId`；学员额外新增 `provinceCode`、`cityCode`、`districtCode`。
 - 管理端专家新增可选 `userId`，用于把专家主数据绑定到前台登录用户；绑定后后端会同步维护用户 `EXPERT` 身份。
+- 管理端新增 `PUT /api/v1/admin/users/{id}`，用于支撑“修改用户信息”弹窗一次性保存昵称、口号、状态、角色、学员绑定、地区和医院。
+- 管理端新增基础数据接口 `/api/v1/admin/references/organizations`、`/api/v1/admin/references/practice-types`，用于机构和执业类型下拉。
 
 ## 端侧划分
 
@@ -62,6 +64,7 @@
 | --- | --- | --- |
 | GET | `/api/v1/admin/users` | 分页查询用户 |
 | GET | `/api/v1/admin/users/{id}` | 查询用户详情 |
+| PUT | `/api/v1/admin/users/{id}` | 修改用户信息 |
 | PATCH | `/api/v1/admin/users/{id}/status` | 修改用户状态 |
 | GET | `/api/v1/admin/students` | 分页查询学员 |
 | GET | `/api/v1/admin/students/{id}` | 查询学员详情 |
@@ -75,6 +78,35 @@
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
 | `profileSignature` | `string` | 用户个人签名 |
+| `role` | `string` | 管理端用户业务身份：`NORMAL`、`STUDENT`、`EXPERT` |
+| `studentId` | `integer` | 当前绑定学员 ID，仅学员身份通常有值 |
+| `studentName` | `string` | 当前绑定学员姓名 |
+| `province` / `provinceCode` | `string` | 当前绑定学员的省名称和编码 |
+| `city` / `cityCode` | `string` | 当前绑定学员的市名称和编码 |
+| `district` / `districtCode` | `string` | 当前绑定学员的区县名称和编码 |
+| `organization` / `organizationId` | `string` / `integer` | 当前绑定学员的机构名称和机构 ID |
+| `practiceTypeId` | `integer` | 当前绑定学员的执业类型 ID |
+
+`PUT /api/v1/admin/users/{id}` 请求字段：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `nickname` | `string` | 昵称，必填，最长 64 字符 |
+| `profileSignature` | `string` | 口号/个人签名，必填，最长 255 字符 |
+| `status` | `integer` | 用户状态：`1` 启用，`0` 禁用 |
+| `role` | `string` | 业务身份：`NORMAL`、`STUDENT`、`EXPERT` |
+| `studentId` | `integer` | 当 `role=STUDENT` 时必填，表示绑定的学员 |
+| `province` / `provinceCode` | `string` | 当绑定学员时同步维护学员省信息 |
+| `city` / `cityCode` | `string` | 当绑定学员时同步维护学员市信息 |
+| `district` / `districtCode` | `string` | 当绑定学员时同步维护学员区县信息 |
+| `organization` / `organizationId` | `string` / `integer` | 当绑定学员时同步维护学员机构 |
+| `practiceTypeId` | `integer` | 当绑定学员时同步维护学员执业类型 |
+
+角色处理规则：
+
+- `role=NORMAL`：停用该用户的 `STUDENT`、`EXPERT` 身份，并解除当前学员/专家绑定。
+- `role=STUDENT`：必须传 `studentId`；后端会把该学员绑定到当前用户，激活 `STUDENT` 身份，并解除该用户已有专家绑定。
+- `role=EXPERT`：后端会激活 `EXPERT` 身份，并解除该用户已有学员绑定；专家主数据仍建议在专家管理模块维护。
 
 #### 3.2 学员请求与响应字段补充
 
@@ -258,6 +290,13 @@
 | GET | `/api/v1/admin/statistics/exam-scores/summary` | 查询成绩统计汇总 |
 | GET | `/api/v1/admin/statistics/exam-scores/papers` | 按试卷查询成绩统计 |
 | GET | `/api/v1/admin/statistics/content-interactions` | 查询内容浏览收藏分享统计 |
+
+### 11. 基础数据
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/api/v1/admin/references/organizations` | 查询机构列表，支持按 `keyword`、`provinceCode`、`cityCode`、`districtCode`、`status` 过滤 |
+| GET | `/api/v1/admin/references/practice-types` | 查询执业类型列表，支持按 `parentId`、`status` 过滤 |
 
 ## 用户端 API
 

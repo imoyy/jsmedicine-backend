@@ -22,6 +22,18 @@ public record AdminUserResponse(
         LocalDateTime registeredAt,
         LocalDateTime lastLoginAt,
         String lastLoginIp,
-        Boolean profileCompleted
+        Boolean profileCompleted,
+        AppUserManagementRole role,
+        Long studentId,
+        String studentName,
+        String province,
+        String provinceCode,
+        String city,
+        String cityCode,
+        String district,
+        String districtCode,
+        String organization,
+        Long organizationId,
+        Long practiceTypeId
 ) {
 }

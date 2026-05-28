@@ -304,4 +304,5 @@
 - 2026-05-28：开始落地 `V13` 最小实施面，新增 `app_user_identities` 表、`app_users.profile_signature`、`experts.user_id` 和账户域枚举/实体/Mapper 骨架。
 - 2026-05-28：继续落地账户域规范化，新增 `V14` 基础数据迁移，补充 `organizations`、`practice_types`、`student_certification_files` 以及 `students`、`experts` 关联字段，并接通 `profile_signature` 到用户端资料接口与管理端返回 DTO。
 - 2026-05-28：接通学员认证材料结构化存储，用户端提交认证时写入 `student_certification_files`，用户端与管理端学员详情返回 `certificationFiles`；同步更新 dev 验收数据的身份、机构、执业类型和认证材料种子。
+- 2026-05-28：根据管理端“修改用户信息”弹窗补齐管理端用户更新接口，支持昵称、口号、启用状态、普通/学员/专家身份切换、学员绑定、地区与机构字段，并新增机构和执业类型基础数据查询接口。
 - 2026-05-28：根据《管理端使用手册》补充数据库问题台账，确认账户域存在用户身份、专家绑定、机构/地区、执业类型和认证材料建模缺口，后续以 `V13` 起新增迁移整改。
