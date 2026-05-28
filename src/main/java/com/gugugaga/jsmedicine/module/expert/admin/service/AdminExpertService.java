@@ -203,7 +203,11 @@ public class AdminExpertService {
     private void fillExpert(Expert expert, ExpertRequest request) {
         expert.setUserId(validateAndNormalizeUserId(request.userId(), expert.getId()));
         expert.setRealName(request.realName());
+        expert.setGender(request.gender());
+        expert.setBirthDate(request.birthDate());
+        expert.setMobile(request.mobile());
         expert.setAvatarUrl(request.avatarUrl());
+        expert.setCoverUrl(request.coverUrl());
         expert.setTitle(request.title());
         expert.setOrganization(request.organization());
         expert.setOrganizationId(request.organizationId());
@@ -289,9 +293,10 @@ public class AdminExpertService {
     }
 
     private ExpertResponse toExpertResponse(Expert expert, boolean includeDetails) {
-        return new ExpertResponse(expert.getId(), expert.getUserId(), expert.getRealName(), expert.getAvatarUrl(), expert.getTitle(),
-                expert.getOrganization(), expert.getOrganizationId(), expert.getSpecialty(), expert.getPracticeTypeId(), expert.getIntroduction(), expert.getStatus(),
-                expert.getConsultEnabled(), expert.getConsultationNotice(), expert.getSortOrder(),
+        return new ExpertResponse(expert.getId(), expert.getUserId(), expert.getRealName(), expert.getGender(),
+                expert.getBirthDate(), expert.getMobile(), expert.getAvatarUrl(), expert.getCoverUrl(), expert.getTitle(),
+                expert.getOrganization(), expert.getOrganizationId(), expert.getSpecialty(), expert.getPracticeTypeId(),
+                expert.getIntroduction(), expert.getStatus(), expert.getConsultEnabled(), expert.getConsultationNotice(), expert.getSortOrder(),
                 includeDetails ? loadCategoryIds(expert.getId()) : List.of(),
                 includeDetails ? loadExperiences(expert.getId()) : List.of());
     }

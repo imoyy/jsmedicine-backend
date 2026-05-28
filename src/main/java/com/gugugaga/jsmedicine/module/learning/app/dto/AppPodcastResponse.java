@@ -9,6 +9,8 @@ public record AppPodcastResponse(
         String title,
         String summary,
         String coverUrl,
+        String speakerName,
+        List<String> tags,
         LocalDateTime publishedAt,
         BigDecimal progressPercent,
         Integer studySeconds,

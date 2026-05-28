@@ -8,6 +8,7 @@ public record CourseVideoResponse(
         String title,
         String videoUrl,
         Integer durationSeconds,
+        Long paperId,
         Integer sortOrder,
         EnabledStatus status
 ) {

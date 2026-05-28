@@ -506,6 +506,7 @@ public class AdminLearningService {
         video.setTitle(request.title());
         video.setVideoUrl(request.videoUrl());
         video.setDurationSeconds(request.durationSeconds());
+        video.setPaperId(request.paperId());
         video.setSortOrder(request.sortOrder() == null ? 0 : request.sortOrder());
         video.setStatus(request.status());
     }
@@ -524,6 +525,7 @@ public class AdminLearningService {
         book.setPublisher(request.publisher());
         book.setCoverUrl(request.coverUrl());
         book.setIntroduction(request.introduction());
+        book.setTotalPages(request.totalPages());
         book.setPaperId(request.paperId());
         book.setSortOrder(request.sortOrder() == null ? 0 : request.sortOrder());
         book.setReviewStatus(request.reviewStatus());
@@ -536,6 +538,8 @@ public class AdminLearningService {
         chapter.setParentId(request.parentId());
         chapter.setChapterTitle(request.chapterTitle());
         chapter.setContent(request.content());
+        chapter.setStartPage(request.startPage());
+        chapter.setPageCount(request.pageCount());
         chapter.setPaperId(request.paperId());
         chapter.setSortOrder(request.sortOrder() == null ? 0 : request.sortOrder());
         chapter.setStatus(request.status());
@@ -680,7 +684,7 @@ public class AdminLearningService {
 
     private CourseVideoResponse toCourseVideoResponse(CourseVideo video) {
         return new CourseVideoResponse(video.getId(), video.getCourseId(), video.getTitle(), video.getVideoUrl(),
-                video.getDurationSeconds(), video.getSortOrder(), video.getStatus());
+                video.getDurationSeconds(), video.getPaperId(), video.getSortOrder(), video.getStatus());
     }
 
     private BookCategoryResponse toBookCategoryResponse(BookCategory category) {
@@ -690,14 +694,15 @@ public class AdminLearningService {
 
     private BookResponse toBookResponse(Book book) {
         return new BookResponse(book.getId(), book.getCategoryId(), book.getBookName(), book.getAuthor(),
-                book.getPublisher(), book.getCoverUrl(), book.getIntroduction(), book.getPaperId(), book.getSortOrder(),
-                book.getReviewStatus(), book.getPublishStatus(), book.getPublishedAt());
+                book.getPublisher(), book.getCoverUrl(), book.getIntroduction(), book.getTotalPages(),
+                book.getPaperId(), book.getSortOrder(), book.getReviewStatus(), book.getPublishStatus(),
+                book.getPublishedAt());
     }
 
     private BookChapterResponse toBookChapterResponse(BookChapter chapter) {
         return new BookChapterResponse(chapter.getId(), chapter.getBookId(), chapter.getParentId(),
-                chapter.getChapterTitle(), chapter.getContent(), chapter.getPaperId(), chapter.getSortOrder(),
-                chapter.getStatus());
+                chapter.getChapterTitle(), chapter.getContent(), chapter.getStartPage(), chapter.getPageCount(),
+                chapter.getPaperId(), chapter.getSortOrder(), chapter.getStatus());
     }
 
     private QuestionCategoryResponse toQuestionCategoryResponse(QuestionCategory category) {

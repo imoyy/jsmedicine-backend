@@ -16,6 +16,7 @@ public class LiveSession extends ManagedEntity {
     private String title;
     private String coverUrl;
     private String anchorName;
+    private String speakerName;
     private String liveUrl;
     private String playbackUrl;
     private LocalDateTime startAt;

@@ -7,6 +7,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 public record LiveSessionRequest(
         @NotBlank(message = "title must not be blank")
@@ -18,6 +19,12 @@ public record LiveSessionRequest(
 
         @Size(max = 128, message = "anchorName length must be less than 128")
         String anchorName,
+
+        @Size(max = 128, message = "speakerName length must be less than 128")
+        String speakerName,
+
+        @Size(max = 20, message = "tags size must be less than or equal to 20")
+        List<@NotBlank(message = "tag must not be blank") @Size(max = 32, message = "tag length must be less than 32") String> tags,
 
         @Size(max = 1024, message = "liveUrl length must be less than 1024")
         String liveUrl,

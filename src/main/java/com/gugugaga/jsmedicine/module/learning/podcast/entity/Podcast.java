@@ -12,6 +12,7 @@ public class Podcast extends ReviewableEntity {
     private String title;
     private String summary;
     private String coverUrl;
+    private String speakerName;
     private Integer sortOrder;
 }
 

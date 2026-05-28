@@ -6,6 +6,7 @@ public record AppPodcastAudioResponse(
         String title,
         String audioUrl,
         Integer durationSeconds,
+        Long paperId,
         Integer sortOrder
 ) {
 }

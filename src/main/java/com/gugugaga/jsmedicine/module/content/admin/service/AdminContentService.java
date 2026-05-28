@@ -7,6 +7,7 @@ import com.gugugaga.jsmedicine.common.enums.ReviewStatus;
 import com.gugugaga.jsmedicine.common.exception.BusinessException;
 import com.gugugaga.jsmedicine.common.exception.ErrorCode;
 import com.gugugaga.jsmedicine.common.response.PageResponse;
+import com.gugugaga.jsmedicine.common.service.ResourceTagService;
 import com.gugugaga.jsmedicine.infrastructure.security.CurrentAdminAccessor;
 import com.gugugaga.jsmedicine.infrastructure.storage.entity.FileAsset;
 import com.gugugaga.jsmedicine.infrastructure.storage.mapper.FileAssetMapper;
@@ -57,6 +58,8 @@ public class AdminContentService {
     private static final long DEFAULT_PAGE = 1L;
     private static final long DEFAULT_SIZE = 20L;
     private static final long MAX_SIZE = 100L;
+    private static final String RESOURCE_TYPE_ARTICLE = "article";
+    private static final String RESOURCE_TYPE_PODCAST = "podcast";
 
     private final HomeCategoryMapper homeCategoryMapper;
     private final HomeContentMapper homeContentMapper;
@@ -68,6 +71,7 @@ public class AdminContentService {
     private final FileAssetMapper fileAssetMapper;
     private final AuditRecordService auditRecordService;
     private final CurrentAdminAccessor currentAdminAccessor;
+    private final ResourceTagService resourceTagService;
 
     public AdminContentService(
             HomeCategoryMapper homeCategoryMapper,
@@ -79,7 +83,8 @@ public class AdminContentService {
             TopicItemMapper topicItemMapper,
             FileAssetMapper fileAssetMapper,
             AuditRecordService auditRecordService,
-            CurrentAdminAccessor currentAdminAccessor
+            CurrentAdminAccessor currentAdminAccessor,
+            ResourceTagService resourceTagService
     ) {
         this.homeCategoryMapper = homeCategoryMapper;
         this.homeContentMapper = homeContentMapper;
@@ -91,6 +96,7 @@ public class AdminContentService {
         this.fileAssetMapper = fileAssetMapper;
         this.auditRecordService = auditRecordService;
         this.currentAdminAccessor = currentAdminAccessor;
+        this.resourceTagService = resourceTagService;
     }
 
     public PageResponse<HomeCategoryResponse> pageHomeCategories(AdminContentPageQuery query) {
@@ -172,7 +178,10 @@ public class AdminContentService {
                 new LambdaQueryWrapper<Article>()
                         .eq(Article::getDeleted, 0)
                         .eq(query.reviewStatus() != null, Article::getReviewStatus, query.reviewStatus())
-                        .and(hasText(query.keyword()), wrapper -> wrapper.like(Article::getTitle, query.keyword()))
+                        .and(hasText(query.keyword()), wrapper -> wrapper
+                                .like(Article::getTitle, query.keyword())
+                                .or()
+                                .like(Article::getSource, query.keyword()))
                         .orderByDesc(Article::getCreatedAt));
         return pageResponse(page, page.getRecords().stream().map(this::toArticleResponse).toList());
     }
@@ -184,6 +193,7 @@ public class AdminContentService {
         article.setViewCount(0L);
         article.setDeleted(0);
         articleMapper.insert(article);
+        resourceTagService.replaceTags(RESOURCE_TYPE_ARTICLE, article.getId(), request.tags());
         return toArticleResponse(article);
     }
 
@@ -192,6 +202,7 @@ public class AdminContentService {
         Article article = requireArticle(id);
         fillArticle(article, request);
         articleMapper.updateById(article);
+        resourceTagService.replaceTags(RESOURCE_TYPE_ARTICLE, article.getId(), request.tags());
         return toArticleResponse(article);
     }
 
@@ -216,6 +227,7 @@ public class AdminContentService {
     public void deleteArticle(Long id) {
         requireArticle(id);
         articleMapper.deleteById(id);
+        resourceTagService.replaceTags(RESOURCE_TYPE_ARTICLE, id, List.of());
     }
 
     public PageResponse<PodcastResponse> pagePodcasts(AdminContentPageQuery query) {
@@ -223,7 +235,10 @@ public class AdminContentService {
                 new LambdaQueryWrapper<Podcast>()
                         .eq(Podcast::getDeleted, 0)
                         .eq(query.reviewStatus() != null, Podcast::getReviewStatus, query.reviewStatus())
-                        .and(hasText(query.keyword()), wrapper -> wrapper.like(Podcast::getTitle, query.keyword()))
+                        .and(hasText(query.keyword()), wrapper -> wrapper
+                                .like(Podcast::getTitle, query.keyword())
+                                .or()
+                                .like(Podcast::getSpeakerName, query.keyword()))
                         .orderByAsc(Podcast::getSortOrder)
                         .orderByDesc(Podcast::getCreatedAt));
         return pageResponse(page, page.getRecords().stream().map(this::toPodcastResponse).toList());
@@ -235,6 +250,7 @@ public class AdminContentService {
         fillPodcast(podcast, request);
         podcast.setDeleted(0);
         podcastMapper.insert(podcast);
+        resourceTagService.replaceTags(RESOURCE_TYPE_PODCAST, podcast.getId(), request.tags());
         return toPodcastResponse(podcast);
     }
 
@@ -243,6 +259,7 @@ public class AdminContentService {
         Podcast podcast = requirePodcast(id);
         fillPodcast(podcast, request);
         podcastMapper.updateById(podcast);
+        resourceTagService.replaceTags(RESOURCE_TYPE_PODCAST, podcast.getId(), request.tags());
         return toPodcastResponse(podcast);
     }
 
@@ -267,6 +284,7 @@ public class AdminContentService {
     public void deletePodcast(Long id) {
         requirePodcast(id);
         podcastMapper.deleteById(id);
+        resourceTagService.replaceTags(RESOURCE_TYPE_PODCAST, id, List.of());
     }
 
     public PageResponse<PodcastAudioResponse> pagePodcastAudios(Long podcastId, long page, long size) {
@@ -432,6 +450,7 @@ public class AdminContentService {
         article.setCoverUrl(request.coverUrl());
         article.setContent(request.content());
         article.setAuthorName(request.authorName());
+        article.setSource(request.source());
         article.setReviewStatus(request.reviewStatus());
         article.setPublishStatus(request.publishStatus());
         article.setPublishedAt(request.publishedAt());
@@ -441,6 +460,7 @@ public class AdminContentService {
         podcast.setTitle(request.title());
         podcast.setSummary(request.summary());
         podcast.setCoverUrl(request.coverUrl());
+        podcast.setSpeakerName(request.speakerName());
         podcast.setSortOrder(request.sortOrder() == null ? 0 : request.sortOrder());
         podcast.setReviewStatus(request.reviewStatus());
         podcast.setPublishStatus(request.publishStatus());
@@ -452,6 +472,7 @@ public class AdminContentService {
         audio.setTitle(request.title());
         audio.setAudioUrl(request.audioUrl());
         audio.setDurationSeconds(request.durationSeconds());
+        audio.setPaperId(request.paperId());
         audio.setSortOrder(request.sortOrder() == null ? 0 : request.sortOrder());
         audio.setStatus(request.status());
     }
@@ -560,18 +581,20 @@ public class AdminContentService {
 
     private ArticleResponse toArticleResponse(Article article) {
         return new ArticleResponse(article.getId(), article.getTitle(), article.getSummary(), article.getCoverUrl(),
-                article.getContent(), article.getAuthorName(), article.getViewCount(), article.getReviewStatus(),
-                article.getPublishStatus(), article.getPublishedAt());
+                article.getContent(), article.getAuthorName(), article.getSource(),
+                resourceTagService.loadTagNames(RESOURCE_TYPE_ARTICLE, article.getId()), article.getViewCount(),
+                article.getReviewStatus(), article.getPublishStatus(), article.getPublishedAt());
     }
 
     private PodcastResponse toPodcastResponse(Podcast podcast) {
         return new PodcastResponse(podcast.getId(), podcast.getTitle(), podcast.getSummary(), podcast.getCoverUrl(),
+                podcast.getSpeakerName(), resourceTagService.loadTagNames(RESOURCE_TYPE_PODCAST, podcast.getId()),
                 podcast.getSortOrder(), podcast.getReviewStatus(), podcast.getPublishStatus(), podcast.getPublishedAt());
     }
 
     private PodcastAudioResponse toPodcastAudioResponse(PodcastAudio audio) {
         return new PodcastAudioResponse(audio.getId(), audio.getPodcastId(), audio.getTitle(), audio.getAudioUrl(),
-                audio.getDurationSeconds(), audio.getSortOrder(), audio.getStatus());
+                audio.getDurationSeconds(), audio.getPaperId(), audio.getSortOrder(), audio.getStatus());
     }
 
     private TopicResponse toTopicResponse(Topic topic, boolean includeItems) {

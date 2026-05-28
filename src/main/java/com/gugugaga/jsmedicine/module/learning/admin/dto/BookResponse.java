@@ -13,6 +13,7 @@ public record BookResponse(
         String publisher,
         String coverUrl,
         String introduction,
+        Integer totalPages,
         Long paperId,
         Integer sortOrder,
         ReviewStatus reviewStatus,

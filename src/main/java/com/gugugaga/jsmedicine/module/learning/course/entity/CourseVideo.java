@@ -14,6 +14,7 @@ public class CourseVideo extends ManagedEntity {
     private String title;
     private String videoUrl;
     private Integer durationSeconds;
+    private Long paperId;
     private Integer sortOrder;
     private EnabledStatus status;
 }

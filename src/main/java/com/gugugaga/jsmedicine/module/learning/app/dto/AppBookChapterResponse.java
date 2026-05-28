@@ -6,6 +6,8 @@ public record AppBookChapterResponse(
         Long parentId,
         String chapterTitle,
         String content,
+        Integer startPage,
+        Integer pageCount,
         Long paperId,
         Integer sortOrder
 ) {

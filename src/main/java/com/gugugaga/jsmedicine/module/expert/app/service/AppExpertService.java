@@ -104,9 +104,10 @@ public class AppExpertService {
     }
 
     private AppExpertResponse toExpertResponse(Expert expert, boolean includeDetails) {
-        return new AppExpertResponse(expert.getId(), expert.getRealName(), expert.getAvatarUrl(), expert.getTitle(),
-                expert.getOrganization(), expert.getSpecialty(), expert.getIntroduction(), expert.getConsultationNotice(),
-                expert.getSortOrder(), includeDetails ? loadCategoryIds(expert.getId()) : List.of(),
+        return new AppExpertResponse(expert.getId(), expert.getRealName(), expert.getGender(), expert.getBirthDate(),
+                expert.getMobile(), expert.getAvatarUrl(), expert.getCoverUrl(), expert.getTitle(),
+                expert.getOrganization(), expert.getSpecialty(), expert.getIntroduction(),
+                expert.getConsultationNotice(), expert.getSortOrder(), includeDetails ? loadCategoryIds(expert.getId()) : List.of(),
                 includeDetails ? loadExperiences(expert.getId()) : List.of());
     }
 

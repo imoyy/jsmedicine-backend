@@ -4,6 +4,7 @@ import com.gugugaga.jsmedicine.common.enums.PublishStatus;
 import com.gugugaga.jsmedicine.common.enums.ReviewStatus;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 public record ArticleResponse(
         Long id,
@@ -12,6 +13,8 @@ public record ArticleResponse(
         String coverUrl,
         String content,
         String authorName,
+        String source,
+        List<String> tags,
         Long viewCount,
         ReviewStatus reviewStatus,
         PublishStatus publishStatus,

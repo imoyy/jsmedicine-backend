@@ -8,6 +8,8 @@ public record BookChapterResponse(
         Long parentId,
         String chapterTitle,
         String content,
+        Integer startPage,
+        Integer pageCount,
         Long paperId,
         Integer sortOrder,
         EnabledStatus status

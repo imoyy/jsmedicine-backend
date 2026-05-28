@@ -18,6 +18,7 @@ public record CourseVideoRequest(
         String videoUrl,
 
         Integer durationSeconds,
+        Long paperId,
         Integer sortOrder,
 
         @NotNull(message = "status must not be null")

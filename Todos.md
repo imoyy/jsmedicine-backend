@@ -156,9 +156,9 @@
   2026-05-28：已补管理员、角色删除接口，删除管理员时禁止删除当前登录管理员并清理角色绑定；删除角色时禁止删除 `SUPER_ADMIN` 和仍被管理员绑定的角色，并清理角色权限绑定。
 - `[x]` 基础数据补齐：执业类型、机构从“仅查询”补到“可管理”，支撑手册中的独立管理页面。
   2026-05-28：已补机构、执业类型的详情、新增、修改、删除接口，并增加删除前引用校验与 `sys:reference:create/update/delete` 权限种子。
-- `[ ]` 首页与内容补齐：资讯补 `source`、`tags`；首页内容配置补齐与页面下拉、资源关联一致的字段和查询能力。
-- `[ ]` 学习资源补齐：课程视频、播客音频补 `paperId`；图书补 `totalPages`；章节补 `startPage`、`pageCount`。
-- `[ ]` 专家与直播补齐：专家补 `gender`、`birthDate`、`mobile` 等展示字段；直播拆出视频子资源，支撑直播配置弹窗。
+- `[x]` 首页与内容补齐：资讯补 `source`、`tags`；首页内容配置补齐与页面下拉、资源关联一致的字段和查询能力。
+- `[x]` 学习资源补齐：课程视频、播客音频补 `paperId`；图书补 `totalPages`；章节补 `startPage`、`pageCount`。
+- `[x]` 专家与直播补齐：专家补 `gender`、`birthDate`、`mobile` 等展示字段；直播拆出视频子资源，支撑直播配置弹窗。
 - `[ ]` 统计管理补齐：从汇总接口扩展到“卡片 + 明细表 + 图表 + 导出”的页面级契约，补学员成绩管理和平台数据统计缺口。
 - `[ ]` 工作台与附加内容补齐：确认首页工作台、附加内容管理是否进入当前范围；若保留，补对应接口和契约。
 
@@ -324,3 +324,4 @@
 - 2026-05-28：完成学员管理第一批闭环，新增管理端学员新增、删除、批量删除接口，补齐学员性别、年龄、文化程度字段，新增 `V16__student_management_manual_gap.sql` 权限和表结构迁移；使用 `.\mvnw.cmd "-Dmaven.repo.local=.m2/repository" test`、`.\mvnw.cmd "-Dmaven.repo.local=.m2/repository" clean package -DskipTests` 验证通过，并通过临时服务导出最新 `api/api.json`。
 - 2026-05-28：完成基础数据管理闭环，新增机构与执业类型的详情、新增、修改、删除接口，执业类型列表补充 `keyword` 查询，删除前增加学员/专家引用和子节点校验；新增 `V17__reference_management_permissions.sql`，并使用 `.\mvnw.cmd "-Dmaven.repo.local=.m2/repository" compile -DskipTests` 完成无测试编译校验。
 - 2026-05-28：完成系统管理删除语义补齐，新增管理员、角色删除接口和 `V18__system_delete_permissions.sql` 权限迁移；管理员删除增加“不可自删”约束，角色删除增加“不可删除 SUPER_ADMIN / 不可删除仍被绑定角色”约束，并使用 `.\mvnw.cmd "-Dmaven.repo.local=.m2/repository" compile -DskipTests` 完成无测试编译校验。
+- 2026-05-28：完成内容、学习资源、专家和直播第二批手册差距补齐，新增 `V19__manual_gap_content_learning_expert_live.sql`，补齐资讯 `source/tags`、播客 `speakerName/tags`、播客音频与课程视频 `paperId`、图书 `totalPages`、章节 `startPage/pageCount`、专家 `gender/birthDate/mobile/coverUrl`，并新增直播视频子资源接口与标签支持；使用 `.\mvnw.cmd "-Dmaven.repo.local=.m2/repository" compile -DskipTests` 完成无测试编译校验，并通过临时服务导出最新 `api/api.json`。

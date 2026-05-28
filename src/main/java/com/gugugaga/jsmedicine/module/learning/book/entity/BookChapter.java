@@ -14,6 +14,8 @@ public class BookChapter extends ManagedEntity {
     private Long parentId;
     private String chapterTitle;
     private String content;
+    private Integer startPage;
+    private Integer pageCount;
     private Long paperId;
     private Integer sortOrder;
     private EnabledStatus status;

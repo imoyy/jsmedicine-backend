@@ -1,4 +1,4 @@
-package com.gugugaga.jsmedicine.module.learning.podcast.entity;
+package com.gugugaga.jsmedicine.module.learning.live.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.gugugaga.jsmedicine.common.entity.ManagedEntity;
@@ -7,15 +7,13 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 @Data
-@TableName("podcast_audios")
+@TableName("live_session_videos")
 @EqualsAndHashCode(callSuper = true)
-public class PodcastAudio extends ManagedEntity {
-    private Long podcastId;
+public class LiveSessionVideo extends ManagedEntity {
+    private Long liveSessionId;
     private String title;
-    private String audioUrl;
+    private String videoUrl;
     private Integer durationSeconds;
-    private Long paperId;
     private Integer sortOrder;
     private EnabledStatus status;
 }
-

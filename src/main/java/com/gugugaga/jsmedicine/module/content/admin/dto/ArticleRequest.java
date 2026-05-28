@@ -7,6 +7,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 public record ArticleRequest(
         @NotBlank(message = "title must not be blank")
@@ -23,6 +24,12 @@ public record ArticleRequest(
 
         @Size(max = 64, message = "authorName length must be less than 64")
         String authorName,
+
+        @Size(max = 128, message = "source length must be less than 128")
+        String source,
+
+        @Size(max = 20, message = "tags size must be less than or equal to 20")
+        List<@NotBlank(message = "tag must not be blank") @Size(max = 32, message = "tag length must be less than 32") String> tags,
 
         @NotNull(message = "reviewStatus must not be null")
         ReviewStatus reviewStatus,

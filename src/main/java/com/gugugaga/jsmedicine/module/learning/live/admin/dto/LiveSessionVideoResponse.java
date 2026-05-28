@@ -1,14 +1,13 @@
-package com.gugugaga.jsmedicine.module.content.admin.dto;
+package com.gugugaga.jsmedicine.module.learning.live.admin.dto;
 
 import com.gugugaga.jsmedicine.common.enums.EnabledStatus;
 
-public record PodcastAudioResponse(
+public record LiveSessionVideoResponse(
         Long id,
-        Long podcastId,
+        Long liveSessionId,
         String title,
-        String audioUrl,
+        String videoUrl,
         Integer durationSeconds,
-        Long paperId,
         Integer sortOrder,
         EnabledStatus status
 ) {

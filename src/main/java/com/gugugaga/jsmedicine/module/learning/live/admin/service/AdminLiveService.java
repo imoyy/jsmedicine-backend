@@ -7,11 +7,16 @@ import com.gugugaga.jsmedicine.common.enums.ReviewStatus;
 import com.gugugaga.jsmedicine.common.exception.BusinessException;
 import com.gugugaga.jsmedicine.common.exception.ErrorCode;
 import com.gugugaga.jsmedicine.common.response.PageResponse;
+import com.gugugaga.jsmedicine.common.service.ResourceTagService;
 import com.gugugaga.jsmedicine.infrastructure.security.CurrentAdminAccessor;
 import com.gugugaga.jsmedicine.module.learning.live.admin.dto.LiveSessionRequest;
 import com.gugugaga.jsmedicine.module.learning.live.admin.dto.LiveSessionResponse;
+import com.gugugaga.jsmedicine.module.learning.live.admin.dto.LiveSessionVideoRequest;
+import com.gugugaga.jsmedicine.module.learning.live.admin.dto.LiveSessionVideoResponse;
 import com.gugugaga.jsmedicine.module.learning.live.entity.LiveSession;
+import com.gugugaga.jsmedicine.module.learning.live.entity.LiveSessionVideo;
 import com.gugugaga.jsmedicine.module.learning.live.mapper.LiveSessionMapper;
+import com.gugugaga.jsmedicine.module.learning.live.mapper.LiveSessionVideoMapper;
 import com.gugugaga.jsmedicine.module.system.entity.AuditRecord;
 import com.gugugaga.jsmedicine.module.system.service.AuditRecordService;
 import org.springframework.stereotype.Service;
@@ -27,19 +32,26 @@ public class AdminLiveService {
     private static final long DEFAULT_PAGE = 1L;
     private static final long DEFAULT_SIZE = 20L;
     private static final long MAX_SIZE = 100L;
+    private static final String RESOURCE_TYPE_LIVE = "live";
 
     private final LiveSessionMapper liveSessionMapper;
+    private final LiveSessionVideoMapper liveSessionVideoMapper;
     private final CurrentAdminAccessor currentAdminAccessor;
     private final AuditRecordService auditRecordService;
+    private final ResourceTagService resourceTagService;
 
     public AdminLiveService(
             LiveSessionMapper liveSessionMapper,
+            LiveSessionVideoMapper liveSessionVideoMapper,
             CurrentAdminAccessor currentAdminAccessor,
-            AuditRecordService auditRecordService
+            AuditRecordService auditRecordService,
+            ResourceTagService resourceTagService
     ) {
         this.liveSessionMapper = liveSessionMapper;
+        this.liveSessionVideoMapper = liveSessionVideoMapper;
         this.currentAdminAccessor = currentAdminAccessor;
         this.auditRecordService = auditRecordService;
+        this.resourceTagService = resourceTagService;
     }
 
     public PageResponse<LiveSessionResponse> pageLives(long page, long size, String keyword, ReviewStatus reviewStatus, LiveStatus liveStatus) {
@@ -48,13 +60,28 @@ public class AdminLiveService {
                         .eq(LiveSession::getDeleted, 0)
                         .eq(reviewStatus != null, LiveSession::getReviewStatus, reviewStatus)
                         .eq(liveStatus != null, LiveSession::getLiveStatus, liveStatus)
-                        .and(hasText(keyword), wrapper -> wrapper.like(LiveSession::getTitle, keyword).or().like(LiveSession::getAnchorName, keyword))
+                        .and(hasText(keyword), wrapper -> wrapper
+                                .like(LiveSession::getTitle, keyword)
+                                .or()
+                                .like(LiveSession::getAnchorName, keyword)
+                                .or()
+                                .like(LiveSession::getSpeakerName, keyword))
                         .orderByDesc(LiveSession::getStartAt));
-        return pageResponse(livePage, livePage.getRecords().stream().map(this::toResponse).toList());
+        return pageResponse(livePage, livePage.getRecords().stream().map(live -> toResponse(live, false)).toList());
     }
 
     public LiveSessionResponse liveDetail(Long id) {
-        return toResponse(requireLive(id));
+        return toResponse(requireLive(id), true);
+    }
+
+    public PageResponse<LiveSessionVideoResponse> pageLiveVideos(Long liveSessionId, long page, long size) {
+        Page<LiveSessionVideo> videoPage = liveSessionVideoMapper.selectPage(new Page<>(normalizePage(page), normalizeSize(size)),
+                new LambdaQueryWrapper<LiveSessionVideo>()
+                        .eq(LiveSessionVideo::getDeleted, 0)
+                        .eq(liveSessionId != null, LiveSessionVideo::getLiveSessionId, liveSessionId)
+                        .orderByAsc(LiveSessionVideo::getSortOrder)
+                        .orderByDesc(LiveSessionVideo::getCreatedAt));
+        return pageResponse(videoPage, videoPage.getRecords().stream().map(this::toVideoResponse).toList());
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -64,7 +91,8 @@ public class AdminLiveService {
         fillLive(live, request);
         live.setDeleted(0);
         liveSessionMapper.insert(live);
-        return toResponse(live);
+        resourceTagService.replaceTags(RESOURCE_TYPE_LIVE, live.getId(), request.tags());
+        return toResponse(live, true);
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -73,7 +101,8 @@ public class AdminLiveService {
         LiveSession live = requireLive(id);
         fillLive(live, request);
         liveSessionMapper.updateById(live);
-        return toResponse(live);
+        resourceTagService.replaceTags(RESOURCE_TYPE_LIVE, live.getId(), request.tags());
+        return toResponse(live, true);
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -86,25 +115,65 @@ public class AdminLiveService {
         }
         liveSessionMapper.updateById(live);
         saveAudit("live_session", id, before.getValue(), reviewStatus.getValue(), comment);
-        return toResponse(live);
+        return toResponse(live, true);
     }
 
     @Transactional(rollbackFor = Exception.class)
     public void deleteLive(Long id) {
         requireLive(id);
+        liveSessionVideoMapper.delete(new LambdaQueryWrapper<LiveSessionVideo>()
+                .eq(LiveSessionVideo::getLiveSessionId, id));
         liveSessionMapper.deleteById(id);
+        resourceTagService.replaceTags(RESOURCE_TYPE_LIVE, id, List.of());
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public LiveSessionVideoResponse createLiveVideo(LiveSessionVideoRequest request) {
+        requireLive(request.liveSessionId());
+        LiveSessionVideo video = new LiveSessionVideo();
+        fillLiveVideo(video, request);
+        video.setDeleted(0);
+        liveSessionVideoMapper.insert(video);
+        return toVideoResponse(video);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public LiveSessionVideoResponse updateLiveVideo(Long id, LiveSessionVideoRequest request) {
+        requireLive(request.liveSessionId());
+        LiveSessionVideo video = requireLiveVideo(id);
+        fillLiveVideo(video, request);
+        liveSessionVideoMapper.updateById(video);
+        return toVideoResponse(video);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteLiveVideo(Long id) {
+        requireLiveVideo(id);
+        liveSessionVideoMapper.deleteById(id);
     }
 
     private void fillLive(LiveSession live, LiveSessionRequest request) {
         live.setTitle(request.title());
         live.setCoverUrl(request.coverUrl());
-        live.setAnchorName(request.anchorName());
+        String anchorName = hasText(request.anchorName()) ? request.anchorName() : request.speakerName();
+        String speakerName = hasText(request.speakerName()) ? request.speakerName() : request.anchorName();
+        live.setAnchorName(anchorName);
+        live.setSpeakerName(speakerName);
         live.setLiveUrl(request.liveUrl());
         live.setPlaybackUrl(request.playbackUrl());
         live.setStartAt(request.startAt());
         live.setEndAt(request.endAt());
         live.setReviewStatus(request.reviewStatus());
         live.setLiveStatus(request.liveStatus());
+    }
+
+    private void fillLiveVideo(LiveSessionVideo video, LiveSessionVideoRequest request) {
+        video.setLiveSessionId(request.liveSessionId());
+        video.setTitle(request.title());
+        video.setVideoUrl(request.videoUrl());
+        video.setDurationSeconds(request.durationSeconds());
+        video.setSortOrder(request.sortOrder() == null ? 0 : request.sortOrder());
+        video.setStatus(request.status());
     }
 
     private void validateTime(LocalDateTime startAt, LocalDateTime endAt) {
@@ -121,10 +190,39 @@ public class AdminLiveService {
         return live;
     }
 
-    private LiveSessionResponse toResponse(LiveSession live) {
+    private LiveSessionVideo requireLiveVideo(Long id) {
+        LiveSessionVideo video = liveSessionVideoMapper.selectById(id);
+        if (video == null || !Objects.equals(video.getDeleted(), 0)) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Live session video does not exist");
+        }
+        return video;
+    }
+
+    private LiveSessionResponse toResponse(LiveSession live, boolean includeVideos) {
         return new LiveSessionResponse(live.getId(), live.getTitle(), live.getCoverUrl(), live.getAnchorName(),
+                resolvedSpeakerName(live), resourceTagService.loadTagNames(RESOURCE_TYPE_LIVE, live.getId()),
                 live.getLiveUrl(), live.getPlaybackUrl(), live.getStartAt(), live.getEndAt(),
-                live.getReviewStatus(), live.getLiveStatus());
+                live.getReviewStatus(), live.getLiveStatus(), includeVideos ? loadLiveVideos(live.getId()) : List.of());
+    }
+
+    private List<LiveSessionVideoResponse> loadLiveVideos(Long liveSessionId) {
+        return liveSessionVideoMapper.selectList(new LambdaQueryWrapper<LiveSessionVideo>()
+                        .eq(LiveSessionVideo::getDeleted, 0)
+                        .eq(LiveSessionVideo::getLiveSessionId, liveSessionId)
+                        .orderByAsc(LiveSessionVideo::getSortOrder)
+                        .orderByDesc(LiveSessionVideo::getCreatedAt))
+                .stream()
+                .map(this::toVideoResponse)
+                .toList();
+    }
+
+    private LiveSessionVideoResponse toVideoResponse(LiveSessionVideo video) {
+        return new LiveSessionVideoResponse(video.getId(), video.getLiveSessionId(), video.getTitle(), video.getVideoUrl(),
+                video.getDurationSeconds(), video.getSortOrder(), video.getStatus());
+    }
+
+    private String resolvedSpeakerName(LiveSession live) {
+        return hasText(live.getSpeakerName()) ? live.getSpeakerName() : live.getAnchorName();
     }
 
     private void saveAudit(String targetType, Long targetId, Integer before, Integer after, String comment) {

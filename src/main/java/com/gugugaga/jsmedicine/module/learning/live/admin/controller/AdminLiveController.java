@@ -7,6 +7,8 @@ import com.gugugaga.jsmedicine.common.response.PageResponse;
 import com.gugugaga.jsmedicine.module.content.admin.dto.ReviewRequest;
 import com.gugugaga.jsmedicine.module.learning.live.admin.dto.LiveSessionRequest;
 import com.gugugaga.jsmedicine.module.learning.live.admin.dto.LiveSessionResponse;
+import com.gugugaga.jsmedicine.module.learning.live.admin.dto.LiveSessionVideoRequest;
+import com.gugugaga.jsmedicine.module.learning.live.admin.dto.LiveSessionVideoResponse;
 import com.gugugaga.jsmedicine.module.learning.live.admin.service.AdminLiveService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -54,6 +56,17 @@ public class AdminLiveController {
         return ApiResponse.ok(adminLiveService.liveDetail(id));
     }
 
+    @Operation(summary = "分页查询直播视频")
+    @PreAuthorize("hasAuthority('live:view')")
+    @GetMapping("/{liveSessionId}/videos")
+    public ApiResponse<PageResponse<LiveSessionVideoResponse>> pageLiveVideos(
+            @PathVariable Long liveSessionId,
+            @RequestParam(defaultValue = "1") long page,
+            @RequestParam(defaultValue = "20") long size
+    ) {
+        return ApiResponse.ok(adminLiveService.pageLiveVideos(liveSessionId, page, size));
+    }
+
     @Operation(summary = "新增直播")
     @PreAuthorize("hasAuthority('live:edit')")
     @PostMapping
@@ -61,11 +74,25 @@ public class AdminLiveController {
         return ApiResponse.ok(adminLiveService.createLive(request));
     }
 
+    @Operation(summary = "新增直播视频")
+    @PreAuthorize("hasAuthority('live:edit')")
+    @PostMapping("/videos")
+    public ApiResponse<LiveSessionVideoResponse> createLiveVideo(@Valid @RequestBody LiveSessionVideoRequest request) {
+        return ApiResponse.ok(adminLiveService.createLiveVideo(request));
+    }
+
     @Operation(summary = "修改直播")
     @PreAuthorize("hasAuthority('live:edit')")
     @PutMapping("/{id}")
     public ApiResponse<LiveSessionResponse> updateLive(@PathVariable Long id, @Valid @RequestBody LiveSessionRequest request) {
         return ApiResponse.ok(adminLiveService.updateLive(id, request));
+    }
+
+    @Operation(summary = "修改直播视频")
+    @PreAuthorize("hasAuthority('live:edit')")
+    @PutMapping("/videos/{id}")
+    public ApiResponse<LiveSessionVideoResponse> updateLiveVideo(@PathVariable Long id, @Valid @RequestBody LiveSessionVideoRequest request) {
+        return ApiResponse.ok(adminLiveService.updateLiveVideo(id, request));
     }
 
     @Operation(summary = "审核直播")
@@ -80,6 +107,14 @@ public class AdminLiveController {
     @DeleteMapping("/{id}")
     public ApiResponse<Void> deleteLive(@PathVariable Long id) {
         adminLiveService.deleteLive(id);
+        return ApiResponse.ok();
+    }
+
+    @Operation(summary = "删除直播视频")
+    @PreAuthorize("hasAuthority('live:edit')")
+    @DeleteMapping("/videos/{id}")
+    public ApiResponse<Void> deleteLiveVideo(@PathVariable Long id) {
+        adminLiveService.deleteLiveVideo(id);
         return ApiResponse.ok();
     }
 }

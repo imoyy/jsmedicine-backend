@@ -10,6 +10,7 @@ import com.gugugaga.jsmedicine.common.enums.StudentCertificationStatus;
 import com.gugugaga.jsmedicine.common.exception.BusinessException;
 import com.gugugaga.jsmedicine.common.exception.ErrorCode;
 import com.gugugaga.jsmedicine.common.response.PageResponse;
+import com.gugugaga.jsmedicine.common.service.ResourceTagService;
 import com.gugugaga.jsmedicine.module.auth.app.entity.AppUserSession;
 import com.gugugaga.jsmedicine.module.auth.app.service.CurrentAppUserResolver;
 import com.gugugaga.jsmedicine.module.content.topic.entity.Topic;
@@ -86,6 +87,7 @@ public class AppLearningService {
     private static final long DEFAULT_SIZE = 20L;
     private static final long MAX_SIZE = 100L;
     private static final BigDecimal ZERO_PROGRESS = BigDecimal.ZERO.setScale(2);
+    private static final String RESOURCE_TYPE_PODCAST = "podcast";
 
     private final CurrentAppUserResolver currentAppUserResolver;
     private final StudentMapper studentMapper;
@@ -105,6 +107,7 @@ public class AppLearningService {
     private final QuestionOptionMapper questionOptionMapper;
     private final ExamRecordMapper examRecordMapper;
     private final ExamRecordAnswerMapper examRecordAnswerMapper;
+    private final ResourceTagService resourceTagService;
 
     public AppLearningService(
             CurrentAppUserResolver currentAppUserResolver,
@@ -124,7 +127,8 @@ public class AppLearningService {
             QuestionMapper questionMapper,
             QuestionOptionMapper questionOptionMapper,
             ExamRecordMapper examRecordMapper,
-            ExamRecordAnswerMapper examRecordAnswerMapper
+            ExamRecordAnswerMapper examRecordAnswerMapper,
+            ResourceTagService resourceTagService
     ) {
         this.currentAppUserResolver = currentAppUserResolver;
         this.studentMapper = studentMapper;
@@ -144,6 +148,7 @@ public class AppLearningService {
         this.questionOptionMapper = questionOptionMapper;
         this.examRecordMapper = examRecordMapper;
         this.examRecordAnswerMapper = examRecordAnswerMapper;
+        this.resourceTagService = resourceTagService;
     }
 
     public PageResponse<AppCourseResponse> pageCourses(AppLearningPageQuery query) {
@@ -216,7 +221,10 @@ public class AppLearningService {
     public PageResponse<AppPodcastResponse> pagePodcasts(AppLearningPageQuery query) {
         Page<Podcast> page = podcastMapper.selectPage(new Page<>(normalizePage(query.page()), normalizeSize(query.size())),
                 visiblePodcastWrapper()
-                        .and(hasText(query.keyword()), wrapper -> wrapper.like(Podcast::getTitle, query.keyword()))
+                        .and(hasText(query.keyword()), wrapper -> wrapper
+                                .like(Podcast::getTitle, query.keyword())
+                                .or()
+                                .like(Podcast::getSpeakerName, query.keyword()))
                         .orderByAsc("sortOrderAsc".equals(query.sort()), Podcast::getSortOrder)
                         .orderByDesc(!"sortOrderAsc".equals(query.sort()), Podcast::getPublishedAt));
         Long studentId = currentStudentId().orElse(null);
@@ -487,7 +495,7 @@ public class AppLearningService {
 
     private AppCourseVideoResponse toCourseVideoResponse(CourseVideo video) {
         return new AppCourseVideoResponse(video.getId(), video.getCourseId(), video.getTitle(), video.getVideoUrl(),
-                video.getDurationSeconds(), video.getSortOrder());
+                video.getDurationSeconds(), video.getPaperId(), video.getSortOrder());
     }
 
     private AppBookCategoryResponse toBookCategoryResponse(BookCategory category) {
@@ -498,8 +506,9 @@ public class AppLearningService {
     private AppBookResponse toBookResponse(Book book, boolean includeChapters, Long studentId) {
         LearningRecord record = findLearningRecord(studentId, "book", book.getId()).orElse(null);
         return new AppBookResponse(book.getId(), book.getCategoryId(), book.getBookName(), book.getAuthor(),
-                book.getPublisher(), book.getCoverUrl(), book.getIntroduction(), book.getPaperId(), book.getPublishedAt(),
-                progress(record), studySeconds(record), includeChapters ? loadBookChapters(book.getId()) : List.of());
+                book.getPublisher(), book.getCoverUrl(), book.getIntroduction(), book.getTotalPages(), book.getPaperId(),
+                book.getPublishedAt(), progress(record), studySeconds(record),
+                includeChapters ? loadBookChapters(book.getId()) : List.of());
     }
 
     private List<AppBookChapterResponse> loadBookChapters(Long bookId) {
@@ -516,12 +525,14 @@ public class AppLearningService {
 
     private AppBookChapterResponse toBookChapterResponse(BookChapter chapter) {
         return new AppBookChapterResponse(chapter.getId(), chapter.getBookId(), chapter.getParentId(),
-                chapter.getChapterTitle(), chapter.getContent(), chapter.getPaperId(), chapter.getSortOrder());
+                chapter.getChapterTitle(), chapter.getContent(), chapter.getStartPage(), chapter.getPageCount(),
+                chapter.getPaperId(), chapter.getSortOrder());
     }
 
     private AppPodcastResponse toPodcastResponse(Podcast podcast, boolean includeAudios, Long studentId) {
         LearningRecord record = findLearningRecord(studentId, "podcast", podcast.getId()).orElse(null);
         return new AppPodcastResponse(podcast.getId(), podcast.getTitle(), podcast.getSummary(), podcast.getCoverUrl(),
+                podcast.getSpeakerName(), resourceTagService.loadTagNames(RESOURCE_TYPE_PODCAST, podcast.getId()),
                 podcast.getPublishedAt(), progress(record), studySeconds(record),
                 includeAudios ? loadPodcastAudios(podcast.getId()) : List.of());
     }
@@ -535,7 +546,7 @@ public class AppLearningService {
                         .orderByDesc(PodcastAudio::getCreatedAt))
                 .stream()
                 .map(audio -> new AppPodcastAudioResponse(audio.getId(), audio.getPodcastId(), audio.getTitle(),
-                        audio.getAudioUrl(), audio.getDurationSeconds(), audio.getSortOrder()))
+                        audio.getAudioUrl(), audio.getDurationSeconds(), audio.getPaperId(), audio.getSortOrder()))
                 .toList();
     }
 
