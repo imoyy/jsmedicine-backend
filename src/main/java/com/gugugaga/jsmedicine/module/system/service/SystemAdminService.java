@@ -7,6 +7,7 @@ import com.gugugaga.jsmedicine.common.enums.EnabledStatus;
 import com.gugugaga.jsmedicine.common.exception.BusinessException;
 import com.gugugaga.jsmedicine.common.exception.ErrorCode;
 import com.gugugaga.jsmedicine.common.response.PageResponse;
+import com.gugugaga.jsmedicine.infrastructure.security.CurrentAdminAccessor;
 import com.gugugaga.jsmedicine.module.system.dto.AuditRecordPageQuery;
 import com.gugugaga.jsmedicine.module.system.dto.AuditRecordResponse;
 import com.gugugaga.jsmedicine.module.system.dto.SysAdminPageQuery;
@@ -56,6 +57,7 @@ public class SystemAdminService {
     private final SysRolePermissionMapper sysRolePermissionMapper;
     private final AuditRecordMapper auditRecordMapper;
     private final PasswordEncoder passwordEncoder;
+    private final CurrentAdminAccessor currentAdminAccessor;
 
     public SystemAdminService(
             SysAdminMapper sysAdminMapper,
@@ -64,7 +66,8 @@ public class SystemAdminService {
             SysAdminRoleMapper sysAdminRoleMapper,
             SysRolePermissionMapper sysRolePermissionMapper,
             AuditRecordMapper auditRecordMapper,
-            PasswordEncoder passwordEncoder
+            PasswordEncoder passwordEncoder,
+            CurrentAdminAccessor currentAdminAccessor
     ) {
         this.sysAdminMapper = sysAdminMapper;
         this.sysRoleMapper = sysRoleMapper;
@@ -73,6 +76,7 @@ public class SystemAdminService {
         this.sysRolePermissionMapper = sysRolePermissionMapper;
         this.auditRecordMapper = auditRecordMapper;
         this.passwordEncoder = passwordEncoder;
+        this.currentAdminAccessor = currentAdminAccessor;
     }
 
     public PageResponse<SysAdminResponse> pageAdmins(SysAdminPageQuery query) {
@@ -156,6 +160,17 @@ public class SystemAdminService {
         });
     }
 
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteAdmin(Long id) {
+        requireAdmin(id);
+        Long currentAdminId = currentAdminAccessor.getCurrentAdminId().orElse(null);
+        if (Objects.equals(currentAdminId, id)) {
+            throw new BusinessException(ErrorCode.CONFLICT, "Current admin cannot delete itself");
+        }
+        sysAdminRoleMapper.delete(new LambdaQueryWrapper<SysAdminRole>().eq(SysAdminRole::getAdminId, id));
+        sysAdminMapper.deleteById(id);
+    }
+
     public PageResponse<SysRoleResponse> pageRoles(SysRolePageQuery query) {
         Page<SysRole> page = sysRoleMapper.selectPage(new Page<>(normalizePage(query.page()), normalizeSize(query.size())),
                 new LambdaQueryWrapper<SysRole>()
@@ -220,6 +235,21 @@ public class SystemAdminService {
             relation.setPermissionId(permissionId);
             sysRolePermissionMapper.insert(relation);
         });
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteRole(Long id) {
+        SysRole role = requireRole(id);
+        if ("SUPER_ADMIN".equals(role.getRoleCode())) {
+            throw new BusinessException(ErrorCode.CONFLICT, "SUPER_ADMIN role cannot be deleted");
+        }
+        long relationCount = sysAdminRoleMapper.selectCount(new LambdaQueryWrapper<SysAdminRole>()
+                .eq(SysAdminRole::getRoleId, id));
+        if (relationCount > 0) {
+            throw new BusinessException(ErrorCode.CONFLICT, "Role is still assigned to admins");
+        }
+        sysRolePermissionMapper.delete(new LambdaQueryWrapper<SysRolePermission>().eq(SysRolePermission::getRoleId, id));
+        sysRoleMapper.deleteById(id);
     }
 
     public List<SysPermissionResponse> listPermissions() {
