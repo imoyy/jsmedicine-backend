@@ -2,6 +2,9 @@ package com.gugugaga.jsmedicine.module.user.app.controller;
 
 import com.gugugaga.jsmedicine.common.response.ApiResponse;
 import com.gugugaga.jsmedicine.common.response.PageResponse;
+import com.gugugaga.jsmedicine.module.user.app.dto.AppAvatarConfirmRequest;
+import com.gugugaga.jsmedicine.module.user.app.dto.AppAvatarUploadRequest;
+import com.gugugaga.jsmedicine.module.user.app.dto.AppAvatarUploadResponse;
 import com.gugugaga.jsmedicine.module.user.app.dto.AppProfileResponse;
 import com.gugugaga.jsmedicine.module.user.app.dto.AppProfileSummaryResponse;
 import com.gugugaga.jsmedicine.module.user.app.dto.AppProfileUpdateRequest;
@@ -41,6 +44,22 @@ public class AppProfileController {
     @PutMapping
     public ApiResponse<AppProfileResponse> updateProfile(@Valid @RequestBody AppProfileUpdateRequest request) {
         return ApiResponse.ok(appProfileService.updateProfile(request));
+    }
+
+    @Operation(summary = "申请头像上传地址")
+    @PostMapping("/avatar/upload-url")
+    public ApiResponse<AppAvatarUploadResponse> createAvatarUploadUrl(
+            @Valid @RequestBody AppAvatarUploadRequest request
+    ) {
+        return ApiResponse.ok(appProfileService.createAvatarUploadUrl(request));
+    }
+
+    @Operation(summary = "确认头像上传")
+    @PostMapping("/avatar/confirm")
+    public ApiResponse<AppProfileResponse> confirmAvatarUpload(
+            @Valid @RequestBody AppAvatarConfirmRequest request
+    ) {
+        return ApiResponse.ok(appProfileService.confirmAvatarUpload(request));
     }
 
     @Operation(summary = "提交学员认证申请")

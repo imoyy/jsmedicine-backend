@@ -96,3 +96,16 @@ app:
       app-id: ${WECHAT_MINIAPP_APP_ID:}
       app-secret: ${WECHAT_MINIAPP_APP_SECRET:}
       mock-enabled: ${WECHAT_MINIAPP_MOCK_ENABLED:false}
+  storage:
+    provider: ${APP_STORAGE_PROVIDER:minio}
+    endpoint: ${APP_STORAGE_ENDPOINT:http://127.0.0.1:${MINIO_PORT:9000}}
+    access-key: ${APP_STORAGE_ACCESS_KEY:${MINIO_ROOT_USER:minioadmin}}
+    secret-key: ${APP_STORAGE_SECRET_KEY:${MINIO_ROOT_PASSWORD:minioadmin123}}
+    public-base-url: ${APP_STORAGE_PUBLIC_BASE_URL:}
+    auto-create-bucket: ${APP_STORAGE_AUTO_CREATE_BUCKET:true}
+    avatar:
+      bucket-name: ${APP_STORAGE_AVATAR_BUCKET_NAME:public}
+      object-prefix: ${APP_STORAGE_AVATAR_OBJECT_PREFIX:app-users}
+      max-file-size-bytes: ${APP_STORAGE_AVATAR_MAX_FILE_SIZE_BYTES:5242880}
+      upload-url-ttl-seconds: ${APP_STORAGE_AVATAR_UPLOAD_URL_TTL_SECONDS:900}
+      allowed-content-types: ${APP_STORAGE_AVATAR_ALLOWED_CONTENT_TYPES:image/jpeg,image/png,image/webp}

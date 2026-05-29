@@ -23,7 +23,7 @@ src/main/java/com/gugugaga/jsmedicine/
 ├── common/                 # 通用实体、枚举、异常、响应、配置、Mapper
 ├── infrastructure/
 │   ├── security/           # Spring Security、Bearer Token 过滤器、RedisTemplate
-│   ├── storage/            # 文件资产能力
+│   ├── storage/            # 对象存储、文件资产元数据、公开文件读取
 │   └── tooling/            # dev 验收数据导入
 └── module/
     ├── auth/               # admin/app 双端认证与会话
@@ -109,6 +109,15 @@ Entity 是代码侧数据模型来源，Flyway 是数据库落地来源。新增
 - 标签优先复用 `tags`、`resource_tags`。
 - 弱扩展字段优先评估 `entity_extensions`。
 - 文件与媒体元数据集中在 `file_assets`，业务表只保存必要读路径字段。
+
+### 文件与对象存储约定
+
+- 文件二进制存对象存储，数据库只落 `file_assets` 元数据和业务关联；不要把头像、封面、认证材料二进制写入 MySQL。
+- 用户端头像采用“申请签名上传地址 -> 客户端直传对象存储 -> 后端确认上传 -> 写入 `file_assets` -> 回填稳定读取地址”链路。
+- 用户端头像稳定读取地址统一为 `/api/v1/files/{id}/content`；`app_users.avatar_url` 当前保存这个后端读取地址，而不是前端直传的第三方 URL。
+- 禁止前端或业务接口直接登记用户头像的 `bucket_name`、`object_key`、`url`，也禁止继续通过 `PUT /api/v1/app/profile` 直接改 `avatarUrl`。
+- 用户头像对象 key 统一使用 `app-users/{userId}/avatars/{yyyy}/{MM}/{uuid}.{ext}` 前缀，内容类型仅允许 `image/jpeg`、`image/png`、`image/webp`。
+- `file_assets.url` 仅保存稳定对外读取地址或明确业务读地址，不把对象存储临时签名 URL 当作长期真相源。
 
 ## 模块实现约定
 

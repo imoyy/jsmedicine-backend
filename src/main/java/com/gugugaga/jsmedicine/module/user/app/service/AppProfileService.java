@@ -10,12 +10,20 @@ import com.gugugaga.jsmedicine.common.enums.StudentCertificationStatus;
 import com.gugugaga.jsmedicine.common.exception.BusinessException;
 import com.gugugaga.jsmedicine.common.exception.ErrorCode;
 import com.gugugaga.jsmedicine.common.response.PageResponse;
+import com.gugugaga.jsmedicine.infrastructure.storage.StorageClient;
+import com.gugugaga.jsmedicine.infrastructure.storage.StorageObjectStat;
+import com.gugugaga.jsmedicine.infrastructure.storage.StorageProperties;
+import com.gugugaga.jsmedicine.infrastructure.storage.entity.FileAsset;
+import com.gugugaga.jsmedicine.infrastructure.storage.mapper.FileAssetMapper;
 import com.gugugaga.jsmedicine.module.auth.app.entity.AppUserSession;
 import com.gugugaga.jsmedicine.module.auth.app.service.CurrentAppUserResolver;
 import com.gugugaga.jsmedicine.module.interaction.favorite.entity.UserFavorite;
 import com.gugugaga.jsmedicine.module.interaction.favorite.mapper.UserFavoriteMapper;
 import com.gugugaga.jsmedicine.module.interaction.history.entity.UserBrowseHistory;
 import com.gugugaga.jsmedicine.module.interaction.history.mapper.UserBrowseHistoryMapper;
+import com.gugugaga.jsmedicine.module.user.app.dto.AppAvatarConfirmRequest;
+import com.gugugaga.jsmedicine.module.user.app.dto.AppAvatarUploadRequest;
+import com.gugugaga.jsmedicine.module.user.app.dto.AppAvatarUploadResponse;
 import com.gugugaga.jsmedicine.module.user.app.dto.AppProfileResponse;
 import com.gugugaga.jsmedicine.module.user.app.dto.AppProfileSummaryResponse;
 import com.gugugaga.jsmedicine.module.user.app.dto.AppProfileUpdateRequest;
@@ -36,10 +44,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class AppProfileService {
@@ -47,6 +59,14 @@ public class AppProfileService {
     private static final long DEFAULT_PAGE = 1L;
     private static final long DEFAULT_SIZE = 20L;
     private static final long MAX_SIZE = 100L;
+    private static final String IMAGE_ASSET_TYPE = "image";
+    private static final String PUBLIC_FILE_URL_TEMPLATE = "/api/v1/files/%d/content";
+    private static final DateTimeFormatter AVATAR_PATH_MONTH_FORMATTER = DateTimeFormatter.ofPattern("yyyy/MM");
+    private static final Map<String, String> AVATAR_CONTENT_TYPE_EXTENSIONS = Map.of(
+            "image/jpeg", ".jpg",
+            "image/png", ".png",
+            "image/webp", ".webp"
+    );
 
     private final CurrentAppUserResolver currentAppUserResolver;
     private final AppUserMapper appUserMapper;
@@ -55,6 +75,9 @@ public class AppProfileService {
     private final StudentCertificationFileMapper studentCertificationFileMapper;
     private final UserFavoriteMapper userFavoriteMapper;
     private final UserBrowseHistoryMapper userBrowseHistoryMapper;
+    private final FileAssetMapper fileAssetMapper;
+    private final StorageClient storageClient;
+    private final StorageProperties storageProperties;
 
     public AppProfileService(
             CurrentAppUserResolver currentAppUserResolver,
@@ -63,7 +86,10 @@ public class AppProfileService {
             StudentMapper studentMapper,
             StudentCertificationFileMapper studentCertificationFileMapper,
             UserFavoriteMapper userFavoriteMapper,
-            UserBrowseHistoryMapper userBrowseHistoryMapper
+            UserBrowseHistoryMapper userBrowseHistoryMapper,
+            FileAssetMapper fileAssetMapper,
+            StorageClient storageClient,
+            StorageProperties storageProperties
     ) {
         this.currentAppUserResolver = currentAppUserResolver;
         this.appUserMapper = appUserMapper;
@@ -72,6 +98,9 @@ public class AppProfileService {
         this.studentCertificationFileMapper = studentCertificationFileMapper;
         this.userFavoriteMapper = userFavoriteMapper;
         this.userBrowseHistoryMapper = userBrowseHistoryMapper;
+        this.fileAssetMapper = fileAssetMapper;
+        this.storageClient = storageClient;
+        this.storageProperties = storageProperties;
     }
 
     public AppProfileResponse currentProfile() {
@@ -82,12 +111,66 @@ public class AppProfileService {
     @Transactional(rollbackFor = Exception.class)
     public AppProfileResponse updateProfile(AppProfileUpdateRequest request) {
         AppUser user = requireCurrentUser();
+        ensureAvatarUrlNotModified(request.avatarUrl(), user.getAvatarUrl());
         user.setNickname(request.nickname());
         user.setProfileSignature(request.profileSignature());
-        user.setAvatarUrl(request.avatarUrl());
         user.setEmail(request.email());
         user.setGender(request.gender() == null ? Gender.UNKNOWN : request.gender());
-        user.setProfileCompleted(hasText(request.nickname()) && hasText(request.avatarUrl()));
+        user.setProfileCompleted(hasText(user.getNickname()) && hasText(user.getAvatarUrl()));
+        appUserMapper.updateById(user);
+        return currentProfile();
+    }
+
+    public AppAvatarUploadResponse createAvatarUploadUrl(AppAvatarUploadRequest request) {
+        AppUser user = requireCurrentUser();
+        validateAvatarUploadRequest(request);
+        String normalizedContentType = normalizeContentType(request.contentType());
+        String extension = resolveAvatarExtension(request.originalName(), normalizedContentType);
+        String objectKey = buildAvatarObjectKey(user.getId(), extension);
+        var uploadUrl = storageClient.createPresignedUploadUrl(
+                storageProperties.getAvatar().getBucketName(),
+                objectKey,
+                java.time.Duration.ofSeconds(storageProperties.getAvatar().getUploadUrlTtlSeconds())
+        );
+        return new AppAvatarUploadResponse(
+                uploadUrl.method(),
+                uploadUrl.url(),
+                storageProperties.getAvatar().getBucketName(),
+                objectKey,
+                normalizedContentType,
+                request.fileSize(),
+                uploadUrl.expiresAt()
+        );
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public AppProfileResponse confirmAvatarUpload(AppAvatarConfirmRequest request) {
+        AppUser user = requireCurrentUser();
+        String objectKey = normalizeObjectKey(request.objectKey());
+        if (!isCurrentUserAvatarObjectKey(user.getId(), objectKey)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Avatar objectKey is invalid");
+        }
+        StorageObjectStat objectStat = storageClient.statObject(storageProperties.getAvatar().getBucketName(), objectKey);
+        validateAvatarObjectStat(objectStat);
+
+        FileAsset fileAsset = new FileAsset();
+        fileAsset.setAssetType(IMAGE_ASSET_TYPE);
+        fileAsset.setStorageProvider(storageProperties.getProvider());
+        fileAsset.setBucketName(storageProperties.getAvatar().getBucketName());
+        fileAsset.setObjectKey(objectKey);
+        fileAsset.setOriginalName(hasText(request.originalName()) ? request.originalName() : extractObjectName(objectKey));
+        fileAsset.setContentType(objectStat.contentType());
+        fileAsset.setFileSize(objectStat.contentLength());
+        fileAsset.setCreatedBy(null);
+        fileAsset.setDeleted(0);
+        fileAssetMapper.insert(fileAsset);
+
+        String avatarUrl = buildPublicFileUrl(fileAsset.getId());
+        fileAsset.setUrl(avatarUrl);
+        fileAssetMapper.updateById(fileAsset);
+
+        user.setAvatarUrl(avatarUrl);
+        user.setProfileCompleted(hasText(user.getNickname()) && hasText(user.getAvatarUrl()));
         appUserMapper.updateById(user);
         return currentProfile();
     }
@@ -352,5 +435,99 @@ public class AppProfileService {
 
     private boolean hasText(String value) {
         return value != null && !value.isBlank();
+    }
+
+    private void validateAvatarUploadRequest(AppAvatarUploadRequest request) {
+        long fileSize = request.fileSize() == null ? 0 : request.fileSize();
+        if (fileSize < 1 || fileSize > storageProperties.getAvatar().getMaxFileSizeBytes()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Avatar file size exceeds limit");
+        }
+        String contentType = normalizeContentType(request.contentType());
+        if (!storageProperties.getAvatar().getAllowedContentTypes().contains(contentType)) {
+            throw new BusinessException(ErrorCode.UNSUPPORTED_MEDIA_TYPE, "Avatar content type is not supported");
+        }
+    }
+
+    private void validateAvatarObjectStat(StorageObjectStat objectStat) {
+        if (objectStat.contentLength() < 1 || objectStat.contentLength() > storageProperties.getAvatar().getMaxFileSizeBytes()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Uploaded avatar file size exceeds limit");
+        }
+        String contentType = normalizeContentType(objectStat.contentType());
+        if (!storageProperties.getAvatar().getAllowedContentTypes().contains(contentType)) {
+            throw new BusinessException(ErrorCode.UNSUPPORTED_MEDIA_TYPE, "Uploaded avatar content type is not supported");
+        }
+    }
+
+    private void ensureAvatarUrlNotModified(String requestedAvatarUrl, String currentAvatarUrl) {
+        if (requestedAvatarUrl == null) {
+            return;
+        }
+        String normalizedRequested = requestedAvatarUrl.trim();
+        String normalizedCurrent = currentAvatarUrl == null ? "" : currentAvatarUrl.trim();
+        if (!Objects.equals(normalizedRequested, normalizedCurrent)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Avatar must be updated through avatar upload APIs");
+        }
+    }
+
+    private String buildAvatarObjectKey(Long userId, String extension) {
+        return storageProperties.getAvatar().getObjectPrefix()
+                + "/" + userId
+                + "/avatars/"
+                + LocalDateTime.now().format(AVATAR_PATH_MONTH_FORMATTER)
+                + "/" + UUID.randomUUID()
+                + extension;
+    }
+
+    private boolean isCurrentUserAvatarObjectKey(Long userId, String objectKey) {
+        String userPrefix = storageProperties.getAvatar().getObjectPrefix() + "/" + userId + "/avatars/";
+        return objectKey.startsWith(userPrefix);
+    }
+
+    private String resolveAvatarExtension(String originalName, String contentType) {
+        String normalizedContentType = normalizeContentType(contentType);
+        String extension = extractExtension(originalName);
+        if (!hasText(extension)) {
+            return AVATAR_CONTENT_TYPE_EXTENSIONS.get(normalizedContentType);
+        }
+        if (".jpeg".equals(extension)) {
+            extension = ".jpg";
+        }
+        String expectedExtension = AVATAR_CONTENT_TYPE_EXTENSIONS.get(normalizedContentType);
+        if (!Objects.equals(extension, expectedExtension)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Avatar file extension does not match content type");
+        }
+        return extension;
+    }
+
+    private String extractExtension(String originalName) {
+        if (!hasText(originalName)) {
+            return "";
+        }
+        int index = originalName.lastIndexOf('.');
+        if (index < 0 || index == originalName.length() - 1) {
+            return "";
+        }
+        return originalName.substring(index).toLowerCase(Locale.ROOT);
+    }
+
+    private String normalizeContentType(String contentType) {
+        return contentType == null ? "" : contentType.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String normalizeObjectKey(String objectKey) {
+        return objectKey == null ? "" : objectKey.trim();
+    }
+
+    private String extractObjectName(String objectKey) {
+        int separatorIndex = objectKey.lastIndexOf('/');
+        return separatorIndex < 0 ? objectKey : objectKey.substring(separatorIndex + 1);
+    }
+
+    private String buildPublicFileUrl(Long fileAssetId) {
+        String relativePath = PUBLIC_FILE_URL_TEMPLATE.formatted(fileAssetId);
+        if (!hasText(storageProperties.getPublicBaseUrl())) {
+            return relativePath;
+        }
+        return storageProperties.getPublicBaseUrl().replaceAll("/+$", "") + relativePath;
     }
 }

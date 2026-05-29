@@ -429,13 +429,52 @@
 | --- | --- | --- |
 | GET | `/api/v1/app/profile` | 获取用户端个人资料 |
 | PUT | `/api/v1/app/profile` | 修改用户端个人资料 |
+| POST | `/api/v1/app/profile/avatar/upload-url` | 申请头像上传地址 |
+| POST | `/api/v1/app/profile/avatar/confirm` | 确认头像上传并更新头像 |
 | GET | `/api/v1/app/profile/browse-histories` | 查询浏览记录 |
 | GET | `/api/v1/app/profile/certification` | 查询学员认证结果 |
 | POST | `/api/v1/app/profile/certification` | 提交学员认证申请 |
 | GET | `/api/v1/app/profile/favorites` | 查询我的收藏 |
 | GET | `/api/v1/app/profile/summary` | 查询个人中心聚合信息 |
 
-##### 1.2.1 个人资料字段补充
+##### 1.2.1 头像上传链路
+
+用户端自定义头像不再通过 `PUT /api/v1/app/profile` 直接写 `avatarUrl`，而是走对象存储签名上传链路：
+
+1. 调用 `POST /api/v1/app/profile/avatar/upload-url` 申请上传地址。
+2. 前端使用响应中的 `method` 和 `uploadUrl` 直接上传头像文件到对象存储。
+3. 上传成功后调用 `POST /api/v1/app/profile/avatar/confirm` 确认上传，后端会校验对象存在、大小和 `contentType`，写入 `file_assets`，再把用户头像更新为稳定读取地址。
+
+`POST /api/v1/app/profile/avatar/upload-url` 请求体：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `originalName` | `string` | 原始文件名，最长 255 字符 |
+| `contentType` | `string` | 文件 MIME 类型，仅支持 `image/jpeg`、`image/png`、`image/webp` |
+| `fileSize` | `integer` | 文件字节数，必须大于 0，当前上限 5 MB |
+
+响应体字段：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `method` | `string` | 当前固定为 `PUT` |
+| `uploadUrl` | `string` | 对象存储签名上传地址 |
+| `bucketName` | `string` | 对象存储桶名 |
+| `objectKey` | `string` | 后端为当前用户生成的对象 key |
+| `contentType` | `string` | 归一化后的 MIME 类型 |
+| `fileSize` | `integer` | 本次申请的文件字节数 |
+| `expiresAt` | `string(date-time)` | 签名地址过期时间 |
+
+`POST /api/v1/app/profile/avatar/confirm` 请求体：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `objectKey` | `string` | 上传完成后的对象 key，必须与当前用户申请的头像前缀一致 |
+| `originalName` | `string` | 原始文件名，可为空；为空时后端使用对象名回填 |
+
+确认成功后返回最新 `AppProfileResponse`，其中 `avatarUrl` 为后端稳定读取地址，如 `/api/v1/files/123/content`。
+
+##### 1.2.2 个人资料字段补充
 
 `PUT /api/v1/app/profile` 请求支持以下补充字段，`GET /api/v1/app/profile` 响应同步返回：
 
@@ -443,7 +482,12 @@
 | --- | --- | --- |
 | `profileSignature` | `string` | 用户个人签名，最长 255 字符 |
 
-##### 1.2.2 学员认证字段补充
+说明：
+
+- `avatarUrl` 仍会在个人资料响应中返回，但该字段现在由头像确认接口驱动更新。
+- 如果继续在 `PUT /api/v1/app/profile` 中直接传入与当前值不同的 `avatarUrl`，后端会返回业务错误。
+
+##### 1.2.3 学员认证字段补充
 
 `POST /api/v1/app/profile/certification` 请求支持地区编码、基础数据关联和结构化认证材料：
 
@@ -523,7 +567,18 @@
 | GET | `/api/v1/app/knowledge/entries` | 搜索知识库条目 |
 | GET | `/api/v1/app/knowledge/entries/{id}` | 知识库条目详情 |
 
-#### 1.7 直播
+#### 1.7 公共文件读取
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/api/v1/files/{id}/content` | 读取公开图片资源内容 |
+
+说明：
+
+- 该接口当前用于读取用户端已确认上传的公开头像图片。
+- `avatarUrl` 等对外图片字段应优先返回这个稳定路径，而不是对象存储临时签名 URL。
+
+#### 1.8 直播
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
