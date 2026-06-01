@@ -8,12 +8,16 @@ public record FeedbackResponse(
         Long id,
         Long userId,
         Long studentId,
+        String nickname,
+        String avatarUrl,
+        String mobile,
         String feedbackType,
         String content,
         String contact,
         FeedbackStatus status,
         Long processedBy,
         LocalDateTime processedAt,
-        String processNote
+        String processNote,
+        LocalDateTime createdAt
 ) {
 }

@@ -151,7 +151,7 @@ public interface AdminStatisticsMapper {
     @Select("""
             SELECT
                 er.paper_id AS paperId,
-                ep.title AS paperTitle,
+                ep.paper_name AS paperTitle,
                 COUNT(1) AS examCount,
                 COUNT(DISTINCT er.student_id) AS studentCount,
                 COALESCE(SUM(CASE WHEN er.passed = 1 THEN 1 ELSE 0 END), 0) AS passedCount,

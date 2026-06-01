@@ -11,6 +11,7 @@ import com.gugugaga.jsmedicine.common.exception.BusinessException;
 import com.gugugaga.jsmedicine.common.exception.ErrorCode;
 import com.gugugaga.jsmedicine.common.response.PageResponse;
 import com.gugugaga.jsmedicine.infrastructure.security.CurrentAdminAccessor;
+import com.gugugaga.jsmedicine.infrastructure.storage.service.AppUserAvatarUrlResolver;
 import com.gugugaga.jsmedicine.module.user.dto.AdminStudentPageQuery;
 import com.gugugaga.jsmedicine.module.user.dto.AdminStudentResponse;
 import com.gugugaga.jsmedicine.module.user.dto.AdminStudentUpsertRequest;
@@ -51,6 +52,7 @@ public class AdminUserService {
     private final StudentCertificationFileMapper studentCertificationFileMapper;
     private final ExpertMapper expertMapper;
     private final CurrentAdminAccessor currentAdminAccessor;
+    private final AppUserAvatarUrlResolver appUserAvatarUrlResolver;
 
     public AdminUserService(
             AppUserMapper appUserMapper,
@@ -58,7 +60,8 @@ public class AdminUserService {
             StudentMapper studentMapper,
             StudentCertificationFileMapper studentCertificationFileMapper,
             ExpertMapper expertMapper,
-            CurrentAdminAccessor currentAdminAccessor
+            CurrentAdminAccessor currentAdminAccessor,
+            AppUserAvatarUrlResolver appUserAvatarUrlResolver
     ) {
         this.appUserMapper = appUserMapper;
         this.appUserIdentityMapper = appUserIdentityMapper;
@@ -66,6 +69,7 @@ public class AdminUserService {
         this.studentCertificationFileMapper = studentCertificationFileMapper;
         this.expertMapper = expertMapper;
         this.currentAdminAccessor = currentAdminAccessor;
+        this.appUserAvatarUrlResolver = appUserAvatarUrlResolver;
     }
 
     public PageResponse<AdminUserResponse> pageUsers(AdminUserPageQuery query) {
@@ -389,7 +393,7 @@ public class AdminUserService {
                 user.getEmail(),
                 user.getNickname(),
                 user.getProfileSignature(),
-                user.getAvatarUrl(),
+                appUserAvatarUrlResolver.resolve(user.getId(), user.getAvatarUrl()),
                 user.getAuthProvider(),
                 user.getWechatOpenId(),
                 user.getWechatUnionId(),

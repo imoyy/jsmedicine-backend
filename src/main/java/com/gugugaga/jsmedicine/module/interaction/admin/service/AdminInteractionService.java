@@ -8,6 +8,7 @@ import com.gugugaga.jsmedicine.common.exception.BusinessException;
 import com.gugugaga.jsmedicine.common.exception.ErrorCode;
 import com.gugugaga.jsmedicine.common.response.PageResponse;
 import com.gugugaga.jsmedicine.infrastructure.security.CurrentAdminAccessor;
+import com.gugugaga.jsmedicine.infrastructure.storage.service.AppUserAvatarUrlResolver;
 import com.gugugaga.jsmedicine.module.interaction.admin.dto.FeedbackProcessRequest;
 import com.gugugaga.jsmedicine.module.interaction.admin.dto.FeedbackResponse;
 import com.gugugaga.jsmedicine.module.interaction.admin.dto.QaAnswerRequest;
@@ -21,6 +22,8 @@ import com.gugugaga.jsmedicine.module.interaction.qa.mapper.QaAnswerMapper;
 import com.gugugaga.jsmedicine.module.interaction.qa.mapper.QaQuestionMapper;
 import com.gugugaga.jsmedicine.module.system.entity.AuditRecord;
 import com.gugugaga.jsmedicine.module.system.service.AuditRecordService;
+import com.gugugaga.jsmedicine.module.user.entity.AppUser;
+import com.gugugaga.jsmedicine.module.user.mapper.AppUserMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,21 +41,27 @@ public class AdminInteractionService {
     private final QaQuestionMapper qaQuestionMapper;
     private final QaAnswerMapper qaAnswerMapper;
     private final FeedbackMapper feedbackMapper;
+    private final AppUserMapper appUserMapper;
     private final CurrentAdminAccessor currentAdminAccessor;
     private final AuditRecordService auditRecordService;
+    private final AppUserAvatarUrlResolver appUserAvatarUrlResolver;
 
     public AdminInteractionService(
             QaQuestionMapper qaQuestionMapper,
             QaAnswerMapper qaAnswerMapper,
             FeedbackMapper feedbackMapper,
+            AppUserMapper appUserMapper,
             CurrentAdminAccessor currentAdminAccessor,
-            AuditRecordService auditRecordService
+            AuditRecordService auditRecordService,
+            AppUserAvatarUrlResolver appUserAvatarUrlResolver
     ) {
         this.qaQuestionMapper = qaQuestionMapper;
         this.qaAnswerMapper = qaAnswerMapper;
         this.feedbackMapper = feedbackMapper;
+        this.appUserMapper = appUserMapper;
         this.currentAdminAccessor = currentAdminAccessor;
         this.auditRecordService = auditRecordService;
+        this.appUserAvatarUrlResolver = appUserAvatarUrlResolver;
     }
 
     public PageResponse<QaQuestionResponse> pageQaQuestions(long page, long size, String keyword, QaStatus status) {
@@ -164,9 +173,13 @@ public class AdminInteractionService {
     }
 
     private FeedbackResponse toFeedbackResponse(Feedback feedback) {
+        AppUser user = feedback.getUserId() == null ? null : appUserMapper.selectById(feedback.getUserId());
         return new FeedbackResponse(feedback.getId(), feedback.getUserId(), feedback.getStudentId(),
+                user == null ? null : user.getNickname(),
+                user == null ? null : appUserAvatarUrlResolver.resolve(user.getId(), user.getAvatarUrl()),
+                user == null ? null : user.getMobile(),
                 feedback.getFeedbackType(), feedback.getContent(), feedback.getContact(), feedback.getStatus(),
-                feedback.getProcessedBy(), feedback.getProcessedAt(), feedback.getProcessNote());
+                feedback.getProcessedBy(), feedback.getProcessedAt(), feedback.getProcessNote(), feedback.getCreatedAt());
     }
 
     private void saveAudit(String targetType, Long targetId, Integer before, Integer after, String comment) {

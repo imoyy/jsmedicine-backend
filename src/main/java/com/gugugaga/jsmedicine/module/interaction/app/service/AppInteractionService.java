@@ -135,8 +135,9 @@ public class AppInteractionService {
 
     private FeedbackResponse toFeedbackResponse(Feedback feedback) {
         return new FeedbackResponse(feedback.getId(), feedback.getUserId(), feedback.getStudentId(),
-                feedback.getFeedbackType(), feedback.getContent(), feedback.getContact(), feedback.getStatus(),
-                feedback.getProcessedBy(), feedback.getProcessedAt(), feedback.getProcessNote());
+                null, null, null, feedback.getFeedbackType(), feedback.getContent(), feedback.getContact(),
+                feedback.getStatus(), feedback.getProcessedBy(), feedback.getProcessedAt(),
+                feedback.getProcessNote(), feedback.getCreatedAt());
     }
 
     private <E, R> PageResponse<R> pageResponse(Page<E> page, List<R> records) {
