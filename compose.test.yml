@@ -12,6 +12,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      minio:
+        condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-test}
       SERVER_PORT: 8080
@@ -42,6 +44,15 @@ services:
       WECHAT_MINIAPP_MOCK_ENABLED: ${WECHAT_MINIAPP_MOCK_ENABLED:-false}
       WECHAT_MINIAPP_APP_ID: ${WECHAT_MINIAPP_APP_ID:-}
       WECHAT_MINIAPP_APP_SECRET: ${WECHAT_MINIAPP_APP_SECRET:-}
+      APP_STORAGE_PROVIDER: ${APP_STORAGE_PROVIDER:-minio}
+      APP_STORAGE_ENDPOINT: ${APP_STORAGE_ENDPOINT:-http://minio:9000}
+      APP_STORAGE_ACCESS_KEY: ${APP_STORAGE_ACCESS_KEY:-${MINIO_ROOT_USER:-minioadmin}}
+      APP_STORAGE_SECRET_KEY: ${APP_STORAGE_SECRET_KEY:-${MINIO_ROOT_PASSWORD:-minioadmin123}}
+      APP_STORAGE_PUBLIC_BASE_URL: ${APP_STORAGE_PUBLIC_BASE_URL:-}
+      APP_STORAGE_AUTO_CREATE_BUCKET: ${APP_STORAGE_AUTO_CREATE_BUCKET:-true}
+      APP_STORAGE_AVATAR_BUCKET_NAME: ${APP_STORAGE_AVATAR_BUCKET_NAME:-public}
+      APP_STORAGE_AVATAR_MAX_FILE_SIZE_BYTES: ${APP_STORAGE_AVATAR_MAX_FILE_SIZE_BYTES:-5242880}
+      APP_STORAGE_AVATAR_UPLOAD_URL_TTL_SECONDS: ${APP_STORAGE_AVATAR_UPLOAD_URL_TTL_SECONDS:-900}
       TEST_BASE_URL: ${TEST_BASE_URL:-https://api-test.example.com}
       APP_CORS_ALLOWED_ORIGIN_PATTERNS: ${APP_CORS_ALLOWED_ORIGIN_PATTERNS:-}
       APP_CORS_ALLOWED_METHODS: ${APP_CORS_ALLOWED_METHODS:-GET,POST,PUT,PATCH,DELETE,OPTIONS}
@@ -104,6 +115,27 @@ services:
       timeout: 5s
       retries: 10
 
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    container_name: jsmedicine-test-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+      TZ: ${TZ:-Asia/Shanghai}
+    volumes:
+      - minio_test_data:/data
+    ports:
+      - "${MINIO_BIND_HOST:-127.0.0.1}:${MINIO_PORT:-9000}:9000"
+      - "${MINIO_BIND_HOST:-127.0.0.1}:${MINIO_CONSOLE_PORT:-9001}:9001"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9000/minio/health/live > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
 volumes:
   mysql_test_data:
   redis_test_data:
+  minio_test_data:

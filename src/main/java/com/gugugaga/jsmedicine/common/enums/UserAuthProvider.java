@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum UserAuthProvider {
     WECHAT_MINIAPP("wechat_miniapp"),
+    WECHAT_WEB("wechat_web"),
     MOBILE_SMS("mobile_sms");
 
     @EnumValue

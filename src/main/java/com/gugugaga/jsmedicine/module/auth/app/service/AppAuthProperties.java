@@ -11,6 +11,7 @@ public class AppAuthProperties {
     private String tokenPrefix = "app:user:token:";
     private Sms sms = new Sms();
     private Wechat wechat = new Wechat();
+    private WechatWeb wechatWeb = new WechatWeb();
 
     public long getTokenTtlSeconds() {
         return tokenTtlSeconds;
@@ -42,6 +43,14 @@ public class AppAuthProperties {
 
     public void setWechat(Wechat wechat) {
         this.wechat = wechat;
+    }
+
+    public WechatWeb getWechatWeb() {
+        return wechatWeb;
+    }
+
+    public void setWechatWeb(WechatWeb wechatWeb) {
+        this.wechatWeb = wechatWeb;
     }
 
     public static class Sms {
@@ -178,6 +187,90 @@ public class AppAuthProperties {
 
         public void setMockEnabled(boolean mockEnabled) {
             this.mockEnabled = mockEnabled;
+        }
+
+        public long getBindTokenTtlSeconds() {
+            return bindTokenTtlSeconds;
+        }
+
+        public void setBindTokenTtlSeconds(long bindTokenTtlSeconds) {
+            this.bindTokenTtlSeconds = bindTokenTtlSeconds;
+        }
+
+        public String getBindTokenPrefix() {
+            return bindTokenPrefix;
+        }
+
+        public void setBindTokenPrefix(String bindTokenPrefix) {
+            this.bindTokenPrefix = bindTokenPrefix;
+        }
+    }
+
+    public static class WechatWeb {
+        private String appId;
+        private String appSecret;
+        private String redirectUri;
+        private String scope = "snsapi_login";
+        private boolean mockEnabled;
+        private long stateTtlSeconds = 600;
+        private String statePrefix = "app:user:wechat:web:state:";
+        private long bindTokenTtlSeconds = 600;
+        private String bindTokenPrefix = "app:user:wechat:web:bind:";
+
+        public String getAppId() {
+            return appId;
+        }
+
+        public void setAppId(String appId) {
+            this.appId = appId;
+        }
+
+        public String getAppSecret() {
+            return appSecret;
+        }
+
+        public void setAppSecret(String appSecret) {
+            this.appSecret = appSecret;
+        }
+
+        public String getRedirectUri() {
+            return redirectUri;
+        }
+
+        public void setRedirectUri(String redirectUri) {
+            this.redirectUri = redirectUri;
+        }
+
+        public String getScope() {
+            return scope;
+        }
+
+        public void setScope(String scope) {
+            this.scope = scope;
+        }
+
+        public boolean isMockEnabled() {
+            return mockEnabled;
+        }
+
+        public void setMockEnabled(boolean mockEnabled) {
+            this.mockEnabled = mockEnabled;
+        }
+
+        public long getStateTtlSeconds() {
+            return stateTtlSeconds;
+        }
+
+        public void setStateTtlSeconds(long stateTtlSeconds) {
+            this.stateTtlSeconds = stateTtlSeconds;
+        }
+
+        public String getStatePrefix() {
+            return statePrefix;
+        }
+
+        public void setStatePrefix(String statePrefix) {
+            this.statePrefix = statePrefix;
         }
 
         public long getBindTokenTtlSeconds() {

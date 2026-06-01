@@ -6,6 +6,8 @@ import com.gugugaga.jsmedicine.module.auth.app.dto.AppLoginRequest;
 import com.gugugaga.jsmedicine.module.auth.app.dto.AppLoginResponse;
 import com.gugugaga.jsmedicine.module.auth.app.dto.AppWechatBindMobileRequest;
 import com.gugugaga.jsmedicine.module.auth.app.dto.AppWechatLoginResponse;
+import com.gugugaga.jsmedicine.module.auth.app.dto.AppWechatWebLoginRequest;
+import com.gugugaga.jsmedicine.module.auth.app.dto.AppWechatWebQrConfigResponse;
 import com.gugugaga.jsmedicine.module.auth.app.dto.AppSmsCodeRequest;
 import com.gugugaga.jsmedicine.module.auth.app.dto.AppSmsLoginRequest;
 import com.gugugaga.jsmedicine.module.auth.app.dto.AppWechatLoginRequest;
@@ -64,6 +66,21 @@ public class AppAuthController {
             HttpServletRequest httpServletRequest
     ) {
         return ApiResponse.ok(appAuthService.loginByWechat(request, httpServletRequest));
+    }
+
+    @Operation(summary = "获取用户端官网微信扫码配置")
+    @GetMapping("/wechat-web/qr-config")
+    public ApiResponse<AppWechatWebQrConfigResponse> getWechatWebQrConfig() {
+        return ApiResponse.ok(appAuthService.getWechatWebQrConfig());
+    }
+
+    @Operation(summary = "用户端官网微信扫码登录")
+    @PostMapping("/wechat-web/login")
+    public ApiResponse<AppWechatLoginResponse> wechatWebLogin(
+            @Valid @RequestBody AppWechatWebLoginRequest request,
+            HttpServletRequest httpServletRequest
+    ) {
+        return ApiResponse.ok(appAuthService.loginByWechatWeb(request, httpServletRequest));
     }
 
     @Operation(summary = "用户端微信授权绑定手机号")

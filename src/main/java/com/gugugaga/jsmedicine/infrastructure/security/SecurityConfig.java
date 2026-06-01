@@ -45,7 +45,9 @@ public class SecurityConfig {
                                 "/api/v1/app/auth/sms-code",
                                 "/api/v1/app/auth/sms-login",
                                 "/api/v1/app/auth/wechat-login",
-                                "/api/v1/app/auth/wechat-bind-mobile"
+                                "/api/v1/app/auth/wechat-bind-mobile",
+                                "/api/v1/app/auth/wechat-web/qr-config",
+                                "/api/v1/app/auth/wechat-web/login"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )

@@ -17,3 +17,5 @@ app:
       mock-code: ${APP_USER_AUTH_SMS_MOCK_CODE:123456}
     wechat:
       mock-enabled: ${WECHAT_MINIAPP_MOCK_ENABLED:true}
+    wechat-web:
+      mock-enabled: ${WECHAT_WEB_MOCK_ENABLED:true}

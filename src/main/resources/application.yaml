@@ -96,6 +96,14 @@ app:
       app-id: ${WECHAT_MINIAPP_APP_ID:}
       app-secret: ${WECHAT_MINIAPP_APP_SECRET:}
       mock-enabled: ${WECHAT_MINIAPP_MOCK_ENABLED:false}
+    wechat-web:
+      app-id: ${WECHAT_WEB_APP_ID:}
+      app-secret: ${WECHAT_WEB_APP_SECRET:}
+      redirect-uri: ${WECHAT_WEB_REDIRECT_URI:}
+      scope: ${WECHAT_WEB_SCOPE:snsapi_login}
+      mock-enabled: ${WECHAT_WEB_MOCK_ENABLED:true}
+      state-ttl-seconds: ${WECHAT_WEB_STATE_TTL_SECONDS:600}
+      bind-token-ttl-seconds: ${WECHAT_WEB_BIND_TOKEN_TTL_SECONDS:600}
   storage:
     provider: ${APP_STORAGE_PROVIDER:minio}
     endpoint: ${APP_STORAGE_ENDPOINT:http://127.0.0.1:${MINIO_PORT:9000}}
