@@ -13,6 +13,7 @@ public class StorageProperties {
     private String accessKey = "minioadmin";
     private String secretKey = "minioadmin123";
     private String publicBaseUrl;
+    private String presignedUploadBaseUrl;
     private boolean autoCreateBucket = true;
     private Avatar avatar = new Avatar();
 
@@ -54,6 +55,14 @@ public class StorageProperties {
 
     public void setPublicBaseUrl(String publicBaseUrl) {
         this.publicBaseUrl = publicBaseUrl;
+    }
+
+    public String getPresignedUploadBaseUrl() {
+        return presignedUploadBaseUrl;
+    }
+
+    public void setPresignedUploadBaseUrl(String presignedUploadBaseUrl) {
+        this.presignedUploadBaseUrl = presignedUploadBaseUrl;
     }
 
     public boolean isAutoCreateBucket() {

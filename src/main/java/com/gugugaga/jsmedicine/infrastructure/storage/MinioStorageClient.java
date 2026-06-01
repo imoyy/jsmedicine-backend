@@ -12,6 +12,7 @@ import io.minio.errors.ErrorResponseException;
 import io.minio.http.Method;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.util.StringUtils;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -49,7 +50,7 @@ public class MinioStorageClient implements StorageClient {
                     .object(objectKey)
                     .expiry(expirySeconds)
                     .build());
-            return new StorageUploadUrl("PUT", uploadUrl, LocalDateTime.now().plusSeconds(expirySeconds));
+            return new StorageUploadUrl("PUT", rewritePresignedUploadUrl(uploadUrl), LocalDateTime.now().plusSeconds(expirySeconds));
         } catch (Exception exception) {
             log.error("Failed to create presigned upload url, bucket={}, objectKey={}", bucketName, objectKey, exception);
             throw new BusinessException(ErrorCode.INTERNAL_ERROR, "Failed to create upload url");
@@ -153,5 +154,23 @@ public class MinioStorageClient implements StorageClient {
             seconds = storageProperties.getAvatar().getUploadUrlTtlSeconds();
         }
         return (int) Math.min(seconds, MAX_PRESIGNED_EXPIRY_SECONDS);
+    }
+
+    private String rewritePresignedUploadUrl(String uploadUrl) {
+        if (!StringUtils.hasText(storageProperties.getPresignedUploadBaseUrl())) {
+            return uploadUrl;
+        }
+        String baseUrl = storageProperties.getPresignedUploadBaseUrl().replaceAll("/+$", "");
+        int pathIndex = uploadUrl.indexOf("://");
+        if (pathIndex < 0) {
+            log.error("Invalid presigned upload url returned by MinIO client: {}", uploadUrl);
+            throw new BusinessException(ErrorCode.INTERNAL_ERROR, "Failed to create upload url");
+        }
+        int firstSlashAfterHost = uploadUrl.indexOf('/', pathIndex + 3);
+        if (firstSlashAfterHost < 0) {
+            log.error("Invalid presigned upload url returned by MinIO client: {}", uploadUrl);
+            throw new BusinessException(ErrorCode.INTERNAL_ERROR, "Failed to create upload url");
+        }
+        return baseUrl + uploadUrl.substring(firstSlashAfterHost);
     }
 }

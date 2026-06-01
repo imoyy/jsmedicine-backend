@@ -110,6 +110,7 @@ app:
     access-key: ${APP_STORAGE_ACCESS_KEY:${MINIO_ROOT_USER:minioadmin}}
     secret-key: ${APP_STORAGE_SECRET_KEY:${MINIO_ROOT_PASSWORD:minioadmin123}}
     public-base-url: ${APP_STORAGE_PUBLIC_BASE_URL:}
+    presigned-upload-base-url: ${APP_STORAGE_PRESIGNED_UPLOAD_BASE_URL:}
     auto-create-bucket: ${APP_STORAGE_AUTO_CREATE_BUCKET:true}
     avatar:
       bucket-name: ${APP_STORAGE_AVATAR_BUCKET_NAME:public}
