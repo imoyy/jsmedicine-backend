@@ -310,6 +310,7 @@
 
 ## 变更记录
 
+- 2026-06-02：修复管理端联调 500，纠正成绩统计按试卷查询 `GROUP BY` 仍引用旧列 `ep.title` 的问题，并新增 `V21__fix_qa_answers_created_at.sql` 为 `qa_answers` 补 `created_at` 列，消除答疑回复插入时与 `QaAnswer` 实体不一致导致的 500；同时兼容旧数据里答疑状态为空时按 `PENDING` 处理。
 - 2026-06-01：修复管理端联调首批问题，反馈列表补齐 `nickname`、`avatarUrl`、`mobile`、`createdAt`，管理端用户头像优先解析为稳定文件地址 `/api/v1/files/{id}/content`，修正成绩统计按试卷查询 SQL 字段名，并补充 dev 验收种子中的图书页数、资讯来源/标签、播客主讲人/标签、专家画像和用户稳定头像数据。
 - 2026-06-01：根据当前仍处于开发阶段、尚无正式官网地址的实际情况，将官网微信扫码登录开发态切换为“纯后端 mock 链路可跑”，允许 `WECHAT_WEB_MOCK_ENABLED=true` 时跳过真实网站应用配置校验；同时在任务清单中明确记录，产品官网上线后需关闭 mock、补齐真实网站应用配置并切回微信官方扫码登录。
 - 2026-06-01：开始推进 Q1 用户端认证收口，新增官网微信扫码登录支持，增加 `wechat_web_open_id` 字段、网站扫码 `state`/绑定 token Redis 能力、`/api/v1/app/auth/wechat-web/*` 接口和配置项；用户端微信登录匹配逻辑统一为优先 `wechat_union_id` 再按端侧 `openid` 恢复登录态。

@@ -81,7 +81,7 @@ public class AdminInteractionService {
     @Transactional(rollbackFor = Exception.class)
     public QaQuestionResponse answerQuestion(Long questionId, QaAnswerRequest request) {
         QaQuestion question = requireQaQuestion(questionId);
-        QaStatus before = question.getStatus();
+        QaStatus before = question.getStatus() == null ? QaStatus.PENDING : question.getStatus();
         QaAnswer answer = new QaAnswer();
         answer.setQuestionId(questionId);
         answer.setAdminId(currentAdminAccessor.getCurrentAdminId().orElse(0L));

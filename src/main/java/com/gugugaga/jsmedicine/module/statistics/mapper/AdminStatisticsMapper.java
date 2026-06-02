@@ -167,7 +167,7 @@ public interface AdminStatisticsMapper {
               AND (#{studentId} IS NULL OR er.student_id = #{studentId})
               AND (#{province} IS NULL OR s.province = #{province})
               AND (#{city} IS NULL OR s.city = #{city})
-            GROUP BY er.paper_id, ep.title
+            GROUP BY er.paper_id, ep.paper_name
             ORDER BY examCount DESC, averageScore DESC
             """)
     List<ExamPaperScoreResponse> selectExamScoresByPaper(
