@@ -63,6 +63,10 @@ import com.gugugaga.jsmedicine.module.learning.record.mapper.ExamRecordAnswerMap
 import com.gugugaga.jsmedicine.module.learning.record.mapper.ExamRecordMapper;
 import com.gugugaga.jsmedicine.module.learning.record.entity.LearningRecord;
 import com.gugugaga.jsmedicine.module.learning.record.mapper.LearningRecordMapper;
+import com.gugugaga.jsmedicine.module.interaction.favorite.entity.UserFavorite;
+import com.gugugaga.jsmedicine.module.interaction.favorite.mapper.UserFavoriteMapper;
+import com.gugugaga.jsmedicine.module.interaction.history.entity.UserBrowseHistory;
+import com.gugugaga.jsmedicine.module.interaction.history.mapper.UserBrowseHistoryMapper;
 import com.gugugaga.jsmedicine.module.user.entity.Student;
 import com.gugugaga.jsmedicine.module.user.mapper.StudentMapper;
 import org.springframework.stereotype.Service;
@@ -73,6 +77,7 @@ import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -87,7 +92,11 @@ public class AppLearningService {
     private static final long DEFAULT_SIZE = 20L;
     private static final long MAX_SIZE = 100L;
     private static final BigDecimal ZERO_PROGRESS = BigDecimal.ZERO.setScale(2);
+    private static final long ZERO_COUNT = 0L;
+    private static final String RESOURCE_TYPE_COURSE = "course";
+    private static final String RESOURCE_TYPE_BOOK = "book";
     private static final String RESOURCE_TYPE_PODCAST = "podcast";
+    private static final String RESOURCE_TYPE_TOPIC = "topic";
 
     private final CurrentAppUserResolver currentAppUserResolver;
     private final StudentMapper studentMapper;
@@ -107,6 +116,8 @@ public class AppLearningService {
     private final QuestionOptionMapper questionOptionMapper;
     private final ExamRecordMapper examRecordMapper;
     private final ExamRecordAnswerMapper examRecordAnswerMapper;
+    private final UserFavoriteMapper userFavoriteMapper;
+    private final UserBrowseHistoryMapper userBrowseHistoryMapper;
     private final ResourceTagService resourceTagService;
 
     public AppLearningService(
@@ -128,6 +139,8 @@ public class AppLearningService {
             QuestionOptionMapper questionOptionMapper,
             ExamRecordMapper examRecordMapper,
             ExamRecordAnswerMapper examRecordAnswerMapper,
+            UserFavoriteMapper userFavoriteMapper,
+            UserBrowseHistoryMapper userBrowseHistoryMapper,
             ResourceTagService resourceTagService
     ) {
         this.currentAppUserResolver = currentAppUserResolver;
@@ -148,6 +161,8 @@ public class AppLearningService {
         this.questionOptionMapper = questionOptionMapper;
         this.examRecordMapper = examRecordMapper;
         this.examRecordAnswerMapper = examRecordAnswerMapper;
+        this.userFavoriteMapper = userFavoriteMapper;
+        this.userBrowseHistoryMapper = userBrowseHistoryMapper;
         this.resourceTagService = resourceTagService;
     }
 
@@ -161,12 +176,18 @@ public class AppLearningService {
                         .orderByAsc("sortOrderAsc".equals(query.sort()), Course::getSortOrder)
                         .orderByDesc(!"sortOrderAsc".equals(query.sort()), Course::getPublishedAt));
         Long studentId = currentStudentId().orElse(null);
-        return pageResponse(page, page.getRecords().stream().map(course -> toCourseResponse(course, false, studentId)).toList());
+        Long userId = currentUserId().orElse(null);
+        Map<Long, ResourceInteractionSnapshot> snapshots = loadInteractionSnapshots(userId, RESOURCE_TYPE_COURSE,
+                page.getRecords().stream().map(Course::getId).toList());
+        return pageResponse(page, page.getRecords().stream()
+                .map(course -> toCourseResponse(course, false, studentId, snapshots.get(course.getId())))
+                .toList());
     }
 
     public AppCourseResponse courseDetail(Long id) {
         Course course = requireVisibleCourse(id);
-        return toCourseResponse(course, true, currentStudentId().orElse(null));
+        return toCourseResponse(course, true, currentStudentId().orElse(null),
+                loadInteractionSnapshot(currentUserId().orElse(null), RESOURCE_TYPE_COURSE, course.getId()));
     }
 
     public AppCourseVideoResponse courseVideoDetail(Long courseId, Long videoId) {
@@ -201,12 +222,18 @@ public class AppLearningService {
                         .orderByAsc("sortOrderAsc".equals(query.sort()), Book::getSortOrder)
                         .orderByDesc(!"sortOrderAsc".equals(query.sort()), Book::getPublishedAt));
         Long studentId = currentStudentId().orElse(null);
-        return pageResponse(page, page.getRecords().stream().map(book -> toBookResponse(book, false, studentId)).toList());
+        Long userId = currentUserId().orElse(null);
+        Map<Long, ResourceInteractionSnapshot> snapshots = loadInteractionSnapshots(userId, RESOURCE_TYPE_BOOK,
+                page.getRecords().stream().map(Book::getId).toList());
+        return pageResponse(page, page.getRecords().stream()
+                .map(book -> toBookResponse(book, false, studentId, snapshots.get(book.getId())))
+                .toList());
     }
 
     public AppBookResponse bookDetail(Long id) {
         Book book = requireVisibleBook(id);
-        return toBookResponse(book, true, currentStudentId().orElse(null));
+        return toBookResponse(book, true, currentStudentId().orElse(null),
+                loadInteractionSnapshot(currentUserId().orElse(null), RESOURCE_TYPE_BOOK, book.getId()));
     }
 
     public AppBookChapterResponse bookChapterDetail(Long bookId, Long chapterId) {
@@ -228,12 +255,18 @@ public class AppLearningService {
                         .orderByAsc("sortOrderAsc".equals(query.sort()), Podcast::getSortOrder)
                         .orderByDesc(!"sortOrderAsc".equals(query.sort()), Podcast::getPublishedAt));
         Long studentId = currentStudentId().orElse(null);
-        return pageResponse(page, page.getRecords().stream().map(podcast -> toPodcastResponse(podcast, false, studentId)).toList());
+        Long userId = currentUserId().orElse(null);
+        Map<Long, ResourceInteractionSnapshot> snapshots = loadInteractionSnapshots(userId, RESOURCE_TYPE_PODCAST,
+                page.getRecords().stream().map(Podcast::getId).toList());
+        return pageResponse(page, page.getRecords().stream()
+                .map(podcast -> toPodcastResponse(podcast, false, studentId, snapshots.get(podcast.getId())))
+                .toList());
     }
 
     public AppPodcastResponse podcastDetail(Long id) {
         Podcast podcast = requireVisiblePodcast(id);
-        return toPodcastResponse(podcast, true, currentStudentId().orElse(null));
+        return toPodcastResponse(podcast, true, currentStudentId().orElse(null),
+                loadInteractionSnapshot(currentUserId().orElse(null), RESOURCE_TYPE_PODCAST, podcast.getId()));
     }
 
     public PageResponse<AppExamPaperResponse> pageExamPapers(AppLearningPageQuery query) {
@@ -319,14 +352,20 @@ public class AppLearningService {
                         .and(hasText(query.keyword()), wrapper -> wrapper.like(Topic::getTitle, query.keyword()))
                         .orderByAsc("sortOrderAsc".equals(query.sort()), Topic::getSortOrder)
                         .orderByDesc(!"sortOrderAsc".equals(query.sort()), Topic::getPublishedAt));
-        return pageResponse(page, page.getRecords().stream().map(topic -> toTopicResponse(topic, false)).toList());
+        Long userId = currentUserId().orElse(null);
+        Map<Long, ResourceInteractionSnapshot> snapshots = loadInteractionSnapshots(userId, RESOURCE_TYPE_TOPIC,
+                page.getRecords().stream().map(Topic::getId).toList());
+        return pageResponse(page, page.getRecords().stream()
+                .map(topic -> toTopicResponse(topic, false, snapshots.get(topic.getId())))
+                .toList());
     }
 
     public AppTopicResponse topicDetail(Long id) {
         Topic topic = requireVisibleTopic(id);
         topic.setViewCount((topic.getViewCount() == null ? 0 : topic.getViewCount()) + 1);
         topicMapper.updateById(topic);
-        return toTopicResponse(topic, true);
+        return toTopicResponse(topic, true,
+                loadInteractionSnapshot(currentUserId().orElse(null), RESOURCE_TYPE_TOPIC, topic.getId()));
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -474,10 +513,12 @@ public class AppLearningService {
         return question;
     }
 
-    private AppCourseResponse toCourseResponse(Course course, boolean includeVideos, Long studentId) {
-        LearningRecord record = findLearningRecord(studentId, "course", course.getId()).orElse(null);
+    private AppCourseResponse toCourseResponse(Course course, boolean includeVideos, Long studentId,
+                                               ResourceInteractionSnapshot snapshot) {
+        LearningRecord record = findLearningRecord(studentId, RESOURCE_TYPE_COURSE, course.getId()).orElse(null);
         return new AppCourseResponse(course.getId(), course.getCourseName(), course.getSubtitle(), course.getCoverUrl(),
                 course.getLecturerName(), course.getIntroduction(), course.getPaperId(), course.getPublishedAt(),
+                snapshot.browseCount(), snapshot.favoriteCount(), snapshot.favorited(),
                 progress(record), studySeconds(record), includeVideos ? loadCourseVideos(course.getId()) : List.of());
     }
 
@@ -503,11 +544,13 @@ public class AppLearningService {
                 category.getSortOrder());
     }
 
-    private AppBookResponse toBookResponse(Book book, boolean includeChapters, Long studentId) {
-        LearningRecord record = findLearningRecord(studentId, "book", book.getId()).orElse(null);
+    private AppBookResponse toBookResponse(Book book, boolean includeChapters, Long studentId,
+                                           ResourceInteractionSnapshot snapshot) {
+        LearningRecord record = findLearningRecord(studentId, RESOURCE_TYPE_BOOK, book.getId()).orElse(null);
         return new AppBookResponse(book.getId(), book.getCategoryId(), book.getBookName(), book.getAuthor(),
                 book.getPublisher(), book.getCoverUrl(), book.getIntroduction(), book.getTotalPages(), book.getPaperId(),
-                book.getPublishedAt(), progress(record), studySeconds(record),
+                book.getPublishedAt(), snapshot.browseCount(), snapshot.favoriteCount(), snapshot.favorited(),
+                progress(record), studySeconds(record),
                 includeChapters ? loadBookChapters(book.getId()) : List.of());
     }
 
@@ -529,11 +572,13 @@ public class AppLearningService {
                 chapter.getPaperId(), chapter.getSortOrder());
     }
 
-    private AppPodcastResponse toPodcastResponse(Podcast podcast, boolean includeAudios, Long studentId) {
-        LearningRecord record = findLearningRecord(studentId, "podcast", podcast.getId()).orElse(null);
+    private AppPodcastResponse toPodcastResponse(Podcast podcast, boolean includeAudios, Long studentId,
+                                                 ResourceInteractionSnapshot snapshot) {
+        LearningRecord record = findLearningRecord(studentId, RESOURCE_TYPE_PODCAST, podcast.getId()).orElse(null);
         return new AppPodcastResponse(podcast.getId(), podcast.getTitle(), podcast.getSummary(), podcast.getCoverUrl(),
                 podcast.getSpeakerName(), resourceTagService.loadTagNames(RESOURCE_TYPE_PODCAST, podcast.getId()),
-                podcast.getPublishedAt(), progress(record), studySeconds(record),
+                podcast.getPublishedAt(), snapshot.browseCount(), snapshot.favoriteCount(), snapshot.favorited(),
+                progress(record), studySeconds(record),
                 includeAudios ? loadPodcastAudios(podcast.getId()) : List.of());
     }
 
@@ -661,9 +706,10 @@ public class AppLearningService {
                 .collect(Collectors.joining(","));
     }
 
-    private AppTopicResponse toTopicResponse(Topic topic, boolean includeItems) {
+    private AppTopicResponse toTopicResponse(Topic topic, boolean includeItems, ResourceInteractionSnapshot snapshot) {
         return new AppTopicResponse(topic.getId(), topic.getTitle(), topic.getSummary(), topic.getLearningRequirements(),
-                topic.getCoverUrl(), topic.getViewCount(), topic.getPublishedAt(), includeItems ? loadTopicItems(topic.getId()) : List.of());
+                topic.getCoverUrl(), topic.getViewCount(), topic.getPublishedAt(),
+                snapshot.favoriteCount(), snapshot.favorited(), includeItems ? loadTopicItems(topic.getId()) : List.of());
     }
 
     private List<AppTopicItemResponse> loadTopicItems(Long topicId) {
@@ -679,15 +725,75 @@ public class AppLearningService {
     private Object resolveTopicItemResource(TopicItem item) {
         try {
             return switch (item.getItemType()) {
-                case "course" -> toCourseResponse(requireVisibleCourse(item.getItemId()), false, currentStudentId().orElse(null));
-                case "book" -> toBookResponse(requireVisibleBook(item.getItemId()), false, currentStudentId().orElse(null));
-                case "podcast" -> toPodcastResponse(requireVisiblePodcast(item.getItemId()), false, currentStudentId().orElse(null));
-                case "topic" -> toTopicResponse(requireVisibleTopic(item.getItemId()), false);
+                case RESOURCE_TYPE_COURSE -> toCourseResponse(requireVisibleCourse(item.getItemId()), false,
+                        currentStudentId().orElse(null),
+                        loadInteractionSnapshot(currentUserId().orElse(null), RESOURCE_TYPE_COURSE, item.getItemId()));
+                case RESOURCE_TYPE_BOOK -> toBookResponse(requireVisibleBook(item.getItemId()), false,
+                        currentStudentId().orElse(null),
+                        loadInteractionSnapshot(currentUserId().orElse(null), RESOURCE_TYPE_BOOK, item.getItemId()));
+                case RESOURCE_TYPE_PODCAST -> toPodcastResponse(requireVisiblePodcast(item.getItemId()), false,
+                        currentStudentId().orElse(null),
+                        loadInteractionSnapshot(currentUserId().orElse(null), RESOURCE_TYPE_PODCAST, item.getItemId()));
+                case RESOURCE_TYPE_TOPIC -> toTopicResponse(requireVisibleTopic(item.getItemId()), false,
+                        loadInteractionSnapshot(currentUserId().orElse(null), RESOURCE_TYPE_TOPIC, item.getItemId()));
                 default -> null;
             };
         } catch (BusinessException ignored) {
             return null;
         }
+    }
+
+    private Map<Long, ResourceInteractionSnapshot> loadInteractionSnapshots(Long userId, String resourceType, List<Long> resourceIds) {
+        if (resourceIds == null || resourceIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, Long> browseCounts = loadBrowseCounts(resourceType, resourceIds);
+        Map<Long, Long> favoriteCounts = loadFavoriteCounts(resourceType, resourceIds);
+        Set<Long> favoritedIds = loadFavoritedIds(userId, resourceType, resourceIds);
+        Map<Long, ResourceInteractionSnapshot> snapshots = new HashMap<>();
+        for (Long resourceId : resourceIds) {
+            snapshots.put(resourceId, new ResourceInteractionSnapshot(
+                    browseCounts.getOrDefault(resourceId, ZERO_COUNT),
+                    favoriteCounts.getOrDefault(resourceId, ZERO_COUNT),
+                    favoritedIds.contains(resourceId)
+            ));
+        }
+        return snapshots;
+    }
+
+    private ResourceInteractionSnapshot loadInteractionSnapshot(Long userId, String resourceType, Long resourceId) {
+        return loadInteractionSnapshots(userId, resourceType, List.of(resourceId))
+                .getOrDefault(resourceId, ResourceInteractionSnapshot.empty());
+    }
+
+    private Map<Long, Long> loadBrowseCounts(String resourceType, List<Long> resourceIds) {
+        return userBrowseHistoryMapper.selectList(new LambdaQueryWrapper<UserBrowseHistory>()
+                        .eq(UserBrowseHistory::getResourceType, resourceType)
+                        .in(UserBrowseHistory::getResourceId, resourceIds))
+                .stream()
+                .collect(Collectors.groupingBy(UserBrowseHistory::getResourceId,
+                        Collectors.summingLong(history -> history.getViewCount() == null ? 0 : history.getViewCount())));
+    }
+
+    private Map<Long, Long> loadFavoriteCounts(String resourceType, List<Long> resourceIds) {
+        return userFavoriteMapper.selectList(new LambdaQueryWrapper<UserFavorite>()
+                        .eq(UserFavorite::getResourceType, resourceType)
+                        .in(UserFavorite::getResourceId, resourceIds))
+                .stream()
+                .collect(Collectors.groupingBy(UserFavorite::getResourceId, Collectors.counting()));
+    }
+
+    private Set<Long> loadFavoritedIds(Long userId, String resourceType, List<Long> resourceIds) {
+        if (userId == null) {
+            return Set.of();
+        }
+        return userFavoriteMapper.selectList(new LambdaQueryWrapper<UserFavorite>()
+                        .eq(UserFavorite::getUserId, userId)
+                        .eq(UserFavorite::getResourceType, resourceType)
+                        .in(UserFavorite::getResourceId, resourceIds))
+                .stream()
+                .map(UserFavorite::getResourceId)
+                .collect(Collectors.toSet());
     }
 
     private Optional<LearningRecord> findLearningRecord(Long studentId, String resourceType, Long resourceId) {
@@ -713,6 +819,10 @@ public class AppLearningService {
 
     private Integer studySeconds(LearningRecord record) {
         return record == null || record.getStudySeconds() == null ? 0 : record.getStudySeconds();
+    }
+
+    private Optional<Long> currentUserId() {
+        return currentAppUserResolver.currentSession().map(AppUserSession::userId);
     }
 
     private BigDecimal normalizeProgress(BigDecimal value) {
@@ -776,5 +886,12 @@ public class AppLearningService {
 
     private boolean hasText(String value) {
         return value != null && !value.isBlank();
+    }
+
+    private record ResourceInteractionSnapshot(Long browseCount, Long favoriteCount, Boolean favorited) {
+
+        private static ResourceInteractionSnapshot empty() {
+            return new ResourceInteractionSnapshot(ZERO_COUNT, ZERO_COUNT, false);
+        }
     }
 }

@@ -13,6 +13,9 @@ public record AppCourseResponse(
         String introduction,
         Long paperId,
         LocalDateTime publishedAt,
+        Long browseCount,
+        Long favoriteCount,
+        Boolean favorited,
         BigDecimal progressPercent,
         Integer studySeconds,
         List<AppCourseVideoResponse> videos

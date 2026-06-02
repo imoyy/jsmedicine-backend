@@ -3,9 +3,12 @@ package com.gugugaga.jsmedicine.module.interaction.app.controller;
 import com.gugugaga.jsmedicine.common.response.ApiResponse;
 import com.gugugaga.jsmedicine.common.response.PageResponse;
 import com.gugugaga.jsmedicine.module.interaction.admin.dto.FeedbackResponse;
+import com.gugugaga.jsmedicine.module.interaction.app.dto.AppBrowseHistoryRequest;
 import com.gugugaga.jsmedicine.module.interaction.app.dto.AppFeedbackRequest;
+import com.gugugaga.jsmedicine.module.interaction.app.dto.AppFavoriteRequest;
 import com.gugugaga.jsmedicine.module.interaction.app.dto.AppQaQuestionRequest;
 import com.gugugaga.jsmedicine.module.interaction.app.dto.AppQaQuestionResponse;
+import com.gugugaga.jsmedicine.module.interaction.app.dto.AppResourceInteractionResponse;
 import com.gugugaga.jsmedicine.module.interaction.app.service.AppInteractionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -54,5 +57,17 @@ public class AppInteractionController {
     @PostMapping("/feedbacks")
     public ApiResponse<FeedbackResponse> submitFeedback(@Valid @RequestBody AppFeedbackRequest request) {
         return ApiResponse.ok(appInteractionService.submitFeedback(request));
+    }
+
+    @Operation(summary = "收藏或取消收藏资源")
+    @PostMapping("/favorites")
+    public ApiResponse<AppResourceInteractionResponse> toggleFavorite(@Valid @RequestBody AppFavoriteRequest request) {
+        return ApiResponse.ok(appInteractionService.toggleFavorite(request));
+    }
+
+    @Operation(summary = "同步资源浏览记录")
+    @PostMapping("/browse-histories")
+    public ApiResponse<AppResourceInteractionResponse> syncBrowseHistory(@Valid @RequestBody AppBrowseHistoryRequest request) {
+        return ApiResponse.ok(appInteractionService.syncBrowseHistory(request));
     }
 }

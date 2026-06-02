@@ -4,27 +4,48 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.gugugaga.jsmedicine.common.enums.EnabledStatus;
 import com.gugugaga.jsmedicine.common.enums.FeedbackStatus;
+import com.gugugaga.jsmedicine.common.enums.PublishStatus;
 import com.gugugaga.jsmedicine.common.enums.QaStatus;
+import com.gugugaga.jsmedicine.common.enums.ReviewStatus;
+import com.gugugaga.jsmedicine.common.exception.BusinessException;
+import com.gugugaga.jsmedicine.common.exception.ErrorCode;
 import com.gugugaga.jsmedicine.common.response.PageResponse;
 import com.gugugaga.jsmedicine.module.auth.app.entity.AppUserSession;
 import com.gugugaga.jsmedicine.module.auth.app.service.CurrentAppUserResolver;
 import com.gugugaga.jsmedicine.module.interaction.admin.dto.FeedbackResponse;
+import com.gugugaga.jsmedicine.module.interaction.app.dto.AppBrowseHistoryRequest;
 import com.gugugaga.jsmedicine.module.interaction.admin.dto.QaAnswerResponse;
 import com.gugugaga.jsmedicine.module.interaction.app.dto.AppFeedbackRequest;
+import com.gugugaga.jsmedicine.module.interaction.app.dto.AppFavoriteRequest;
 import com.gugugaga.jsmedicine.module.interaction.app.dto.AppQaQuestionRequest;
 import com.gugugaga.jsmedicine.module.interaction.app.dto.AppQaQuestionResponse;
+import com.gugugaga.jsmedicine.module.interaction.app.dto.AppResourceInteractionResponse;
 import com.gugugaga.jsmedicine.module.interaction.feedback.entity.Feedback;
 import com.gugugaga.jsmedicine.module.interaction.feedback.mapper.FeedbackMapper;
+import com.gugugaga.jsmedicine.module.interaction.favorite.entity.UserFavorite;
+import com.gugugaga.jsmedicine.module.interaction.favorite.mapper.UserFavoriteMapper;
+import com.gugugaga.jsmedicine.module.interaction.history.entity.UserBrowseHistory;
+import com.gugugaga.jsmedicine.module.interaction.history.mapper.UserBrowseHistoryMapper;
 import com.gugugaga.jsmedicine.module.interaction.qa.entity.QaAnswer;
 import com.gugugaga.jsmedicine.module.interaction.qa.entity.QaQuestion;
 import com.gugugaga.jsmedicine.module.interaction.qa.mapper.QaAnswerMapper;
 import com.gugugaga.jsmedicine.module.interaction.qa.mapper.QaQuestionMapper;
+import com.gugugaga.jsmedicine.module.learning.book.entity.Book;
+import com.gugugaga.jsmedicine.module.learning.book.mapper.BookMapper;
+import com.gugugaga.jsmedicine.module.learning.course.entity.Course;
+import com.gugugaga.jsmedicine.module.learning.course.mapper.CourseMapper;
+import com.gugugaga.jsmedicine.module.learning.podcast.entity.Podcast;
+import com.gugugaga.jsmedicine.module.learning.podcast.mapper.PodcastMapper;
+import com.gugugaga.jsmedicine.module.content.topic.entity.Topic;
+import com.gugugaga.jsmedicine.module.content.topic.mapper.TopicMapper;
 import com.gugugaga.jsmedicine.module.user.entity.Student;
 import com.gugugaga.jsmedicine.module.user.mapper.StudentMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 @Service
@@ -33,25 +54,47 @@ public class AppInteractionService {
     private static final long DEFAULT_PAGE = 1L;
     private static final long DEFAULT_SIZE = 20L;
     private static final long MAX_SIZE = 100L;
+    private static final String RESOURCE_TYPE_COURSE = "course";
+    private static final String RESOURCE_TYPE_BOOK = "book";
+    private static final String RESOURCE_TYPE_PODCAST = "podcast";
+    private static final String RESOURCE_TYPE_TOPIC = "topic";
 
     private final CurrentAppUserResolver currentAppUserResolver;
     private final StudentMapper studentMapper;
     private final QaQuestionMapper qaQuestionMapper;
     private final QaAnswerMapper qaAnswerMapper;
     private final FeedbackMapper feedbackMapper;
+    private final UserFavoriteMapper userFavoriteMapper;
+    private final UserBrowseHistoryMapper userBrowseHistoryMapper;
+    private final CourseMapper courseMapper;
+    private final BookMapper bookMapper;
+    private final PodcastMapper podcastMapper;
+    private final TopicMapper topicMapper;
 
     public AppInteractionService(
             CurrentAppUserResolver currentAppUserResolver,
             StudentMapper studentMapper,
             QaQuestionMapper qaQuestionMapper,
             QaAnswerMapper qaAnswerMapper,
-            FeedbackMapper feedbackMapper
+            FeedbackMapper feedbackMapper,
+            UserFavoriteMapper userFavoriteMapper,
+            UserBrowseHistoryMapper userBrowseHistoryMapper,
+            CourseMapper courseMapper,
+            BookMapper bookMapper,
+            PodcastMapper podcastMapper,
+            TopicMapper topicMapper
     ) {
         this.currentAppUserResolver = currentAppUserResolver;
         this.studentMapper = studentMapper;
         this.qaQuestionMapper = qaQuestionMapper;
         this.qaAnswerMapper = qaAnswerMapper;
         this.feedbackMapper = feedbackMapper;
+        this.userFavoriteMapper = userFavoriteMapper;
+        this.userBrowseHistoryMapper = userBrowseHistoryMapper;
+        this.courseMapper = courseMapper;
+        this.bookMapper = bookMapper;
+        this.podcastMapper = podcastMapper;
+        this.topicMapper = topicMapper;
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -109,12 +152,149 @@ public class AppInteractionService {
         return toFeedbackResponse(feedback);
     }
 
+    @Transactional(rollbackFor = Exception.class)
+    public AppResourceInteractionResponse toggleFavorite(AppFavoriteRequest request) {
+        AppUserSession session = currentAppUserResolver.requireCurrentUser();
+        validateVisibleResource(request.resourceType(), request.resourceId());
+        UserFavorite favorite = userFavoriteMapper.selectOne(new LambdaQueryWrapper<UserFavorite>()
+                .eq(UserFavorite::getUserId, session.userId())
+                .eq(UserFavorite::getResourceType, request.resourceType())
+                .eq(UserFavorite::getResourceId, request.resourceId())
+                .last("LIMIT 1"));
+        if (Boolean.TRUE.equals(request.favorited())) {
+            if (favorite == null) {
+                favorite = new UserFavorite();
+                favorite.setUserId(session.userId());
+                favorite.setResourceType(request.resourceType());
+                favorite.setResourceId(request.resourceId());
+                userFavoriteMapper.insert(favorite);
+            }
+        } else if (favorite != null) {
+            userFavoriteMapper.deleteById(favorite.getId());
+        }
+        return buildInteractionResponse(session.userId(), request.resourceType(), request.resourceId());
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public AppResourceInteractionResponse syncBrowseHistory(AppBrowseHistoryRequest request) {
+        AppUserSession session = currentAppUserResolver.requireCurrentUser();
+        validateVisibleResource(request.resourceType(), request.resourceId());
+        UserBrowseHistory history = userBrowseHistoryMapper.selectOne(new LambdaQueryWrapper<UserBrowseHistory>()
+                .eq(UserBrowseHistory::getUserId, session.userId())
+                .eq(UserBrowseHistory::getResourceType, request.resourceType())
+                .eq(UserBrowseHistory::getResourceId, request.resourceId())
+                .last("LIMIT 1"));
+        int increment = request.viewCount() == null || request.viewCount() < 1 ? 1 : request.viewCount();
+        LocalDateTime now = LocalDateTime.now();
+        if (history == null) {
+            history = new UserBrowseHistory();
+            history.setUserId(session.userId());
+            history.setResourceType(request.resourceType());
+            history.setResourceId(request.resourceId());
+            history.setViewCount(increment);
+        } else {
+            history.setViewCount((history.getViewCount() == null ? 0 : history.getViewCount()) + increment);
+        }
+        history.setSource(request.source());
+        history.setViewedAt(now);
+        history.setUpdatedAt(now);
+        if (history.getId() == null) {
+            userBrowseHistoryMapper.insert(history);
+        } else {
+            userBrowseHistoryMapper.updateById(history);
+        }
+        if (RESOURCE_TYPE_TOPIC.equals(request.resourceType())) {
+            syncTopicViewCount(request.resourceId());
+        }
+        return buildInteractionResponse(session.userId(), request.resourceType(), request.resourceId());
+    }
+
     private Optional<Student> findStudent(Long userId) {
         return Optional.ofNullable(studentMapper.selectOne(new LambdaQueryWrapper<Student>()
                 .eq(Student::getUserId, userId)
                 .eq(Student::getDeleted, 0)
                 .eq(Student::getStatus, EnabledStatus.ENABLED)
                 .last("LIMIT 1")));
+    }
+
+    private void validateVisibleResource(String resourceType, Long resourceId) {
+        switch (resourceType) {
+            case RESOURCE_TYPE_COURSE -> requireVisibleCourse(resourceId);
+            case RESOURCE_TYPE_BOOK -> requireVisibleBook(resourceId);
+            case RESOURCE_TYPE_PODCAST -> requireVisiblePodcast(resourceId);
+            case RESOURCE_TYPE_TOPIC -> requireVisibleTopic(resourceId);
+            default -> throw new BusinessException(ErrorCode.BAD_REQUEST, "Unsupported interaction resource type");
+        }
+    }
+
+    private void requireVisibleCourse(Long resourceId) {
+        Course course = courseMapper.selectById(resourceId);
+        if (course == null || !isVisible(course.getDeleted(), course.getReviewStatus(), course.getPublishStatus())) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Course does not exist");
+        }
+    }
+
+    private void requireVisibleBook(Long resourceId) {
+        Book book = bookMapper.selectById(resourceId);
+        if (book == null || !isVisible(book.getDeleted(), book.getReviewStatus(), book.getPublishStatus())) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Book does not exist");
+        }
+    }
+
+    private void requireVisiblePodcast(Long resourceId) {
+        Podcast podcast = podcastMapper.selectById(resourceId);
+        if (podcast == null || !isVisible(podcast.getDeleted(), podcast.getReviewStatus(), podcast.getPublishStatus())) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Podcast does not exist");
+        }
+    }
+
+    private void requireVisibleTopic(Long resourceId) {
+        Topic topic = topicMapper.selectById(resourceId);
+        if (topic == null || !isVisible(topic.getDeleted(), topic.getReviewStatus(), topic.getPublishStatus())) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Topic does not exist");
+        }
+    }
+
+    private AppResourceInteractionResponse buildInteractionResponse(Long userId, String resourceType, Long resourceId) {
+        long browseCount = userBrowseHistoryMapper.selectList(new LambdaQueryWrapper<UserBrowseHistory>()
+                        .eq(UserBrowseHistory::getResourceType, resourceType)
+                        .eq(UserBrowseHistory::getResourceId, resourceId))
+                .stream()
+                .map(UserBrowseHistory::getViewCount)
+                .filter(Objects::nonNull)
+                .mapToLong(Integer::longValue)
+                .sum();
+        long favoriteCount = userFavoriteMapper.selectCount(new LambdaQueryWrapper<UserFavorite>()
+                .eq(UserFavorite::getResourceType, resourceType)
+                .eq(UserFavorite::getResourceId, resourceId));
+        boolean favorited = userFavoriteMapper.selectCount(new LambdaQueryWrapper<UserFavorite>()
+                .eq(UserFavorite::getUserId, userId)
+                .eq(UserFavorite::getResourceType, resourceType)
+                .eq(UserFavorite::getResourceId, resourceId)) > 0;
+        return new AppResourceInteractionResponse(resourceType, resourceId, browseCount, favoriteCount, favorited);
+    }
+
+    private void syncTopicViewCount(Long topicId) {
+        Topic topic = topicMapper.selectById(topicId);
+        if (topic == null) {
+            return;
+        }
+        long browseCount = userBrowseHistoryMapper.selectList(new LambdaQueryWrapper<UserBrowseHistory>()
+                        .eq(UserBrowseHistory::getResourceType, RESOURCE_TYPE_TOPIC)
+                        .eq(UserBrowseHistory::getResourceId, topicId))
+                .stream()
+                .map(UserBrowseHistory::getViewCount)
+                .filter(Objects::nonNull)
+                .mapToLong(Integer::longValue)
+                .sum();
+        topic.setViewCount(browseCount);
+        topicMapper.updateById(topic);
+    }
+
+    private boolean isVisible(Integer deleted, ReviewStatus reviewStatus, PublishStatus publishStatus) {
+        return Objects.equals(deleted, 0)
+                && reviewStatus == ReviewStatus.APPROVED
+                && publishStatus == PublishStatus.PUBLISHED;
     }
 
     private AppQaQuestionResponse toQaQuestionResponse(QaQuestion question, boolean includeAnswers) {

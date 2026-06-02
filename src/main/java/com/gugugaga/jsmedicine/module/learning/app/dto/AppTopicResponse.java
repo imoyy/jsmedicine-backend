@@ -11,6 +11,8 @@ public record AppTopicResponse(
         String coverUrl,
         Long viewCount,
         LocalDateTime publishedAt,
+        Long favoriteCount,
+        Boolean favorited,
         List<AppTopicItemResponse> items
 ) {
 }

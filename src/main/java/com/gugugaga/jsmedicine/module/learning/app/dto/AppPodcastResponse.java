@@ -12,6 +12,9 @@ public record AppPodcastResponse(
         String speakerName,
         List<String> tags,
         LocalDateTime publishedAt,
+        Long browseCount,
+        Long favoriteCount,
+        Boolean favorited,
         BigDecimal progressPercent,
         Integer studySeconds,
         List<AppPodcastAudioResponse> audios
