@@ -33,8 +33,10 @@ import com.gugugaga.jsmedicine.module.learning.app.dto.AppLearningRecordRequest;
 import com.gugugaga.jsmedicine.module.learning.app.dto.AppLearningRecordResponse;
 import com.gugugaga.jsmedicine.module.learning.app.dto.AppPodcastAudioResponse;
 import com.gugugaga.jsmedicine.module.learning.app.dto.AppPodcastResponse;
-import com.gugugaga.jsmedicine.module.learning.app.dto.AppTopicItemResponse;
-import com.gugugaga.jsmedicine.module.learning.app.dto.AppTopicResponse;
+import com.gugugaga.jsmedicine.module.learning.app.dto.AppTopicCardResponse;
+import com.gugugaga.jsmedicine.module.learning.app.dto.AppTopicDetailResponse;
+import com.gugugaga.jsmedicine.module.learning.app.dto.AppTopicResourceCardResponse;
+import com.gugugaga.jsmedicine.module.learning.app.dto.AppTopicSectionResponse;
 import com.gugugaga.jsmedicine.module.learning.book.entity.Book;
 import com.gugugaga.jsmedicine.module.learning.book.entity.BookCategory;
 import com.gugugaga.jsmedicine.module.learning.book.entity.BookChapter;
@@ -79,6 +81,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -97,6 +100,15 @@ public class AppLearningService {
     private static final String RESOURCE_TYPE_BOOK = "book";
     private static final String RESOURCE_TYPE_PODCAST = "podcast";
     private static final String RESOURCE_TYPE_TOPIC = "topic";
+    private static final String TOPIC_SECTION_LEARNING = "learning";
+    private static final String TOPIC_SECTION_VIDEO = "video";
+    private static final String TOPIC_SECTION_AUDIO = "audio";
+    private static final int TOPIC_SECTION_PREVIEW_SIZE = 3;
+    private static final Map<String, String> TOPIC_RESOURCE_TYPE_LABELS = Map.of(
+            RESOURCE_TYPE_COURSE, "课程",
+            RESOURCE_TYPE_BOOK, "图书",
+            RESOURCE_TYPE_PODCAST, "播客"
+    );
 
     private final CurrentAppUserResolver currentAppUserResolver;
     private final StudentMapper studentMapper;
@@ -346,7 +358,7 @@ public class AppLearningService {
         return toExamRecordResponse(record, true);
     }
 
-    public PageResponse<AppTopicResponse> pageTopics(AppLearningPageQuery query) {
+    public PageResponse<AppTopicCardResponse> pageTopics(AppLearningPageQuery query) {
         Page<Topic> page = topicMapper.selectPage(new Page<>(normalizePage(query.page()), normalizeSize(query.size())),
                 visibleTopicWrapper()
                         .and(hasText(query.keyword()), wrapper -> wrapper.like(Topic::getTitle, query.keyword()))
@@ -356,16 +368,33 @@ public class AppLearningService {
         Map<Long, ResourceInteractionSnapshot> snapshots = loadInteractionSnapshots(userId, RESOURCE_TYPE_TOPIC,
                 page.getRecords().stream().map(Topic::getId).toList());
         return pageResponse(page, page.getRecords().stream()
-                .map(topic -> toTopicResponse(topic, false, snapshots.get(topic.getId())))
+                .map(topic -> toTopicCardResponse(topic, snapshots.get(topic.getId())))
                 .toList());
     }
 
-    public AppTopicResponse topicDetail(Long id) {
+    public AppTopicDetailResponse topicDetail(Long id) {
         Topic topic = requireVisibleTopic(id);
         topic.setViewCount((topic.getViewCount() == null ? 0 : topic.getViewCount()) + 1);
         topicMapper.updateById(topic);
-        return toTopicResponse(topic, true,
-                loadInteractionSnapshot(currentUserId().orElse(null), RESOURCE_TYPE_TOPIC, topic.getId()));
+        Long userId = currentUserId().orElse(null);
+        Long studentId = currentStudentId().orElse(null);
+        return toTopicDetailResponse(topic,
+                loadInteractionSnapshot(userId, RESOURCE_TYPE_TOPIC, topic.getId()),
+                studentId,
+                userId);
+    }
+
+    public PageResponse<AppTopicResourceCardResponse> pageTopicSection(Long topicId, String sectionType, long page, long size) {
+        Topic topic = requireVisibleTopic(topicId);
+        TopicSectionDefinition sectionDefinition = requireTopicSectionDefinition(sectionType);
+        Long studentId = currentStudentId().orElse(null);
+        Long userId = currentUserId().orElse(null);
+        List<AppTopicResourceCardResponse> cards = loadTopicSectionCards(topic.getId(), sectionDefinition.itemType(), studentId, userId);
+        long normalizedPage = normalizePage(page);
+        long normalizedSize = normalizeSize(size);
+        int fromIndex = (int) Math.min(cards.size(), Math.max(0, (normalizedPage - 1) * normalizedSize));
+        int toIndex = (int) Math.min(cards.size(), fromIndex + normalizedSize);
+        return new PageResponse<>(cards.subList(fromIndex, toIndex), cards.size(), normalizedPage, normalizedSize);
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -706,50 +735,146 @@ public class AppLearningService {
                 .collect(Collectors.joining(","));
     }
 
-    private AppTopicResponse toTopicResponse(Topic topic, boolean includeItems, ResourceInteractionSnapshot snapshot) {
-        return new AppTopicResponse(topic.getId(), topic.getTitle(), topic.getSummary(), topic.getLearningRequirements(),
-                topic.getCoverUrl(), topic.getViewCount(), topic.getPublishedAt(),
-                snapshot.favoriteCount(), snapshot.favorited(), includeItems ? loadTopicItems(topic.getId()) : List.of());
+    private AppTopicCardResponse toTopicCardResponse(Topic topic, ResourceInteractionSnapshot snapshot) {
+        ResourceInteractionSnapshot resolvedSnapshot = snapshot == null ? ResourceInteractionSnapshot.empty() : snapshot;
+        return new AppTopicCardResponse(topic.getId(), topic.getTitle(), topic.getSummary(), topic.getLearningRequirements(),
+                topic.getCoverUrl(), resourceTagService.loadTagNames(RESOURCE_TYPE_TOPIC, topic.getId()),
+                topic.getViewCount() == null ? 0L : topic.getViewCount(), topic.getPublishedAt(),
+                resolvedSnapshot.favoriteCount(), resolvedSnapshot.favorited());
     }
 
-    private List<AppTopicItemResponse> loadTopicItems(Long topicId) {
-        return topicItemMapper.selectList(new LambdaQueryWrapper<TopicItem>()
+    private AppTopicDetailResponse toTopicDetailResponse(Topic topic, ResourceInteractionSnapshot snapshot,
+                                                         Long studentId, Long userId) {
+        ResourceInteractionSnapshot resolvedSnapshot = snapshot == null ? ResourceInteractionSnapshot.empty() : snapshot;
+        List<AppTopicSectionResponse> sections = List.of(
+                buildTopicSectionResponse(topic.getId(), TOPIC_SECTION_LEARNING, studentId, userId),
+                buildTopicSectionResponse(topic.getId(), TOPIC_SECTION_VIDEO, studentId, userId),
+                buildTopicSectionResponse(topic.getId(), TOPIC_SECTION_AUDIO, studentId, userId)
+        );
+        return new AppTopicDetailResponse(topic.getId(), topic.getTitle(), topic.getSummary(),
+                topic.getLearningRequirements(), topic.getCoverUrl(),
+                resourceTagService.loadTagNames(RESOURCE_TYPE_TOPIC, topic.getId()),
+                topic.getViewCount() == null ? 0L : topic.getViewCount(), topic.getPublishedAt(),
+                resolvedSnapshot.favoriteCount(), resolvedSnapshot.favorited(), sections);
+    }
+
+    private AppTopicSectionResponse buildTopicSectionResponse(Long topicId, String sectionType, Long studentId, Long userId) {
+        TopicSectionDefinition sectionDefinition = requireTopicSectionDefinition(sectionType);
+        List<AppTopicResourceCardResponse> cards = loadTopicSectionCards(topicId, sectionDefinition.itemType(), studentId, userId);
+        int previewSize = Math.min(cards.size(), TOPIC_SECTION_PREVIEW_SIZE);
+        return new AppTopicSectionResponse(sectionDefinition.sectionType(), sectionDefinition.sectionLabel(),
+                (long) cards.size(), cards.size() > TOPIC_SECTION_PREVIEW_SIZE, cards.subList(0, previewSize));
+    }
+
+    private TopicSectionDefinition requireTopicSectionDefinition(String sectionType) {
+        String normalizedSectionType = sectionType == null ? "" : sectionType.trim().toLowerCase(Locale.ROOT);
+        return switch (normalizedSectionType) {
+            case TOPIC_SECTION_LEARNING -> new TopicSectionDefinition(TOPIC_SECTION_LEARNING, "学习", RESOURCE_TYPE_BOOK);
+            case TOPIC_SECTION_VIDEO -> new TopicSectionDefinition(TOPIC_SECTION_VIDEO, "视频", RESOURCE_TYPE_COURSE);
+            case TOPIC_SECTION_AUDIO -> new TopicSectionDefinition(TOPIC_SECTION_AUDIO, "音频", RESOURCE_TYPE_PODCAST);
+            default -> throw new BusinessException(ErrorCode.BAD_REQUEST, "Unsupported topic sectionType: " + sectionType);
+        };
+    }
+
+    private List<AppTopicResourceCardResponse> loadTopicSectionCards(Long topicId, String itemType, Long studentId, Long userId) {
+        List<Long> itemIds = topicItemMapper.selectList(new LambdaQueryWrapper<TopicItem>()
                         .eq(TopicItem::getTopicId, topicId)
-                        .orderByAsc(TopicItem::getSortOrder))
+                        .eq(TopicItem::getItemType, itemType)
+                        .orderByAsc(TopicItem::getSortOrder)
+                        .orderByAsc(TopicItem::getId))
                 .stream()
-                .map(this::resolveTopicItemResponse)
+                .map(TopicItem::getItemId)
                 .filter(Objects::nonNull)
+                .toList();
+        if (itemIds.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, ResourceInteractionSnapshot> snapshots = loadInteractionSnapshots(userId, itemType, itemIds);
+        Map<Long, LearningRecord> learningRecords = loadLearningRecordMap(studentId, itemType, itemIds);
+        return switch (itemType) {
+            case RESOURCE_TYPE_COURSE -> buildCourseTopicCards(itemIds, snapshots, learningRecords);
+            case RESOURCE_TYPE_BOOK -> buildBookTopicCards(itemIds, snapshots, learningRecords);
+            case RESOURCE_TYPE_PODCAST -> buildPodcastTopicCards(itemIds, snapshots, learningRecords);
+            default -> List.of();
+        };
+    }
+
+    private List<AppTopicResourceCardResponse> buildCourseTopicCards(List<Long> itemIds,
+                                                                     Map<Long, ResourceInteractionSnapshot> snapshots,
+                                                                     Map<Long, LearningRecord> learningRecords) {
+        Map<Long, Course> courses = courseMapper.selectList(visibleCourseWrapper().in(Course::getId, itemIds))
+                .stream()
+                .collect(Collectors.toMap(Course::getId, course -> course, (left, right) -> left));
+        return itemIds.stream()
+                .map(courses::get)
+                .filter(Objects::nonNull)
+                .map(course -> new AppTopicResourceCardResponse(
+                        RESOURCE_TYPE_COURSE,
+                        TOPIC_RESOURCE_TYPE_LABELS.get(RESOURCE_TYPE_COURSE),
+                        course.getId(),
+                        course.getCourseName(),
+                        course.getSubtitle(),
+                        course.getCoverUrl(),
+                        List.of(),
+                        snapshotOf(snapshots, course.getId()).browseCount(),
+                        snapshotOf(snapshots, course.getId()).favoriteCount(),
+                        snapshotOf(snapshots, course.getId()).favorited(),
+                        progress(learningRecords.get(course.getId())),
+                        studySeconds(learningRecords.get(course.getId()))
+                ))
                 .toList();
     }
 
-    private AppTopicItemResponse resolveTopicItemResponse(TopicItem item) {
-        Object resource = resolveTopicItemResource(item);
-        if (resource == null) {
-            return null;
-        }
-        return new AppTopicItemResponse(item.getId(), item.getTopicId(), item.getItemType(),
-                item.getItemId(), item.getSortOrder(), resource);
+    private List<AppTopicResourceCardResponse> buildBookTopicCards(List<Long> itemIds,
+                                                                   Map<Long, ResourceInteractionSnapshot> snapshots,
+                                                                   Map<Long, LearningRecord> learningRecords) {
+        Map<Long, Book> books = bookMapper.selectList(visibleBookWrapper().in(Book::getId, itemIds))
+                .stream()
+                .collect(Collectors.toMap(Book::getId, book -> book, (left, right) -> left));
+        return itemIds.stream()
+                .map(books::get)
+                .filter(Objects::nonNull)
+                .map(book -> new AppTopicResourceCardResponse(
+                        RESOURCE_TYPE_BOOK,
+                        TOPIC_RESOURCE_TYPE_LABELS.get(RESOURCE_TYPE_BOOK),
+                        book.getId(),
+                        book.getBookName(),
+                        hasText(book.getAuthor()) ? book.getAuthor() : book.getPublisher(),
+                        book.getCoverUrl(),
+                        List.of(),
+                        snapshotOf(snapshots, book.getId()).browseCount(),
+                        snapshotOf(snapshots, book.getId()).favoriteCount(),
+                        snapshotOf(snapshots, book.getId()).favorited(),
+                        progress(learningRecords.get(book.getId())),
+                        studySeconds(learningRecords.get(book.getId()))
+                ))
+                .toList();
     }
 
-    private Object resolveTopicItemResource(TopicItem item) {
-        try {
-            return switch (item.getItemType()) {
-                case RESOURCE_TYPE_COURSE -> toCourseResponse(requireVisibleCourse(item.getItemId()), false,
-                        currentStudentId().orElse(null),
-                        loadInteractionSnapshot(currentUserId().orElse(null), RESOURCE_TYPE_COURSE, item.getItemId()));
-                case RESOURCE_TYPE_BOOK -> toBookResponse(requireVisibleBook(item.getItemId()), false,
-                        currentStudentId().orElse(null),
-                        loadInteractionSnapshot(currentUserId().orElse(null), RESOURCE_TYPE_BOOK, item.getItemId()));
-                case RESOURCE_TYPE_PODCAST -> toPodcastResponse(requireVisiblePodcast(item.getItemId()), false,
-                        currentStudentId().orElse(null),
-                        loadInteractionSnapshot(currentUserId().orElse(null), RESOURCE_TYPE_PODCAST, item.getItemId()));
-                case RESOURCE_TYPE_TOPIC -> toTopicResponse(requireVisibleTopic(item.getItemId()), false,
-                        loadInteractionSnapshot(currentUserId().orElse(null), RESOURCE_TYPE_TOPIC, item.getItemId()));
-                default -> null;
-            };
-        } catch (BusinessException ignored) {
-            return null;
-        }
+    private List<AppTopicResourceCardResponse> buildPodcastTopicCards(List<Long> itemIds,
+                                                                      Map<Long, ResourceInteractionSnapshot> snapshots,
+                                                                      Map<Long, LearningRecord> learningRecords) {
+        Map<Long, Podcast> podcasts = podcastMapper.selectList(visiblePodcastWrapper().in(Podcast::getId, itemIds))
+                .stream()
+                .collect(Collectors.toMap(Podcast::getId, podcast -> podcast, (left, right) -> left));
+        return itemIds.stream()
+                .map(podcasts::get)
+                .filter(Objects::nonNull)
+                .map(podcast -> new AppTopicResourceCardResponse(
+                        RESOURCE_TYPE_PODCAST,
+                        TOPIC_RESOURCE_TYPE_LABELS.get(RESOURCE_TYPE_PODCAST),
+                        podcast.getId(),
+                        podcast.getTitle(),
+                        podcast.getSpeakerName(),
+                        podcast.getCoverUrl(),
+                        resourceTagService.loadTagNames(RESOURCE_TYPE_PODCAST, podcast.getId()),
+                        snapshotOf(snapshots, podcast.getId()).browseCount(),
+                        snapshotOf(snapshots, podcast.getId()).favoriteCount(),
+                        snapshotOf(snapshots, podcast.getId()).favorited(),
+                        progress(learningRecords.get(podcast.getId())),
+                        studySeconds(learningRecords.get(podcast.getId()))
+                ))
+                .toList();
     }
 
     private Map<Long, ResourceInteractionSnapshot> loadInteractionSnapshots(Long userId, String resourceType, List<Long> resourceIds) {
@@ -803,6 +928,22 @@ public class AppLearningService {
                 .stream()
                 .map(UserFavorite::getResourceId)
                 .collect(Collectors.toSet());
+    }
+
+    private Map<Long, LearningRecord> loadLearningRecordMap(Long studentId, String resourceType, List<Long> resourceIds) {
+        if (studentId == null || resourceIds == null || resourceIds.isEmpty()) {
+            return Map.of();
+        }
+        return learningRecordMapper.selectList(new LambdaQueryWrapper<LearningRecord>()
+                        .eq(LearningRecord::getStudentId, studentId)
+                        .eq(LearningRecord::getResourceType, resourceType)
+                        .in(LearningRecord::getResourceId, resourceIds))
+                .stream()
+                .collect(Collectors.toMap(LearningRecord::getResourceId, record -> record, (left, right) -> left));
+    }
+
+    private ResourceInteractionSnapshot snapshotOf(Map<Long, ResourceInteractionSnapshot> snapshots, Long resourceId) {
+        return snapshots.getOrDefault(resourceId, ResourceInteractionSnapshot.empty());
     }
 
     private Optional<LearningRecord> findLearningRecord(Long studentId, String resourceType, Long resourceId) {
@@ -902,5 +1043,8 @@ public class AppLearningService {
         private static ResourceInteractionSnapshot empty() {
             return new ResourceInteractionSnapshot(ZERO_COUNT, ZERO_COUNT, false);
         }
+    }
+
+    private record TopicSectionDefinition(String sectionType, String sectionLabel, String itemType) {
     }
 }

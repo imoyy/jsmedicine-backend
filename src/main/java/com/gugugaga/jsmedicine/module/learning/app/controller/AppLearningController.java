@@ -14,7 +14,9 @@ import com.gugugaga.jsmedicine.module.learning.app.dto.AppLearningPageQuery;
 import com.gugugaga.jsmedicine.module.learning.app.dto.AppLearningRecordRequest;
 import com.gugugaga.jsmedicine.module.learning.app.dto.AppLearningRecordResponse;
 import com.gugugaga.jsmedicine.module.learning.app.dto.AppPodcastResponse;
-import com.gugugaga.jsmedicine.module.learning.app.dto.AppTopicResponse;
+import com.gugugaga.jsmedicine.module.learning.app.dto.AppTopicCardResponse;
+import com.gugugaga.jsmedicine.module.learning.app.dto.AppTopicDetailResponse;
+import com.gugugaga.jsmedicine.module.learning.app.dto.AppTopicResourceCardResponse;
 import com.gugugaga.jsmedicine.module.learning.app.service.AppLearningService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -154,7 +156,7 @@ public class AppLearningController {
 
     @Operation(summary = "分页查询专题")
     @GetMapping("/topics")
-    public ApiResponse<PageResponse<AppTopicResponse>> pageTopics(
+    public ApiResponse<PageResponse<AppTopicCardResponse>> pageTopics(
             @RequestParam(defaultValue = "1") long page,
             @RequestParam(defaultValue = "20") long size,
             @RequestParam(required = false) String sort,
@@ -165,8 +167,19 @@ public class AppLearningController {
 
     @Operation(summary = "专题详情")
     @GetMapping("/topics/{id}")
-    public ApiResponse<AppTopicResponse> topicDetail(@PathVariable Long id) {
+    public ApiResponse<AppTopicDetailResponse> topicDetail(@PathVariable Long id) {
         return ApiResponse.ok(appLearningService.topicDetail(id));
+    }
+
+    @Operation(summary = "分页查询专题分区内容")
+    @GetMapping("/topics/{id}/sections/{sectionType}")
+    public ApiResponse<PageResponse<AppTopicResourceCardResponse>> pageTopicSection(
+            @PathVariable Long id,
+            @PathVariable String sectionType,
+            @RequestParam(defaultValue = "1") long page,
+            @RequestParam(defaultValue = "20") long size
+    ) {
+        return ApiResponse.ok(appLearningService.pageTopicSection(id, sectionType, page, size));
     }
 
     @Operation(summary = "同步学习记录")

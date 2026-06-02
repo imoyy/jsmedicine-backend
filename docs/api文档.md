@@ -5,13 +5,35 @@
 ## 基础说明
 
 - 项目：`中医在线` 后端
-- 文档更新时间：`2026-05-28`
+- 文档更新时间：`2026-06-02`
 - 认证方式：`Authorization: Bearer <token>`
 - 统一返回：`ApiResponse<T>`
 - 分页参数：`page`、`size`、`sort`
 
+## 资源地址策略
+
+当前仓库对“公开可读资源地址”的约定如下：
+
+- 用户头像是当前唯一已经完成稳定读取链路的业务资源。`app_users.avatarUrl` 应返回 `/api/v1/files/{id}/content`，来源于 `file_assets.url` 的稳定公开路径，而不是对象存储临时签名 URL。
+- `GET /api/v1/files/{id}/content` 当前可用于读取公开 `file_assets` 资源。只要业务表中的 URL 字段显式保存了这个路径，前端就可以把它当成稳定真相源使用。
+- 课程、图书、资讯、播客、专题、直播、专家、知识库、首页分类、首页内容等模块里的 `coverUrl`，以及 `audioUrl`、`videoUrl`、`linkUrl`、`playbackUrl` 这类字段，当前仍是普通字符串 URL 字段；后端尚未统一强制它们都走 `file_assets` 稳定读取地址。
+- 学员认证材料 `student_certification_files.sourceUrl` 当前继续允许保存历史外链或外部地址，用于兼容存量数据和未迁移资源。
+- dev 种子里的 `https://example.com/assets/...`、`https://example.com/live/...` 仅用于页面占位和字段联调，不代表共享联调环境或后续环境中这些地址真实可访问。
+- 新接入真实资源时，如果已经有公开 `file_assets` 记录，优先把业务字段写成 `/api/v1/files/{id}/content`；不要把对象存储临时签名 URL 当作长期真相源。
+
 ## 近期契约变更
 
+- 管理端学员新增 `POST /api/v1/admin/students/import` 和 `GET /api/v1/admin/students/export`，用于 Excel 导入导出。
+- `GET /api/v1/admin/system/audit-records` 补充 `targetTypeLabel`、`statusType`、`beforeStatusLabel`、`afterStatusLabel`、`auditorName`、`auditorUsername`，前端无需再自行硬编码审核资源类型和状态语义。
+- 图书继续沿用“图书级单考卷”模型，图书请求体使用 `paperId` 维护绑定关系，图书响应新增 `paperTitle`。
+- 管理端专题分项 `PUT /api/v1/admin/content/topics/{id}/items` 只允许 `course`、`book`、`podcast` 三类资源，后端统一做资源存在性、去重和排序归一化校验。
+- 管理端专题分项响应新增 `itemTypeLabel`、`itemAvailable`、`itemTitle`、`itemSubtitle`、`itemCoverUrl`、`reviewStatus`、`publishStatus`。
+- 用户端专题页契约已收口：专题列表改为显式卡片 DTO，专题详情按 `学习 / 视频 / 音频` 分区返回，并新增专题分区分页接口，不再返回 `items[].resource` 裸 `Object`。
+- 首页内容快捷配置继续沿用统一 `contentType + targetId` 模型，`contentType` 当前收口为 `course`、`book`、`podcast`、`topic`、`live`，并要求 `startAt < endAt`。
+- 首页内容响应新增 `contentTypeLabel`、`targetAvailable`、`targetTitle`，便于管理端直接渲染类型中文名和资源可用性。
+- 专家分类继续复用同一套接口，按 `parentId` 表达两级结构，响应新增 `parentCategoryName`、`level`。
+- 管理端和用户端问答响应在保留原 `status` 的同时新增 `statusCode`、`statusLabel`。
+- 用户反馈继续保留 `feedbackType` 自由文本模型，`contact` 明确表示主联系方式字段。
 - 用户资料新增 `profileSignature`，用于用户端个人签名展示和管理端用户详情回显。
 - 学员认证新增结构化材料字段 `certificationFiles`，旧字段 `certificationMaterials` 暂时保留为兼容字段。
 - 学员和专家新增基础数据关联字段：`organizationId`、`practiceTypeId`；学员额外新增 `provinceCode`、`cityCode`、`districtCode`。
@@ -31,7 +53,7 @@
 - 用户端：`/api/v1/app/**`
 - 用户端网页端与小程序共用：除微信授权外的大部分用户端接口
 - 用户端小程序独有：微信授权登录与微信授权后绑定手机号接口
-- 用户端网页端独有：当前未发现单独面向网页端的专属接口
+- 用户端网页端独有：`GET /api/v1/app/auth/wechat-web/qr-config`、`POST /api/v1/app/auth/wechat-web/login`
 
 ## 管理员端 API
 
@@ -66,6 +88,21 @@
 | PUT | `/api/v1/admin/system/roles/{id}/permissions` | 绑定角色权限 |
 | PATCH | `/api/v1/admin/system/roles/{id}/status` | 修改角色状态 |
 
+#### 2.1 审核日志响应补充
+
+`GET /api/v1/admin/system/audit-records` 当前除原有字段外，还会补充：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `targetTypeLabel` | `string` | 审核目标类型中文名，例如 `资讯`、`专题`、`图书` |
+| `statusType` | `string` | 状态语义类型，当前可能为 `review_status`、`qa_status`、`feedback_status`、`login_result` |
+| `beforeStatusLabel` | `string` | 变更前状态中文说明 |
+| `afterStatusLabel` | `string` | 变更后状态中文说明 |
+| `auditorName` | `string` | 审核人展示名，优先真实姓名，缺失时回退管理员账号 |
+| `auditorUsername` | `string` | 审核人管理员账号 |
+
+`targetType` 当前可见编码包括：`article`、`podcast`、`topic`、`course`、`book`、`knowledge_entry`、`live_session`、`qa_question`、`feedback`、`sys_admin_login`。
+
 ### 3. 用户与学员
 
 | 方法 | 路径 | 说明 |
@@ -76,6 +113,8 @@
 | PATCH | `/api/v1/admin/users/{id}/status` | 修改用户状态 |
 | GET | `/api/v1/admin/students` | 分页查询学员 |
 | POST | `/api/v1/admin/students` | 新增学员 |
+| POST | `/api/v1/admin/students/import` | 导入学员，`multipart/form-data`，文件字段名为 `file` |
+| GET | `/api/v1/admin/students/export` | 导出学员，按列表筛选条件生成 Excel |
 | GET | `/api/v1/admin/students/{id}` | 查询学员详情 |
 | PUT | `/api/v1/admin/students/{id}` | 维护学员信息 |
 | DELETE | `/api/v1/admin/students/{id}` | 删除学员 |
@@ -147,6 +186,29 @@
 
 `POST /api/v1/admin/students` 与 `PUT /api/v1/admin/students/{id}` 使用相同的 `AdminStudentUpsertRequest` 结构；`POST /api/v1/admin/students/batch-delete` 请求体为学员 ID 数组封装对象。
 
+#### 3.3 学员导入与导出
+
+`POST /api/v1/admin/students/import` 通过 Excel 批量新增学员，当前要求：
+
+- 请求类型为 `multipart/form-data`，文件字段名固定为 `file`
+- 文件扩展名仅支持 `.xls`、`.xlsx`
+- 表头必须至少包含：`学号`、`姓名`、`性别`、`年龄`、`学历`、`手机号`、`身份证号`、`省份`、`省份编码`、`城市`、`城市编码`、`区县`、`区县编码`、`单位`、`机构ID`、`职称`、`执业类型ID`、`状态`
+
+导入响应字段：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `totalRows` | `integer` | 实际处理的数据行数，不含空行和表头 |
+| `successCount` | `integer` | 导入成功行数 |
+| `failureCount` | `integer` | 导入失败行数 |
+| `failures` | `array` | 失败明细 |
+| `failures[].rowNumber` | `integer` | Excel 实际行号，从 1 开始计数 |
+| `failures[].studentNo` | `string` | 失败行学号 |
+| `failures[].realName` | `string` | 失败行姓名 |
+| `failures[].errorMessage` | `string` | 失败原因 |
+
+`GET /api/v1/admin/students/export` 复用学员列表筛选参数：`sort`、`keyword`、`status`、`certificationStatus`。响应为 `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet` 文件下载，不再包在 `ApiResponse<T>` 中。
+
 ### 4. 内容配置
 
 | 方法 | 路径 | 说明 |
@@ -209,6 +271,43 @@
 | --- | --- | --- |
 | `paperId` | `integer` | 关联考卷 ID，可为空 |
 
+#### 4.2 首页内容快捷配置规则
+
+`POST /api/v1/admin/content/home/contents`、`PUT /api/v1/admin/content/home/contents/{id}` 当前继续沿用统一 `contentType + targetId` 模型，规则如下：
+
+- `contentType` 仅支持 `course`、`book`、`podcast`、`topic`、`live`
+- `targetId` 对资源型首页内容为必填，且必须指向真实存在的资源
+- `startAt` 和 `endAt` 可为空；同时传值时必须满足 `startAt < endAt`
+
+`GET /api/v1/admin/content/home/contents` 及详情型响应当前包含：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `contentTypeLabel` | `string` | 首页内容类型中文名 |
+| `targetAvailable` | `boolean` | 目标资源当前是否可用 |
+| `targetTitle` | `string` | 目标资源标题 |
+
+#### 4.3 专题分项配置规则
+
+`PUT /api/v1/admin/content/topics/{id}/items` 当前是专题分项唯一正式入口，规则如下：
+
+- `itemType` 仅支持 `course`、`book`、`podcast`
+- `itemId` 必须指向真实存在的对应资源
+- 同一专题内禁止重复绑定“同类型 + 同资源”组合
+- `sortOrder` 可为空；为空时后端按请求顺序自动归一化排序
+
+接口响应新增字段：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `itemTypeLabel` | `string` | 分项类型中文名 |
+| `itemAvailable` | `boolean` | 分项资源当前是否可用 |
+| `itemTitle` | `string` | 分项主标题 |
+| `itemSubtitle` | `string` | 分项副标题 |
+| `itemCoverUrl` | `string` | 分项封面 |
+| `reviewStatus` | `string` | 分项审核状态 |
+| `publishStatus` | `string` | 分项发布状态 |
+
 ### 5. 学习资源
 
 | 方法 | 路径 | 说明 |
@@ -267,6 +366,13 @@
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
 | `totalPages` | `integer` | 图书总页数，非负整数 |
+| `paperId` | `integer` | 图书绑定的考卷 ID；当前图书采用单考卷模型，留空表示未配置 |
+
+图书响应 `BookResponse` 额外返回：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `paperTitle` | `string` | 当前绑定考卷名称；未配置或考卷已失效时返回 `null` |
 
 `POST /api/v1/admin/learning/books/chapters`、`PUT /api/v1/admin/learning/books/chapters/{id}` 额外支持：
 
@@ -275,7 +381,7 @@
 | `startPage` | `integer` | 章节起始页码，最小为 1 |
 | `pageCount` | `integer` | 章节页数，非负整数 |
 
-相关响应 `CourseVideoResponse`、`BookResponse`、`BookChapterResponse` 会同步返回这些字段。
+相关响应 `CourseVideoResponse`、`BookResponse`、`BookChapterResponse` 会同步返回这些字段。图书保存时如果传入 `paperId`，后端会校验该考卷必须真实存在。
 
 ### 6. 专家管理
 
@@ -309,6 +415,22 @@
 
 专家响应同步返回 `userId`、`gender`、`birthDate`、`mobile`、`organizationId`、`practiceTypeId`、`coverUrl`。当 `userId` 非空时，后端会确保该前台用户存在激活的 `EXPERT` 身份记录。
 
+#### 6.2 专家分类层级规则
+
+专家分类继续复用 `GET/POST/PUT/DELETE /api/v1/admin/experts/categories` 同一套接口，不新增“二级科室专用接口”。当前规则：
+
+- `parentId = null` 表示一级分类
+- `parentId = 一级分类 ID` 表示二级分类
+- 不允许创建三级分类
+- 删除父分类前，必须先清空其子分类和专家绑定
+
+分类响应补充字段：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `parentCategoryName` | `string` | 父级分类名称；一级分类时为空 |
+| `level` | `integer` | 当前层级，一级为 `1`，二级为 `2` |
+
 ### 7. 互动处理
 
 | 方法 | 路径 | 说明 |
@@ -321,6 +443,25 @@
 | GET | `/api/v1/admin/interaction/qa/questions/{id}` | 答疑问题详情 |
 | DELETE | `/api/v1/admin/interaction/qa/questions/{id}` | 删除答疑问题 |
 | POST | `/api/v1/admin/interaction/qa/questions/{id}/answers` | 回复答疑问题 |
+
+#### 7.1 反馈与答疑字段语义
+
+反馈字段语义：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `feedbackType` | `string` | 自由文本分类，当前可由前端按页面自行约定，如 `功能建议`、`内容纠错` |
+| `contact` | `string` | 主联系方式字段，可填写手机号、微信号、邮箱等任一种便于联系的信息 |
+
+问答状态字段语义：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `status` | `string / number` | 兼容旧版状态字段，继续保留 |
+| `statusCode` | `string` | 稳定状态编码，如 `PENDING`、`ANSWERED`、`CLOSED` |
+| `statusLabel` | `string` | 稳定状态中文名，如 `待回复`、`已回复`、`已关闭` |
+
+上述 `statusCode`、`statusLabel` 同时适用于管理端问答接口和用户端“我的咨询”接口。
 
 ### 8. 知识库
 
@@ -527,6 +668,7 @@
 | POST | `/api/v1/app/learning/records` | 同步学习记录 |
 | GET | `/api/v1/app/learning/topics` | 分页查询专题 |
 | GET | `/api/v1/app/learning/topics/{id}` | 专题详情 |
+| GET | `/api/v1/app/learning/topics/{id}/sections/{sectionType}` | 分页查询专题分区内容 |
 
 ##### 1.3.1 用户端学习资源返回字段补充
 
@@ -539,6 +681,20 @@
 | 图书章节 | `startPage` / `pageCount` | 章节起始页和页数 |
 | 播客 | `speakerName` / `tags` | 主讲人和标签列表 |
 | 播客音频 | `paperId` | 音频关联考卷 ID |
+
+##### 1.3.2 专题页页面化契约
+
+当前用户端专题接口已按官网页面结构收口：
+
+- `GET /api/v1/app/learning/topics` 返回 `AppTopicCardResponse`，用于专题列表卡片。除原有标题、摘要、封面、发布时间外，响应新增 `tags`、`favoriteCount`、`favorited`，前端可直接渲染专题主标签与收藏态。
+- `GET /api/v1/app/learning/topics/{id}` 返回 `AppTopicDetailResponse`，使用 `sections` 数组表达页面分区，而不是继续返回平铺 `items`。
+- 每个分区对象包含 `sectionType`、`sectionLabel`、`total`、`hasMore`、`items`。当前固定约定如下：
+  - `learning`：映射专题内 `book` 资源，分区标题为 `学习`
+  - `video`：映射专题内 `course` 资源，分区标题为 `视频`
+  - `audio`：映射专题内 `podcast` 资源，分区标题为 `音频`
+- 分区首屏 `items` 最多返回 3 条预览数据；完整列表通过 `GET /api/v1/app/learning/topics/{id}/sections/{sectionType}` 分页获取。
+- 分区分页和首屏预览统一返回 `AppTopicResourceCardResponse`，字段固定为 `resourceType`、`resourceTypeLabel`、`resourceId`、`title`、`subtitle`、`coverUrl`、`tags`、`browseCount`、`favoriteCount`、`favorited`、`progressPercent`、`studySeconds`。
+- 后端查询时会过滤无法展示的专题关联项，联调时不需要再兼容 `resource = null` 或未知结构的裸对象分支。
 
 #### 1.4 专家
 
@@ -600,7 +756,6 @@
 - 老用户：后端通过 `openid` 命中已存在的 `app_users.wechat_open_id`，直接返回登录态。
 - 新用户：后端不立即写入 `app_users`，而是返回临时绑定态，前端跳转手机号绑定页。
 - `POST /api/v1/app/auth/wechat-bind-mobile` 复用现有短信验证码能力；前端先调用 `/api/v1/app/auth/sms-code`，再提交 `bindToken + mobile + code` 完成入库或补绑。
-- 当前仓库中未发现网页端专属登录接口。
 
 `POST /api/v1/app/auth/wechat-login` 响应要点：
 
@@ -621,6 +776,19 @@
 | `bindToken` | `string` | `wechat-login` 返回的临时绑定令牌 |
 | `mobile` | `string` | 11 位中国大陆手机号 |
 | `code` | `string` | 通过 `/api/v1/app/auth/sms-code` 获取的短信验证码 |
+
+### 3. 网页端独有 API
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/api/v1/app/auth/wechat-web/qr-config` | 获取官网微信扫码登录所需的 `appId`、`redirectUri`、`scope`、`state` |
+| POST | `/api/v1/app/auth/wechat-web/login` | 官网微信扫码回调后，使用 `code + state` 完成登录或进入绑定手机号链路 |
+
+说明：
+
+- `wechat-web/login` 返回结构与小程序 `wechat-login` 一致，仍使用 `AppWechatLoginResponse`
+- 老用户优先按 `wechat_union_id` 恢复，其次按 `wechat_web_open_id` 恢复
+- 未注册用户仍返回 `needBindMobile=true`，后续继续调用 `POST /api/v1/app/auth/wechat-bind-mobile`
 
 ## 测试账号
 
