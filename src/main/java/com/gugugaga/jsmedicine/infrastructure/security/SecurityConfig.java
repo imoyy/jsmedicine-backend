@@ -49,6 +49,7 @@ public class SecurityConfig {
                                 "/api/v1/app/auth/wechat-web/qr-config",
                                 "/api/v1/app/auth/wechat-web/login"
                         ).permitAll()
+                        .requestMatchers("/api/v1/app/**").hasRole("APP_USER")
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(exceptions -> exceptions

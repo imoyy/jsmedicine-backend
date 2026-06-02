@@ -103,9 +103,15 @@
 - `[x]` 开发阶段暂切换为后端 mock 的官网扫码登录链路：`WECHAT_WEB_MOCK_ENABLED=true` 时允许 `qr-config` 返回占位配置并直接用 mock `code -> openid/unionid` 联调；产品官网上线并申请通过网站应用后，需切回真实微信扫码配置并完成联调验收。
 - `[ ]` 验证 Redis 中管理端与用户端 token key 前缀隔离。
 - `[ ]` 验证 token 过期、无效 token、缺失 token 的统一错误响应。
-- `[ ]` 检查所有管理端敏感接口是否具备 `@PreAuthorize`。
-- `[ ]` 检查新增权限迁移是否完整绑定 `SUPER_ADMIN`。
+- `[x]` 检查所有管理端敏感接口是否具备 `@PreAuthorize`。
+- `[x]` 检查新增权限迁移是否完整绑定 `SUPER_ADMIN`。
 - `[ ]` 使用脚本化请求覆盖认证与权限核心场景，不新增测试文件。
+
+当前认证边界加固记录：
+
+- `2026-06-02`：已在 `SecurityConfig` 增加 `/api/v1/app/** -> ROLE_APP_USER` 路径级约束，避免管理端 token 继续误打用户端接口并得到 `200/401` 混杂结果；后续仍需通过实际请求补齐 admin/app 跨端 token 验证验收。
+- `2026-06-02`：已按 `/api/v1/admin/**` controller 方法做静态扫描，当前管理端敏感接口均已显式标注 `@PreAuthorize`；未发现新的漏鉴权入口。
+- `2026-06-02`：静态对账 `@PreAuthorize` 权限码与 Flyway 权限种子后，补充 `V23__seed_system_admin_permissions.sql`，正式纳入 `sys:admin:view/create/update/disable/reset-password` 并绑定 `SUPER_ADMIN`；同时修正 dev 验收种子里这组权限的旧后台路径。
 
 验收标准：
 
@@ -139,7 +145,7 @@
 当前契约收敛重点：
 
 - `[x]` 官网专题页页面化契约已完成：用户端专题列表改为显式卡片 DTO，专题详情按 `learning/book`、`video/course`、`audio/podcast` 固定映射输出分区结构，并补齐专题分区分页接口与稳定 OpenAPI schema。
-- `[~]` 管理端联调第二批反馈待收口：学员导入/导出接口已补齐并进入 Swagger 契约；审核日志响应已补资源类型说明、审核人展示名与状态语义字段；图书考卷配置已明确复用图书新增/修改接口；专题分项规则、专家分类层级、首页内容 `contentType/targetId` 规则、反馈字段语义、答疑状态输出形式、测试资源地址策略仍需明确契约或补实现。
+- `[x]` 管理端联调第二批反馈第一轮收口已完成：学员导入/导出、审核日志、图书考卷配置、专题分项规则、专家分类层级、首页内容 `contentType/targetId` 规则、反馈字段语义、答疑状态输出形式、测试资源地址策略均已完成当前阶段契约收口并同步到 Swagger/联调文档。
 
 ## 阶段 Q3：核心业务流程联调补强
 

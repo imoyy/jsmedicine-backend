@@ -54,6 +54,7 @@
 - 用户端网页端与小程序共用：除微信授权外的大部分用户端接口
 - 用户端小程序独有：微信授权登录与微信授权后绑定手机号接口
 - 用户端网页端独有：`GET /api/v1/app/auth/wechat-web/qr-config`、`POST /api/v1/app/auth/wechat-web/login`
+- 端侧登录态边界：`/api/v1/app/**` 只接受用户端登录态；管理端 token 命中用户端受保护接口时应返回 `403 FORBIDDEN`，不再按“用户未登录”兼容处理。
 
 ## 管理员端 API
 

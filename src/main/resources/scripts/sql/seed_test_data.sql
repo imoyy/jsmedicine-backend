@@ -88,23 +88,23 @@ SELECT NULL, 'auth:status', '校验登录状态', 3, NULL, 'GET', '/api/v1/auth/
 WHERE NOT EXISTS (SELECT 1 FROM sys_permissions WHERE permission_code = 'auth:status' AND deleted = 0);
 
 INSERT INTO sys_permissions (parent_id, permission_code, permission_name, permission_type, route_path, api_method, api_path, icon, sort_order, status, created_by, updated_by, deleted)
-SELECT NULL, 'sys:admin:view', '查看管理员', 3, NULL, 'GET', '/api/v1/system/admins', NULL, 10, 1, 0, 0, 0
+SELECT NULL, 'sys:admin:view', '查看管理员', 3, NULL, 'GET', '/api/v1/admin/system/admins', NULL, 10, 1, 0, 0, 0
 WHERE NOT EXISTS (SELECT 1 FROM sys_permissions WHERE permission_code = 'sys:admin:view' AND deleted = 0);
 
 INSERT INTO sys_permissions (parent_id, permission_code, permission_name, permission_type, route_path, api_method, api_path, icon, sort_order, status, created_by, updated_by, deleted)
-SELECT NULL, 'sys:admin:create', '创建管理员', 3, NULL, 'POST', '/api/v1/system/admins', NULL, 11, 1, 0, 0, 0
+SELECT NULL, 'sys:admin:create', '创建管理员', 3, NULL, 'POST', '/api/v1/admin/system/admins', NULL, 11, 1, 0, 0, 0
 WHERE NOT EXISTS (SELECT 1 FROM sys_permissions WHERE permission_code = 'sys:admin:create' AND deleted = 0);
 
 INSERT INTO sys_permissions (parent_id, permission_code, permission_name, permission_type, route_path, api_method, api_path, icon, sort_order, status, created_by, updated_by, deleted)
-SELECT NULL, 'sys:admin:update', '更新管理员', 3, NULL, 'PUT', '/api/v1/system/admins/{id}', NULL, 12, 1, 0, 0, 0
+SELECT NULL, 'sys:admin:update', '更新管理员', 3, NULL, 'PUT', '/api/v1/admin/system/admins/{id}', NULL, 12, 1, 0, 0, 0
 WHERE NOT EXISTS (SELECT 1 FROM sys_permissions WHERE permission_code = 'sys:admin:update' AND deleted = 0);
 
 INSERT INTO sys_permissions (parent_id, permission_code, permission_name, permission_type, route_path, api_method, api_path, icon, sort_order, status, created_by, updated_by, deleted)
-SELECT NULL, 'sys:admin:disable', '禁用管理员', 3, NULL, 'PATCH', '/api/v1/system/admins/{id}/status', NULL, 13, 1, 0, 0, 0
+SELECT NULL, 'sys:admin:disable', '禁用管理员', 3, NULL, 'PATCH', '/api/v1/admin/system/admins/{id}/status', NULL, 13, 1, 0, 0, 0
 WHERE NOT EXISTS (SELECT 1 FROM sys_permissions WHERE permission_code = 'sys:admin:disable' AND deleted = 0);
 
 INSERT INTO sys_permissions (parent_id, permission_code, permission_name, permission_type, route_path, api_method, api_path, icon, sort_order, status, created_by, updated_by, deleted)
-SELECT NULL, 'sys:admin:reset-password', '重置管理员密码', 3, NULL, 'PATCH', '/api/v1/system/admins/{id}/password/reset', NULL, 14, 1, 0, 0, 0
+SELECT NULL, 'sys:admin:reset-password', '重置管理员密码', 3, NULL, 'PATCH', '/api/v1/admin/system/admins/{id}/password/reset', NULL, 14, 1, 0, 0, 0
 WHERE NOT EXISTS (SELECT 1 FROM sys_permissions WHERE permission_code = 'sys:admin:reset-password' AND deleted = 0);
 
 INSERT INTO sys_permissions (parent_id, permission_code, permission_name, permission_type, route_path, api_method, api_path, icon, sort_order, status, created_by, updated_by, deleted)
