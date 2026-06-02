@@ -10,7 +10,7 @@
 
 - 不要重新设计一套平行架构。
 - 不要把已拆分的管理端与用户端能力重新混回同一控制器、同一权限模型或同一 token 语义。
-- 不要直接修改已发布 Flyway 迁移，后续数据库变更从 `V13__...sql` 开始新增。
+- 不要直接修改已发布 Flyway 迁移，后续数据库变更从 `V22__...sql` 开始新增。
 - 新增或修改接口后必须同步更新 `api/api.json`。
 - 下个质量保障阶段不新增测试文件，不修改既有测试文件；只运行现有测试作为健康检查，功能质量主要通过接口联调、脚本化请求、编译打包和 Swagger 契约验证保证。
 
@@ -43,6 +43,7 @@ src/main/java/com/gugugaga/jsmedicine/
 - 用户端接口前缀：`/api/v1/app/...`
 - 管理端认证接口目前为：`/api/v1/auth/login`、`/api/v1/auth/logout`、`/api/v1/auth/me`、`/api/v1/auth/status`
 - 用户端认证接口为：`/api/v1/app/auth/...`
+- 官网微信扫码登录接口属于用户端认证域：`/api/v1/app/auth/wechat-web/...`
 
 禁止事项：
 
@@ -73,6 +74,8 @@ src/main/java/com/gugugaga/jsmedicine/
 - `BearerTokenAuthenticationFilter` 会先尝试管理端 session，再尝试用户端 session。
 - 认证成功后，`Authentication.credentials` 保存原始 token，`details` 保存对应 session。
 - `AuthBootstrapService` 必须在 `app.auth.bootstrap-password` 未配置时直接跳过，不要先查 `sys_admins`。轻量验证环境可能没有完整业务 schema。
+- 官网微信扫码登录恢复顺序统一为优先 `wechat_union_id`，其次 `wechat_web_open_id`；未注册用户继续走手机号绑定链路。
+- 开发联调阶段允许 `WECHAT_WEB_MOCK_ENABLED=true` 走后端 mock 扫码链路；产品官网上线并具备真实网站应用配置后，必须关闭 mock 并切回微信官方扫码流程。
 
 权限约定：
 
@@ -85,11 +88,11 @@ src/main/java/com/gugugaga/jsmedicine/
 
 Entity 是代码侧数据模型来源，Flyway 是数据库落地来源。新增表、字段、索引、状态流转时，先更新 Entity / Enum，再新增迁移脚本。
 
-当前已存在迁移到 `V12__stage11_statistics_permissions_and_indexes.sql`。后续迁移必须从 `V13__...sql` 开始。
+当前已存在迁移到 `V21__fix_qa_answers_created_at.sql`。后续迁移必须从 `V22__...sql` 开始。
 
 禁止事项：
 
-- 禁止修改已发布迁移 `V1` 到 `V12`。
+- 禁止修改已发布迁移 `V1` 到 `V21`。
 - 禁止只在 SQL 中新增业务结构而不创建对应 Entity。
 - 禁止 Controller 直接返回 Entity。
 - 禁止在 Service 中拼接复杂统计 SQL。
@@ -114,6 +117,7 @@ Entity 是代码侧数据模型来源，Flyway 是数据库落地来源。新增
 
 - 文件二进制存对象存储，数据库只落 `file_assets` 元数据和业务关联；不要把头像、封面、认证材料二进制写入 MySQL。
 - 用户端头像采用“申请签名上传地址 -> 客户端直传对象存储 -> 后端确认上传 -> 写入 `file_assets` -> 回填稳定读取地址”链路。
+- 当前签名上传基础设施已接入 MinIO；后续扩展内容图片、认证材料等对象存储链路时，应复用同一套签名上传与确认入库模式，不要回退为前端直接写外部 URL。
 - 用户端头像稳定读取地址统一为 `/api/v1/files/{id}/content`；`app_users.avatar_url` 当前保存这个后端读取地址，而不是前端直传的第三方 URL。
 - 禁止前端或业务接口直接登记用户头像的 `bucket_name`、`object_key`、`url`，也禁止继续通过 `PUT /api/v1/app/profile` 直接改 `avatarUrl`。
 - 用户头像对象 key 统一使用 `app-users/{userId}/avatars/{yyyy}/{MM}/{uuid}.{ext}` 前缀，内容类型仅允许 `image/jpeg`、`image/png`、`image/webp`。
@@ -129,6 +133,14 @@ Entity 是代码侧数据模型来源，Flyway 是数据库落地来源。新增
 
 承载 `app_users`、`students`、用户端个人资料、学员认证、用户端“我的页面”聚合。后台用户/学员管理接口也在该域内，但接口路径仍使用 `/api/v1/admin/...`。
 
+个人资料语义约定：
+
+- `app_users` 承载账号基础资料，只放所有用户共有且弱业务化的信息，例如头像、昵称、邮箱、基础性别、登录绑定信息。
+- `/api/v1/app/profile` 只承载账号基础资料读写；不要继续把单位、执业类别、年龄、文化程度、科室等职业身份字段塞进该接口。
+- `students` 承载学员/执业身份资料，包含年龄、文化程度、执业类别、单位、联系电话、地区、认证状态等强业务字段。
+- 小程序中展示“头像 / 昵称 / 性别 / 年龄 / 文化程度 / 执业类别 / 单位 / 联系电话”这一类页面时，默认理解为 `students` 身份资料页面，不是纯账号资料页。
+- 如果页面需要展示“头像 / 昵称 / 性别 / 邮箱”等通用资料，则以 `app_users` 为准；如同时出现职业字段，应拆成独立身份资料区域或独立接口，不要混在一个更新请求里。
+
 ### content
 
 承载首页分类、首页内容、资讯、专题、播客管理等内容分发能力。用户端消费学习资源时，如属于学习闭环，应优先在 `learning/app` 聚合。
@@ -137,9 +149,20 @@ Entity 是代码侧数据模型来源，Flyway 是数据库落地来源。新增
 
 承载课程、图书、播客播放、题库、考试、学习记录、直播等学习闭环。题库和考试已经实现后台配置与用户端提交判分，不要新增平行考试模块。
 
+学习页契约约定：
+
+- 用户端课程、图书、播客、专题列表与详情中，已接入的浏览量、收藏量、当前用户收藏态属于稳定契约，不要在后续联调中回退删除、改名或改语义。
+- 用户端收藏切换、浏览记录上报统一走 `interaction` 域接口，不要在 `learning` 域平行新增重复写接口。
+
 ### expert
 
 承载专家分类、专家资料、专家履历。咨询/答疑流程可引用专家，但专家主数据不下沉到 interaction。
+
+专家资料语义约定：
+
+- `experts` 是专家身份资料，不等同于普通用户账号资料，也不等同于学员认证资料。
+- 专家相关字段如单位、职称、专业方向/科室、执业类别、咨询说明等，应优先落在 `experts`，不要反向污染 `app_users`。
+- 小程序或网页端如果出现“个人资料”页面包含科室、专家介绍、咨询相关字段，应先判断该页面实际是专家资料页，再决定是否走 `expert` 域接口；不要仅因页面标题叫“个人资料”就复用 `/api/v1/app/profile`。
 
 ### interaction
 
@@ -284,7 +307,7 @@ dev 环境启动时默认导入验收数据：
 - 不绕过 `BearerTokenAuthenticationFilter` 自行解析 token。
 - 不在 Controller 中写业务编排或数据访问。
 - 不在 Service 中拼复杂统计 SQL。
-- 不直接修改 `V1` 到 `V12` 迁移。
+- 不直接修改 `V1` 到 `V21` 迁移。
 - 不把用户端能力塞回后台 RBAC。
 - 不把知识库等同于图书、资讯或专题。
 - 不用硬编码密码、密钥、域名替代配置。

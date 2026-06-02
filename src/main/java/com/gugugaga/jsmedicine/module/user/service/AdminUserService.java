@@ -1,17 +1,25 @@
 package com.gugugaga.jsmedicine.module.user.service;
 
+import cn.hutool.poi.excel.ExcelReader;
+import cn.hutool.poi.excel.ExcelUtil;
+import cn.hutool.poi.excel.ExcelWriter;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.gugugaga.jsmedicine.common.enums.EnabledStatus;
 import com.gugugaga.jsmedicine.common.enums.AppUserIdentityStatus;
 import com.gugugaga.jsmedicine.common.enums.AppUserIdentityType;
+import com.gugugaga.jsmedicine.common.enums.EnabledStatus;
+import com.gugugaga.jsmedicine.common.enums.Gender;
 import com.gugugaga.jsmedicine.common.enums.StudentCertificationStatus;
 import com.gugugaga.jsmedicine.common.exception.BusinessException;
 import com.gugugaga.jsmedicine.common.exception.ErrorCode;
 import com.gugugaga.jsmedicine.common.response.PageResponse;
 import com.gugugaga.jsmedicine.infrastructure.security.CurrentAdminAccessor;
 import com.gugugaga.jsmedicine.infrastructure.storage.service.AppUserAvatarUrlResolver;
+import com.gugugaga.jsmedicine.module.expert.entity.Expert;
+import com.gugugaga.jsmedicine.module.expert.mapper.ExpertMapper;
+import com.gugugaga.jsmedicine.module.user.dto.AdminStudentImportFailureResponse;
+import com.gugugaga.jsmedicine.module.user.dto.AdminStudentImportResponse;
 import com.gugugaga.jsmedicine.module.user.dto.AdminStudentPageQuery;
 import com.gugugaga.jsmedicine.module.user.dto.AdminStudentResponse;
 import com.gugugaga.jsmedicine.module.user.dto.AdminStudentUpsertRequest;
@@ -29,15 +37,25 @@ import com.gugugaga.jsmedicine.module.user.mapper.AppUserIdentityMapper;
 import com.gugugaga.jsmedicine.module.user.mapper.AppUserMapper;
 import com.gugugaga.jsmedicine.module.user.mapper.StudentCertificationFileMapper;
 import com.gugugaga.jsmedicine.module.user.mapper.StudentMapper;
-import com.gugugaga.jsmedicine.module.expert.entity.Expert;
-import com.gugugaga.jsmedicine.module.expert.mapper.ExpertMapper;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validator;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 @Service
 public class AdminUserService {
@@ -45,6 +63,79 @@ public class AdminUserService {
     private static final long DEFAULT_PAGE = 1L;
     private static final long DEFAULT_SIZE = 20L;
     private static final long MAX_SIZE = 100L;
+    private static final DateTimeFormatter EXPORT_DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final String FILE_EXTENSION_XLS = ".xls";
+    private static final String FILE_EXTENSION_XLSX = ".xlsx";
+    private static final String HEADER_STUDENT_NO = "学号";
+    private static final String HEADER_REAL_NAME = "姓名";
+    private static final String HEADER_GENDER = "性别";
+    private static final String HEADER_AGE = "年龄";
+    private static final String HEADER_EDUCATION_LEVEL = "学历";
+    private static final String HEADER_MOBILE = "手机号";
+    private static final String HEADER_ID_CARD_NO = "身份证号";
+    private static final String HEADER_PROVINCE = "省份";
+    private static final String HEADER_PROVINCE_CODE = "省份编码";
+    private static final String HEADER_CITY = "城市";
+    private static final String HEADER_CITY_CODE = "城市编码";
+    private static final String HEADER_DISTRICT = "区县";
+    private static final String HEADER_DISTRICT_CODE = "区县编码";
+    private static final String HEADER_ORGANIZATION = "单位";
+    private static final String HEADER_ORGANIZATION_ID = "机构ID";
+    private static final String HEADER_POSITION_TITLE = "职称";
+    private static final String HEADER_PRACTICE_TYPE_ID = "执业类型ID";
+    private static final String HEADER_STATUS = "状态";
+    private static final String HEADER_CERTIFICATION_STATUS = "认证状态";
+    private static final String HEADER_CERTIFICATION_SUBMITTED_AT = "认证提交时间";
+    private static final String HEADER_CERTIFICATION_REVIEWED_AT = "认证审核时间";
+    private static final String HEADER_CERTIFICATION_REVIEWED_BY = "认证审核人ID";
+    private static final String HEADER_REJECT_REASON = "驳回原因";
+    private static final String HEADER_ENROLLED_AT = "入学时间";
+    private static final List<String> STUDENT_IMPORT_HEADERS = List.of(
+            HEADER_STUDENT_NO,
+            HEADER_REAL_NAME,
+            HEADER_GENDER,
+            HEADER_AGE,
+            HEADER_EDUCATION_LEVEL,
+            HEADER_MOBILE,
+            HEADER_ID_CARD_NO,
+            HEADER_PROVINCE,
+            HEADER_PROVINCE_CODE,
+            HEADER_CITY,
+            HEADER_CITY_CODE,
+            HEADER_DISTRICT,
+            HEADER_DISTRICT_CODE,
+            HEADER_ORGANIZATION,
+            HEADER_ORGANIZATION_ID,
+            HEADER_POSITION_TITLE,
+            HEADER_PRACTICE_TYPE_ID,
+            HEADER_STATUS
+    );
+    private static final List<String> STUDENT_EXPORT_HEADERS = List.of(
+            HEADER_STUDENT_NO,
+            HEADER_REAL_NAME,
+            HEADER_GENDER,
+            HEADER_AGE,
+            HEADER_EDUCATION_LEVEL,
+            HEADER_MOBILE,
+            HEADER_ID_CARD_NO,
+            HEADER_PROVINCE,
+            HEADER_PROVINCE_CODE,
+            HEADER_CITY,
+            HEADER_CITY_CODE,
+            HEADER_DISTRICT,
+            HEADER_DISTRICT_CODE,
+            HEADER_ORGANIZATION,
+            HEADER_ORGANIZATION_ID,
+            HEADER_POSITION_TITLE,
+            HEADER_PRACTICE_TYPE_ID,
+            HEADER_STATUS,
+            HEADER_CERTIFICATION_STATUS,
+            HEADER_CERTIFICATION_SUBMITTED_AT,
+            HEADER_CERTIFICATION_REVIEWED_AT,
+            HEADER_CERTIFICATION_REVIEWED_BY,
+            HEADER_REJECT_REASON,
+            HEADER_ENROLLED_AT
+    );
 
     private final AppUserMapper appUserMapper;
     private final AppUserIdentityMapper appUserIdentityMapper;
@@ -53,6 +144,7 @@ public class AdminUserService {
     private final ExpertMapper expertMapper;
     private final CurrentAdminAccessor currentAdminAccessor;
     private final AppUserAvatarUrlResolver appUserAvatarUrlResolver;
+    private final Validator validator;
 
     public AdminUserService(
             AppUserMapper appUserMapper,
@@ -61,7 +153,8 @@ public class AdminUserService {
             StudentCertificationFileMapper studentCertificationFileMapper,
             ExpertMapper expertMapper,
             CurrentAdminAccessor currentAdminAccessor,
-            AppUserAvatarUrlResolver appUserAvatarUrlResolver
+            AppUserAvatarUrlResolver appUserAvatarUrlResolver,
+            Validator validator
     ) {
         this.appUserMapper = appUserMapper;
         this.appUserIdentityMapper = appUserIdentityMapper;
@@ -70,6 +163,7 @@ public class AdminUserService {
         this.expertMapper = expertMapper;
         this.currentAdminAccessor = currentAdminAccessor;
         this.appUserAvatarUrlResolver = appUserAvatarUrlResolver;
+        this.validator = validator;
     }
 
     public PageResponse<AdminUserResponse> pageUsers(AdminUserPageQuery query) {
@@ -118,20 +212,7 @@ public class AdminUserService {
 
     public PageResponse<AdminStudentResponse> pageStudents(AdminStudentPageQuery query) {
         Page<Student> page = studentMapper.selectPage(new Page<>(normalizePage(query.page()), normalizeSize(query.size())),
-                new LambdaQueryWrapper<Student>()
-                        .eq(Student::getDeleted, 0)
-                        .eq(query.status() != null, Student::getStatus, query.status())
-                        .eq(query.certificationStatus() != null, Student::getCertificationStatus, query.certificationStatus())
-                        .and(hasText(query.keyword()), wrapper -> wrapper
-                                .like(Student::getStudentNo, query.keyword())
-                                .or()
-                                .like(Student::getRealName, query.keyword())
-                                .or()
-                                .like(Student::getMobile, query.keyword())
-                                .or()
-                                .like(Student::getOrganization, query.keyword()))
-                        .orderByAsc("submittedAtAsc".equals(query.sort()), Student::getCertificationSubmittedAt)
-                        .orderByDesc(!"submittedAtAsc".equals(query.sort()), Student::getCertificationSubmittedAt));
+                buildStudentQuery(query));
         return new PageResponse<>(
                 page.getRecords().stream().map(this::toStudentResponse).toList(),
                 page.getTotal(),
@@ -146,15 +227,51 @@ public class AdminUserService {
 
     @Transactional(rollbackFor = Exception.class)
     public AdminStudentResponse createStudent(AdminStudentUpsertRequest request) {
-        if (hasText(request.studentNo())) {
-            ensureStudentNoAvailable(request.studentNo(), null);
-        }
-        Student student = new Student();
-        student.setCertificationStatus(StudentCertificationStatus.APPROVED);
-        student.setEnrolledAt(LocalDateTime.now());
-        applyStudent(student, request);
-        studentMapper.insert(student);
+        Student student = createStudentInternal(request);
         return getStudent(student.getId());
+    }
+
+    public AdminStudentImportResponse importStudents(MultipartFile file) {
+        validateImportFile(file);
+        List<List<Object>> rows = readStudentImportRows(file);
+        Map<String, Integer> headerIndexes = buildHeaderIndexes(rows);
+        List<AdminStudentImportFailureResponse> failures = new ArrayList<>();
+        int totalRows = 0;
+        int successCount = 0;
+        for (int index = 1; index < rows.size(); index++) {
+            List<Object> row = rows.get(index);
+            if (isEmptyRow(row)) {
+                continue;
+            }
+            totalRows++;
+            try {
+                AdminStudentUpsertRequest request = toImportRequest(headerIndexes, row);
+                createStudentInternal(request);
+                successCount++;
+            } catch (BusinessException exception) {
+                failures.add(new AdminStudentImportFailureResponse(
+                        index + 1,
+                        getCellText(row, headerIndexes.get(HEADER_STUDENT_NO)),
+                        getCellText(row, headerIndexes.get(HEADER_REAL_NAME)),
+                        exception.getMessage()
+                ));
+            }
+        }
+        return new AdminStudentImportResponse(totalRows, successCount, failures.size(), failures);
+    }
+
+    public byte[] exportStudents(AdminStudentPageQuery query) {
+        List<Student> students = studentMapper.selectList(buildStudentQuery(query));
+        try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+            ExcelWriter writer = ExcelUtil.getWriter(true);
+            writer.writeHeadRow(STUDENT_EXPORT_HEADERS);
+            students.forEach(student -> writer.writeRow(toStudentExportRow(student)));
+            writer.flush(outputStream, true);
+            writer.close();
+            return outputStream.toByteArray();
+        } catch (IOException exception) {
+            throw new BusinessException(ErrorCode.INTERNAL_ERROR, "Failed to export students");
+        }
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -217,6 +334,253 @@ public class AdminUserService {
             throw new BusinessException(ErrorCode.NOT_FOUND, "Student does not exist");
         }
         return student;
+    }
+
+    private Student createStudentInternal(AdminStudentUpsertRequest request) {
+        validateStudentRequest(request);
+        if (hasText(request.studentNo())) {
+            ensureStudentNoAvailable(request.studentNo(), null);
+        }
+        Student student = new Student();
+        student.setCertificationStatus(StudentCertificationStatus.APPROVED);
+        student.setEnrolledAt(LocalDateTime.now());
+        applyStudent(student, request);
+        studentMapper.insert(student);
+        return student;
+    }
+
+    private void validateStudentRequest(AdminStudentUpsertRequest request) {
+        Set<ConstraintViolation<AdminStudentUpsertRequest>> violations = validator.validate(request);
+        if (!violations.isEmpty()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, violations.iterator().next().getMessage());
+        }
+    }
+
+    private LambdaQueryWrapper<Student> buildStudentQuery(AdminStudentPageQuery query) {
+        return new LambdaQueryWrapper<Student>()
+                .eq(Student::getDeleted, 0)
+                .eq(query.status() != null, Student::getStatus, query.status())
+                .eq(query.certificationStatus() != null, Student::getCertificationStatus, query.certificationStatus())
+                .and(hasText(query.keyword()), wrapper -> wrapper
+                        .like(Student::getStudentNo, query.keyword())
+                        .or()
+                        .like(Student::getRealName, query.keyword())
+                        .or()
+                        .like(Student::getMobile, query.keyword())
+                        .or()
+                        .like(Student::getOrganization, query.keyword()))
+                .orderByAsc("submittedAtAsc".equals(query.sort()), Student::getCertificationSubmittedAt)
+                .orderByDesc(!"submittedAtAsc".equals(query.sort()), Student::getCertificationSubmittedAt);
+    }
+
+    private void validateImportFile(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Import file must not be empty");
+        }
+        String fileName = file.getOriginalFilename();
+        if (!hasText(fileName)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Import file name is required");
+        }
+        String normalizedFileName = fileName.toLowerCase();
+        if (!normalizedFileName.endsWith(FILE_EXTENSION_XLS) && !normalizedFileName.endsWith(FILE_EXTENSION_XLSX)) {
+            throw new BusinessException(ErrorCode.UNSUPPORTED_MEDIA_TYPE, "Import file must be an Excel file");
+        }
+    }
+
+    private List<List<Object>> readStudentImportRows(MultipartFile file) {
+        try (InputStream inputStream = file.getInputStream()) {
+            ExcelReader reader = ExcelUtil.getReader(inputStream);
+            List<List<Object>> rows = reader.read();
+            if (rows == null || rows.isEmpty()) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST, "Import file must contain header row");
+            }
+            return rows;
+        } catch (IOException exception) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Failed to read import file");
+        }
+    }
+
+    private Map<String, Integer> buildHeaderIndexes(List<List<Object>> rows) {
+        List<Object> headerRow = rows.get(0);
+        Map<String, Integer> headerIndexes = new HashMap<>();
+        for (int index = 0; index < headerRow.size(); index++) {
+            String header = normalizeText(cellToText(headerRow.get(index)));
+            if (hasText(header)) {
+                headerIndexes.put(header, index);
+            }
+        }
+        List<String> missingHeaders = STUDENT_IMPORT_HEADERS.stream()
+                .filter(header -> !headerIndexes.containsKey(header))
+                .toList();
+        if (!missingHeaders.isEmpty()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Import file headers are invalid: " + String.join(", ", missingHeaders));
+        }
+        return headerIndexes;
+    }
+
+    private AdminStudentUpsertRequest toImportRequest(Map<String, Integer> headerIndexes, List<Object> row) {
+        AdminStudentUpsertRequest request = new AdminStudentUpsertRequest(
+                normalizeText(getCellText(row, headerIndexes.get(HEADER_STUDENT_NO))),
+                requireText(getCellText(row, headerIndexes.get(HEADER_REAL_NAME)), HEADER_REAL_NAME),
+                parseGender(getCellText(row, headerIndexes.get(HEADER_GENDER))),
+                parseRequiredInteger(getCellText(row, headerIndexes.get(HEADER_AGE)), HEADER_AGE),
+                normalizeText(getCellText(row, headerIndexes.get(HEADER_EDUCATION_LEVEL))),
+                normalizeText(getCellText(row, headerIndexes.get(HEADER_MOBILE))),
+                normalizeText(getCellText(row, headerIndexes.get(HEADER_ID_CARD_NO))),
+                normalizeText(getCellText(row, headerIndexes.get(HEADER_PROVINCE))),
+                normalizeText(getCellText(row, headerIndexes.get(HEADER_PROVINCE_CODE))),
+                normalizeText(getCellText(row, headerIndexes.get(HEADER_CITY))),
+                normalizeText(getCellText(row, headerIndexes.get(HEADER_CITY_CODE))),
+                normalizeText(getCellText(row, headerIndexes.get(HEADER_DISTRICT))),
+                normalizeText(getCellText(row, headerIndexes.get(HEADER_DISTRICT_CODE))),
+                normalizeText(getCellText(row, headerIndexes.get(HEADER_ORGANIZATION))),
+                parseOptionalLong(getCellText(row, headerIndexes.get(HEADER_ORGANIZATION_ID)), HEADER_ORGANIZATION_ID),
+                normalizeText(getCellText(row, headerIndexes.get(HEADER_POSITION_TITLE))),
+                parseOptionalLong(getCellText(row, headerIndexes.get(HEADER_PRACTICE_TYPE_ID)), HEADER_PRACTICE_TYPE_ID),
+                parseEnabledStatus(getCellText(row, headerIndexes.get(HEADER_STATUS)))
+        );
+        validateStudentRequest(request);
+        return request;
+    }
+
+    private List<Object> toStudentExportRow(Student student) {
+        return List.of(
+                nullToEmpty(student.getStudentNo()),
+                nullToEmpty(student.getRealName()),
+                genderLabel(student.getGender()),
+                student.getAge() == null ? "" : student.getAge(),
+                nullToEmpty(student.getEducationLevel()),
+                nullToEmpty(student.getMobile()),
+                nullToEmpty(student.getIdCardNo()),
+                nullToEmpty(student.getProvince()),
+                nullToEmpty(student.getProvinceCode()),
+                nullToEmpty(student.getCity()),
+                nullToEmpty(student.getCityCode()),
+                nullToEmpty(student.getDistrict()),
+                nullToEmpty(student.getDistrictCode()),
+                nullToEmpty(student.getOrganization()),
+                student.getOrganizationId() == null ? "" : student.getOrganizationId(),
+                nullToEmpty(student.getPositionTitle()),
+                student.getPracticeTypeId() == null ? "" : student.getPracticeTypeId(),
+                enabledStatusLabel(student.getStatus()),
+                certificationStatusLabel(student.getCertificationStatus()),
+                formatDateTime(student.getCertificationSubmittedAt()),
+                formatDateTime(student.getCertificationReviewedAt()),
+                student.getCertificationReviewedBy() == null ? "" : student.getCertificationReviewedBy(),
+                nullToEmpty(student.getRejectReason()),
+                formatDateTime(student.getEnrolledAt())
+        );
+    }
+
+    private String getCellText(List<Object> row, Integer index) {
+        if (index == null || index < 0 || index >= row.size()) {
+            return null;
+        }
+        return normalizeText(cellToText(row.get(index)));
+    }
+
+    private String cellToText(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Number number) {
+            return new BigDecimal(number.toString()).stripTrailingZeros().toPlainString();
+        }
+        return value.toString().trim();
+    }
+
+    private boolean isEmptyRow(List<Object> row) {
+        return row == null || row.stream().allMatch(cell -> !hasText(cellToText(cell)));
+    }
+
+    private String requireText(String value, String headerName) {
+        if (!hasText(value)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, headerName + " must not be blank");
+        }
+        return value.trim();
+    }
+
+    private Gender parseGender(String value) {
+        if (!hasText(value)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, HEADER_GENDER + " must not be blank");
+        }
+        return switch (value.trim().toUpperCase()) {
+            case "0", "UNKNOWN", "未知" -> Gender.UNKNOWN;
+            case "1", "MALE", "男" -> Gender.MALE;
+            case "2", "FEMALE", "女" -> Gender.FEMALE;
+            default -> throw new BusinessException(ErrorCode.BAD_REQUEST, "Unsupported " + HEADER_GENDER + ": " + value);
+        };
+    }
+
+    private EnabledStatus parseEnabledStatus(String value) {
+        if (!hasText(value)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, HEADER_STATUS + " must not be blank");
+        }
+        return switch (value.trim().toUpperCase()) {
+            case "0", "DISABLED", "禁用" -> EnabledStatus.DISABLED;
+            case "1", "ENABLED", "启用" -> EnabledStatus.ENABLED;
+            default -> throw new BusinessException(ErrorCode.BAD_REQUEST, "Unsupported " + HEADER_STATUS + ": " + value);
+        };
+    }
+
+    private Integer parseRequiredInteger(String value, String headerName) {
+        if (!hasText(value)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, headerName + " must not be blank");
+        }
+        try {
+            return new BigDecimal(value).intValueExact();
+        } catch (ArithmeticException | NumberFormatException exception) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, headerName + " must be an integer");
+        }
+    }
+
+    private Long parseOptionalLong(String value, String headerName) {
+        if (!hasText(value)) {
+            return null;
+        }
+        try {
+            return new BigDecimal(value).longValueExact();
+        } catch (ArithmeticException | NumberFormatException exception) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, headerName + " must be an integer");
+        }
+    }
+
+    private String genderLabel(Gender gender) {
+        if (gender == null) {
+            return "";
+        }
+        return switch (gender) {
+            case UNKNOWN -> "未知";
+            case MALE -> "男";
+            case FEMALE -> "女";
+        };
+    }
+
+    private String enabledStatusLabel(EnabledStatus status) {
+        if (status == null) {
+            return "";
+        }
+        return status == EnabledStatus.ENABLED ? "启用" : "禁用";
+    }
+
+    private String certificationStatusLabel(StudentCertificationStatus status) {
+        if (status == null) {
+            return "";
+        }
+        return switch (status) {
+            case UNSUBMITTED -> "未提交";
+            case PENDING -> "待审核";
+            case APPROVED -> "已通过";
+            case REJECTED -> "已驳回";
+        };
+    }
+
+    private String formatDateTime(LocalDateTime value) {
+        return value == null ? "" : value.format(EXPORT_DATE_TIME_FORMATTER);
+    }
+
+    private String nullToEmpty(String value) {
+        return value == null ? "" : value;
     }
 
     private void ensureStudentNoAvailable(String studentNo, Long ignoredId) {
