@@ -95,14 +95,16 @@ public class AdminContentController {
         return ApiResponse.ok(adminContentService.pageHomeContents(new AdminContentPageQuery(page, size, sort, keyword, null, null)));
     }
 
-    @Operation(summary = "新增首页内容")
+    @Operation(summary = "新增首页内容",
+            description = "首页快捷配置继续沿用统一 contentType + targetId 模型；当前仅支持 course、book、podcast、topic、live 五类资源，并在保存时校验目标资源存在。")
     @PreAuthorize("hasAuthority('content:home:edit')")
     @PostMapping("/home/contents")
     public ApiResponse<HomeContentResponse> createHomeContent(@Valid @RequestBody HomeContentRequest request) {
         return ApiResponse.ok(adminContentService.createHomeContent(request));
     }
 
-    @Operation(summary = "修改首页内容")
+    @Operation(summary = "修改首页内容",
+            description = "修改时沿用新增接口相同规则：contentType 必须是受支持的资源类型，targetId 需指向真实资源，startAt 需早于 endAt。")
     @PreAuthorize("hasAuthority('content:home:edit')")
     @PutMapping("/home/contents/{id}")
     public ApiResponse<HomeContentResponse> updateHomeContent(@PathVariable Long id, @Valid @RequestBody HomeContentRequest request) {

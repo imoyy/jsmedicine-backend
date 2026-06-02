@@ -37,7 +37,8 @@ public class AdminExpertController {
         this.adminExpertService = adminExpertService;
     }
 
-    @Operation(summary = "分页查询专家分类")
+    @Operation(summary = "分页查询专家分类",
+            description = "专家分类支持两级结构：一级科室 parentId 为空，二级科室的 parentId 指向一级科室。前端可先拉取全部分类后按 parentId 分组，或传 parentId 查询指定一级科室下的二级科室。")
     @PreAuthorize("hasAuthority('expert:category:view')")
     @GetMapping("/categories")
     public ApiResponse<PageResponse<ExpertCategoryResponse>> pageCategories(
@@ -50,14 +51,16 @@ public class AdminExpertController {
         return ApiResponse.ok(adminExpertService.pageCategories(page, size, keyword, parentId, status));
     }
 
-    @Operation(summary = "新增专家分类")
+    @Operation(summary = "新增专家分类",
+            description = "新增二级科室时必须传父级一级科室 ID；当前不允许创建三级分类。")
     @PreAuthorize("hasAuthority('expert:category:edit')")
     @PostMapping("/categories")
     public ApiResponse<ExpertCategoryResponse> createCategory(@Valid @RequestBody ExpertCategoryRequest request) {
         return ApiResponse.ok(adminExpertService.createCategory(request));
     }
 
-    @Operation(summary = "修改专家分类")
+    @Operation(summary = "修改专家分类",
+            description = "分类可在一级和二级间调整，但二级科室的父级必须是一级科室；已有子分类的一级科室不能直接改成二级，避免形成三级结构。")
     @PreAuthorize("hasAuthority('expert:category:edit')")
     @PutMapping("/categories/{id}")
     public ApiResponse<ExpertCategoryResponse> updateCategory(@PathVariable Long id, @Valid @RequestBody ExpertCategoryRequest request) {

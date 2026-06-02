@@ -13,6 +13,8 @@ public record QaQuestionResponse(
         String title,
         String content,
         QaStatus status,
+        String statusCode,
+        String statusLabel,
         List<QaAnswerResponse> answers
 ) {
 }

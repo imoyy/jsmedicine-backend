@@ -182,10 +182,10 @@
   3. 审核日志：已完成第一轮契约补强，统一接口 `GET /api/v1/admin/system/audit-records` 已补 `targetTypeLabel`、`statusType`、`beforeStatusLabel`、`afterStatusLabel`、`auditorName`、`auditorUsername` 等字段，前端可直接渲染资源类型、审核人和状态语义。
   4. 图书考卷配置：已完成契约收口，明确采用“图书级单考卷”模型，复用图书新增/修改接口的 `paperId` 维护考卷绑定；图书详情/列表响应补 `paperTitle`，并在保存时校验 `paperId` 必须指向真实考卷。
   5. 专题分项配置：已完成第一轮规则收口，`PUT /api/v1/admin/content/topics/{id}/items` 现仅允许 `course/book/podcast` 三类资源，服务层补齐资源存在性校验、同专题内去重、按 `sortOrder` 与请求顺序统一归一化排序；读取响应补 `itemTypeLabel`、`itemAvailable`、标题/副标题/封面与审核/发布状态字段，便于前端直接渲染和识别遗留失效分项。
-  6. 专家分类二级科室：代码侧分类已支持 `parentId` 层级过滤与增改删，说明二级结构可复用同一套分类接口；但缺少“二级科室”页面级契约说明，前端还不知道应直接按 `parentId` 实现。
-  7. 首页内容快捷配置：当前首页内容仍是通用 `contentType + targetId` 模型，代码侧未看到按资源类型差异化校验或独立快捷配置动作，需明确是坚持通用模型还是补快捷入口接口。
-  8. 用户反馈字段语义：`feedbackType` 当前是自由文本字符串，并非正式枚举；`contact` 即反馈联系方式主字段，暂未看到第二联系方式字段。
-  9. 答疑状态：代码侧已有 `QaStatus.PENDING/ANSWERED/CLOSED`，但枚举通过 `@JsonValue` 仍向前端输出 `0/1/2` 数值，建议补语义化输出或至少补枚举文档。
+  6. 专家分类二级科室：已完成第一轮层级契约收口，继续复用同一套分类接口；Swagger 已补“一级科室 / 二级科室 / `parentId` 分组”语义，响应新增 `parentCategoryName`、`level` 字段，并在服务层限制父分类必须是一级科室、禁止形成三级分类，同时拦截“删除仍有子分类/专家绑定的分类”脏数据场景。
+  7. 首页内容快捷配置：已明确继续沿用统一 `contentType + targetId` 模型，不新增平行快捷接口；当前服务层已把 `contentType` 收口为 `course/book/podcast/topic/live`，补齐目标资源存在性、`startAt/endAt` 时间范围和 `targetId` 必填校验，响应新增类型中文说明与目标资源可用性/标题字段。
+  8. 用户反馈字段语义：已完成第一轮语义说明收口，当前继续保留 `feedbackType` 自由文本模型，不强行收成枚举；Swagger 已明确 `feedbackType` 为前端约定/用户自填分类，`contact` 为主联系方式字段，可填写手机号、微信号、邮箱等一种便于回访的信息。
+  9. 答疑状态：已完成第一轮语义化输出收口，在保留现有 `status=0/1/2` 数值兼容的前提下，管理端和用户端问答响应已补 `statusCode`、`statusLabel`，前端无需再自行硬编码状态映射。
   10. 公开资源图片地址：当前除用户头像稳定切到 `/api/v1/files/{id}/content` 外，其余课程/图书/播客/专题/直播/专家等封面在 dev 种子中仍大量使用 `https://example.com/assets/...` 占位地址，需明确是测试数据占位还是后续统一切换到稳定文件读取地址。
 - `[ ]` 统计管理补齐：从汇总接口扩展到“卡片 + 明细表 + 图表 + 导出”的页面级契约，补学员成绩管理和平台数据统计缺口。
 - `[ ]` 工作台与附加内容补齐：确认首页工作台、附加内容管理是否进入当前范围；若保留，补对应接口和契约。
@@ -329,7 +329,7 @@
 
 ## 当前优先级
 
-1. 收口专题分项规则、专家分类层级、首页内容快捷配置等“已有部分能力但契约不清”的管理端联调项。
+1. 收口公开资源图片地址策略等“已有部分能力但契约不清”的管理端联调项。
 2. 推进官网专题页页面化契约收口，完成专题标签、详情分区、卡片 DTO 与“更多”分页接口设计，再落实现有接口改造。
 3. 并行推进 Q1 和 Q2，稳定认证权限与接口契约，避免新增接口带来边界回归。
 4. 按 Q4 到 Q6 修复数据一致性、统计能力、性能和日志审计问题。
@@ -337,6 +337,8 @@
 
 ## 变更记录
 
+- 2026-06-02：收口反馈字段语义与答疑状态输出契约：反馈继续保留 `feedbackType` 自由文本模型，并在 Swagger 明确 `contact` 为主联系方式字段；问答响应在兼容原 `status=0/1/2` 的前提下新增 `statusCode`、`statusLabel` 语义字段，同时更新 Swagger 契约。
+- 2026-06-02：收口专家分类二级层级与首页内容快捷配置契约：专家分类继续复用 `parentId` 两级模型，补层级语义字段和父子/删除约束；首页内容继续复用统一 `contentType + targetId` 模型，收口为 `course/book/podcast/topic/live` 五类资源并补资源存在性与时间范围校验，同时更新 Swagger 契约。
 - 2026-06-02：收口图书考卷配置契约，明确图书沿用 `paperId` 作为单考卷绑定字段，复用图书新增/修改接口维护；图书响应补 `paperTitle`，并在写入时校验考卷存在，同时更新 Swagger 文档说明。
 - 2026-06-02：补强管理端审核日志契约，`GET /api/v1/admin/system/audit-records` 新增资源类型中文说明、状态语义类型、前后状态中文说明和审核人展示字段，并同步更新 Swagger 契约，前端无需再自行硬编码 `targetType` 与状态值映射。
 - 2026-06-02：完成学员导入/导出收尾，新增 `POST /api/v1/admin/students/import`、`GET /api/v1/admin/students/export`，补充 `V22__student_import_export_permissions.sql` 权限种子，复用现有测试完成健康检查，并重新导出 `api/api.json`。

@@ -77,9 +77,7 @@ public class AdminExpertService {
 
     @Transactional(rollbackFor = Exception.class)
     public ExpertCategoryResponse createCategory(ExpertCategoryRequest request) {
-        if (request.parentId() != null) {
-            requireCategory(request.parentId());
-        }
+        validateCategoryParent(request.parentId(), null);
         ExpertCategory category = new ExpertCategory();
         fillCategory(category, request);
         category.setDeleted(0);
@@ -90,8 +88,10 @@ public class AdminExpertService {
     @Transactional(rollbackFor = Exception.class)
     public ExpertCategoryResponse updateCategory(Long id, ExpertCategoryRequest request) {
         ExpertCategory category = requireCategory(id);
-        if (request.parentId() != null) {
-            requireCategory(request.parentId());
+        validateCategoryParent(request.parentId(), id);
+        if (request.parentId() != null && hasChildCategories(id)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST,
+                    "Category with child categories must remain a top-level category");
         }
         fillCategory(category, request);
         expertCategoryMapper.updateById(category);
@@ -101,6 +101,12 @@ public class AdminExpertService {
     @Transactional(rollbackFor = Exception.class)
     public void deleteCategory(Long id) {
         requireCategory(id);
+        if (hasChildCategories(id)) {
+            throw new BusinessException(ErrorCode.CONFLICT, "Expert category has child categories");
+        }
+        if (hasExpertBindings(id)) {
+            throw new BusinessException(ErrorCode.CONFLICT, "Expert category is bound to experts");
+        }
         expertCategoryMapper.deleteById(id);
     }
 
@@ -237,6 +243,30 @@ public class AdminExpertService {
         return category;
     }
 
+    private void validateCategoryParent(Long parentId, Long currentId) {
+        if (parentId == null) {
+            return;
+        }
+        if (Objects.equals(parentId, currentId)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Expert category parentId must not equal current id");
+        }
+        ExpertCategory parentCategory = requireCategory(parentId);
+        if (parentCategory.getParentId() != null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Expert category supports only two levels");
+        }
+    }
+
+    private boolean hasChildCategories(Long categoryId) {
+        return expertCategoryMapper.selectCount(new LambdaQueryWrapper<ExpertCategory>()
+                .eq(ExpertCategory::getDeleted, 0)
+                .eq(ExpertCategory::getParentId, categoryId)) > 0;
+    }
+
+    private boolean hasExpertBindings(Long categoryId) {
+        return expertCategoryRelationMapper.selectCount(new LambdaQueryWrapper<ExpertCategoryRelation>()
+                .eq(ExpertCategoryRelation::getCategoryId, categoryId)) > 0;
+    }
+
     private Expert requireExpert(Long id) {
         Expert expert = expertMapper.selectById(id);
         if (expert == null || !Objects.equals(expert.getDeleted(), 0)) {
@@ -288,8 +318,11 @@ public class AdminExpertService {
     }
 
     private ExpertCategoryResponse toCategoryResponse(ExpertCategory category) {
-        return new ExpertCategoryResponse(category.getId(), category.getParentId(), category.getCategoryName(),
-                category.getSortOrder(), category.getStatus());
+        ExpertCategory parentCategory = category.getParentId() == null ? null : requireCategory(category.getParentId());
+        return new ExpertCategoryResponse(category.getId(), category.getParentId(),
+                parentCategory == null ? null : parentCategory.getCategoryName(),
+                category.getParentId() == null ? 1 : 2,
+                category.getCategoryName(), category.getSortOrder(), category.getStatus());
     }
 
     private ExpertResponse toExpertResponse(Expert expert, boolean includeDetails) {

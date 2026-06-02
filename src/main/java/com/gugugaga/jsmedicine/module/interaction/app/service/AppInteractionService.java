@@ -299,7 +299,9 @@ public class AppInteractionService {
 
     private AppQaQuestionResponse toQaQuestionResponse(QaQuestion question, boolean includeAnswers) {
         return new AppQaQuestionResponse(question.getId(), question.getExpertCategoryId(), question.getExpertId(),
-                question.getTitle(), question.getContent(), question.getStatus(), includeAnswers ? loadAnswers(question.getId()) : List.of());
+                question.getTitle(), question.getContent(), question.getStatus(),
+                qaStatusCode(question.getStatus()), qaStatusLabel(question.getStatus()),
+                includeAnswers ? loadAnswers(question.getId()) : List.of());
     }
 
     private List<QaAnswerResponse> loadAnswers(Long questionId) {
@@ -318,6 +320,24 @@ public class AppInteractionService {
                 null, null, null, feedback.getFeedbackType(), feedback.getContent(), feedback.getContact(),
                 feedback.getStatus(), feedback.getProcessedBy(), feedback.getProcessedAt(),
                 feedback.getProcessNote(), feedback.getCreatedAt());
+    }
+
+    private String qaStatusCode(QaStatus status) {
+        QaStatus safeStatus = status == null ? QaStatus.PENDING : status;
+        return switch (safeStatus) {
+            case PENDING -> "pending";
+            case ANSWERED -> "answered";
+            case CLOSED -> "closed";
+        };
+    }
+
+    private String qaStatusLabel(QaStatus status) {
+        QaStatus safeStatus = status == null ? QaStatus.PENDING : status;
+        return switch (safeStatus) {
+            case PENDING -> "待回复";
+            case ANSWERED -> "已回复";
+            case CLOSED -> "已关闭";
+        };
     }
 
     private <E, R> PageResponse<R> pageResponse(Page<E> page, List<R> records) {
