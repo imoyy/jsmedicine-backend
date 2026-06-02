@@ -16,6 +16,7 @@ import com.gugugaga.jsmedicine.module.system.dto.SysRoleResponse;
 import com.gugugaga.jsmedicine.module.system.dto.SysRoleUpsertRequest;
 import com.gugugaga.jsmedicine.module.system.service.SystemAdminService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -200,6 +201,7 @@ public class AdminSystemController {
             @RequestParam(defaultValue = "1") long page,
             @RequestParam(defaultValue = "20") long size,
             @RequestParam(required = false) String sort,
+            @Parameter(description = "审核目标类型编码：article=资讯，podcast=播客，topic=专题，course=课程，book=图书，knowledge_entry=知识库条目，live_session=直播，qa_question=答疑问题，feedback=用户反馈，sys_admin_login=管理员登录")
             @RequestParam(required = false) String targetType,
             @RequestParam(required = false) Long targetId,
             @RequestParam(required = false) Long auditorId

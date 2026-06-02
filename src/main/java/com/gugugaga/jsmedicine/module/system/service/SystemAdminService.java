@@ -49,6 +49,22 @@ public class SystemAdminService {
     private static final long DEFAULT_PAGE = 1L;
     private static final long DEFAULT_SIZE = 20L;
     private static final long MAX_SIZE = 100L;
+    private static final String STATUS_TYPE_REVIEW = "review_status";
+    private static final String STATUS_TYPE_QA = "qa_status";
+    private static final String STATUS_TYPE_FEEDBACK = "feedback_status";
+    private static final String STATUS_TYPE_LOGIN_RESULT = "login_result";
+    private static final Map<String, AuditTargetMetadata> AUDIT_TARGET_METADATA = Map.ofEntries(
+            Map.entry("article", new AuditTargetMetadata("资讯", STATUS_TYPE_REVIEW)),
+            Map.entry("podcast", new AuditTargetMetadata("播客", STATUS_TYPE_REVIEW)),
+            Map.entry("topic", new AuditTargetMetadata("专题", STATUS_TYPE_REVIEW)),
+            Map.entry("course", new AuditTargetMetadata("课程", STATUS_TYPE_REVIEW)),
+            Map.entry("book", new AuditTargetMetadata("图书", STATUS_TYPE_REVIEW)),
+            Map.entry("knowledge_entry", new AuditTargetMetadata("知识库条目", STATUS_TYPE_REVIEW)),
+            Map.entry("live_session", new AuditTargetMetadata("直播", STATUS_TYPE_REVIEW)),
+            Map.entry("qa_question", new AuditTargetMetadata("答疑问题", STATUS_TYPE_QA)),
+            Map.entry("feedback", new AuditTargetMetadata("用户反馈", STATUS_TYPE_FEEDBACK)),
+            Map.entry("sys_admin_login", new AuditTargetMetadata("管理员登录", STATUS_TYPE_LOGIN_RESULT))
+    );
 
     private final SysAdminMapper sysAdminMapper;
     private final SysRoleMapper sysRoleMapper;
@@ -270,8 +286,12 @@ public class SystemAdminService {
                         .eq(query.auditorId() != null, AuditRecord::getAuditorId, query.auditorId())
                         .orderByAsc("auditedAtAsc".equals(query.sort()), AuditRecord::getAuditedAt)
                         .orderByDesc(!"auditedAtAsc".equals(query.sort()), AuditRecord::getAuditedAt));
+        Map<Long, SysAdmin> auditorMap = loadAuditAdmins(page.getRecords().stream()
+                .map(AuditRecord::getAuditorId)
+                .filter(Objects::nonNull)
+                .toList());
         return new PageResponse<>(
-                page.getRecords().stream().map(this::toAuditRecordResponse).toList(),
+                page.getRecords().stream().map(record -> toAuditRecordResponse(record, auditorMap.get(record.getAuditorId()))).toList(),
                 page.getTotal(),
                 page.getCurrent(),
                 page.getSize()
@@ -396,6 +416,18 @@ public class SystemAdminService {
         return result;
     }
 
+    private Map<Long, SysAdmin> loadAuditAdmins(List<Long> adminIds) {
+        Set<Long> ids = distinctIds(adminIds);
+        if (ids.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<Long, SysAdmin> result = new HashMap<>();
+        sysAdminMapper.selectList(new LambdaQueryWrapper<SysAdmin>()
+                        .in(SysAdmin::getId, ids))
+                .forEach(admin -> result.put(admin.getId(), admin));
+        return result;
+    }
+
     private SysAdminResponse toAdminResponse(SysAdmin admin, List<String> roles) {
         return new SysAdminResponse(
                 admin.getId(),
@@ -439,18 +471,82 @@ public class SystemAdminService {
         );
     }
 
-    private AuditRecordResponse toAuditRecordResponse(AuditRecord auditRecord) {
+    private AuditRecordResponse toAuditRecordResponse(AuditRecord auditRecord, SysAdmin auditor) {
+        AuditTargetMetadata metadata = AUDIT_TARGET_METADATA.getOrDefault(
+                auditRecord.getTargetType(),
+                new AuditTargetMetadata(auditRecord.getTargetType(), null)
+        );
         return new AuditRecordResponse(
                 auditRecord.getId(),
                 auditRecord.getTargetType(),
+                metadata.label(),
+                metadata.statusType(),
                 auditRecord.getTargetId(),
                 auditRecord.getBeforeStatus(),
+                resolveAuditStatusLabel(metadata.statusType(), auditRecord.getBeforeStatus()),
                 auditRecord.getAfterStatus(),
+                resolveAuditStatusLabel(metadata.statusType(), auditRecord.getAfterStatus()),
                 auditRecord.getAuditComment(),
                 auditRecord.getAuditorId(),
+                resolveAuditorName(auditor),
+                auditor == null ? null : auditor.getUsername(),
                 auditRecord.getAuditedAt(),
                 auditRecord.getCreatedAt()
         );
+    }
+
+    private String resolveAuditorName(SysAdmin auditor) {
+        if (auditor == null) {
+            return null;
+        }
+        return hasText(auditor.getRealName()) ? auditor.getRealName() : auditor.getUsername();
+    }
+
+    private String resolveAuditStatusLabel(String statusType, Integer status) {
+        if (status == null || !hasText(statusType)) {
+            return null;
+        }
+        return switch (statusType) {
+            case STATUS_TYPE_REVIEW -> reviewStatusLabel(status);
+            case STATUS_TYPE_QA -> qaStatusLabel(status);
+            case STATUS_TYPE_FEEDBACK -> feedbackStatusLabel(status);
+            case STATUS_TYPE_LOGIN_RESULT -> loginResultLabel(status);
+            default -> String.valueOf(status);
+        };
+    }
+
+    private String reviewStatusLabel(Integer status) {
+        return switch (status) {
+            case 0 -> "草稿";
+            case 1 -> "待审核";
+            case 2 -> "已通过";
+            case 3 -> "已驳回";
+            default -> String.valueOf(status);
+        };
+    }
+
+    private String qaStatusLabel(Integer status) {
+        return switch (status) {
+            case 0 -> "待回答";
+            case 1 -> "已回答";
+            case 2 -> "已关闭";
+            default -> String.valueOf(status);
+        };
+    }
+
+    private String feedbackStatusLabel(Integer status) {
+        return switch (status) {
+            case 0 -> "待处理";
+            case 1 -> "已处理";
+            default -> String.valueOf(status);
+        };
+    }
+
+    private String loginResultLabel(Integer status) {
+        return switch (status) {
+            case 1 -> "登录成功";
+            default -> String.valueOf(status);
+        };
     }
 
     private Set<Long> distinctIds(Collection<Long> ids) {
@@ -475,5 +571,8 @@ public class SystemAdminService {
 
     private boolean hasText(String value) {
         return value != null && !value.isBlank();
+    }
+
+    private record AuditTargetMetadata(String label, String statusType) {
     }
 }
