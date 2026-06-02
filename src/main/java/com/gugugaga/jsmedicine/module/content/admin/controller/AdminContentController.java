@@ -273,7 +273,8 @@ public class AdminContentController {
         return ApiResponse.ok();
     }
 
-    @Operation(summary = "替换专题关联项")
+    @Operation(summary = "替换专题关联项",
+            description = "仅支持 course、book、podcast 三种分项类型；会按 sortOrder 和请求顺序统一归一化排序，且禁止同一专题内重复关联同类型同资源。")
     @PreAuthorize("hasAuthority('content:topic:edit')")
     @PutMapping("/topics/{id}/items")
     public ApiResponse<List<TopicItemResponse>> replaceTopicItems(

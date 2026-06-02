@@ -39,6 +39,10 @@ import com.gugugaga.jsmedicine.module.content.topic.entity.Topic;
 import com.gugugaga.jsmedicine.module.content.topic.entity.TopicItem;
 import com.gugugaga.jsmedicine.module.content.topic.mapper.TopicItemMapper;
 import com.gugugaga.jsmedicine.module.content.topic.mapper.TopicMapper;
+import com.gugugaga.jsmedicine.module.learning.book.entity.Book;
+import com.gugugaga.jsmedicine.module.learning.book.mapper.BookMapper;
+import com.gugugaga.jsmedicine.module.learning.course.entity.Course;
+import com.gugugaga.jsmedicine.module.learning.course.mapper.CourseMapper;
 import com.gugugaga.jsmedicine.module.learning.podcast.entity.Podcast;
 import com.gugugaga.jsmedicine.module.learning.podcast.entity.PodcastAudio;
 import com.gugugaga.jsmedicine.module.learning.podcast.mapper.PodcastAudioMapper;
@@ -49,8 +53,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 @Service
 public class AdminContentService {
@@ -58,12 +68,21 @@ public class AdminContentService {
     private static final long DEFAULT_PAGE = 1L;
     private static final long DEFAULT_SIZE = 20L;
     private static final long MAX_SIZE = 100L;
+    private static final String RESOURCE_TYPE_COURSE = "course";
+    private static final String RESOURCE_TYPE_BOOK = "book";
     private static final String RESOURCE_TYPE_ARTICLE = "article";
     private static final String RESOURCE_TYPE_PODCAST = "podcast";
+    private static final Map<String, String> TOPIC_ITEM_TYPE_LABELS = Map.of(
+            RESOURCE_TYPE_COURSE, "课程",
+            RESOURCE_TYPE_BOOK, "图书",
+            RESOURCE_TYPE_PODCAST, "播客"
+    );
 
     private final HomeCategoryMapper homeCategoryMapper;
     private final HomeContentMapper homeContentMapper;
     private final ArticleMapper articleMapper;
+    private final CourseMapper courseMapper;
+    private final BookMapper bookMapper;
     private final PodcastMapper podcastMapper;
     private final PodcastAudioMapper podcastAudioMapper;
     private final TopicMapper topicMapper;
@@ -77,6 +96,8 @@ public class AdminContentService {
             HomeCategoryMapper homeCategoryMapper,
             HomeContentMapper homeContentMapper,
             ArticleMapper articleMapper,
+            CourseMapper courseMapper,
+            BookMapper bookMapper,
             PodcastMapper podcastMapper,
             PodcastAudioMapper podcastAudioMapper,
             TopicMapper topicMapper,
@@ -89,6 +110,8 @@ public class AdminContentService {
         this.homeCategoryMapper = homeCategoryMapper;
         this.homeContentMapper = homeContentMapper;
         this.articleMapper = articleMapper;
+        this.courseMapper = courseMapper;
+        this.bookMapper = bookMapper;
         this.podcastMapper = podcastMapper;
         this.podcastAudioMapper = podcastAudioMapper;
         this.topicMapper = topicMapper;
@@ -378,14 +401,15 @@ public class AdminContentService {
     @Transactional(rollbackFor = Exception.class)
     public List<TopicItemResponse> replaceTopicItems(Long topicId, List<TopicItemRequest> requests) {
         requireTopic(topicId);
+        List<NormalizedTopicItemRequest> normalizedRequests = normalizeTopicItemRequests(requests);
         topicItemMapper.delete(new LambdaQueryWrapper<TopicItem>().eq(TopicItem::getTopicId, topicId));
-        if (requests != null) {
-            requests.forEach(request -> {
+        if (!normalizedRequests.isEmpty()) {
+            normalizedRequests.forEach(request -> {
                 TopicItem item = new TopicItem();
                 item.setTopicId(topicId);
                 item.setItemType(request.itemType());
                 item.setItemId(request.itemId());
-                item.setSortOrder(request.sortOrder() == null ? 0 : request.sortOrder());
+                item.setSortOrder(request.sortOrder());
                 topicItemMapper.insert(item);
             });
         }
@@ -608,8 +632,119 @@ public class AdminContentService {
                         .eq(TopicItem::getTopicId, topicId)
                         .orderByAsc(TopicItem::getSortOrder))
                 .stream()
-                .map(item -> new TopicItemResponse(item.getId(), item.getTopicId(), item.getItemType(), item.getItemId(), item.getSortOrder()))
+                .map(this::toTopicItemResponse)
                 .toList();
+    }
+
+    private TopicItemResponse toTopicItemResponse(TopicItem item) {
+        TopicItemResourceSummary summary = loadTopicItemResourceSummarySafely(item.getItemType(), item.getItemId());
+        String itemTypeLabel = TOPIC_ITEM_TYPE_LABELS.getOrDefault(item.getItemType(), item.getItemType());
+        return new TopicItemResponse(item.getId(), item.getTopicId(), item.getItemType(), itemTypeLabel,
+                item.getItemId(), item.getSortOrder(), summary != null,
+                summary == null ? null : summary.itemTitle(),
+                summary == null ? null : summary.itemSubtitle(),
+                summary == null ? null : summary.itemCoverUrl(),
+                summary == null ? null : summary.reviewStatus(),
+                summary == null ? null : summary.publishStatus());
+    }
+
+    private List<NormalizedTopicItemRequest> normalizeTopicItemRequests(List<TopicItemRequest> requests) {
+        if (requests == null || requests.isEmpty()) {
+            return List.of();
+        }
+        List<NormalizedTopicItemRequest> normalizedRequests = new ArrayList<>();
+        Set<String> duplicateKeys = new HashSet<>();
+        for (int index = 0; index < requests.size(); index++) {
+            TopicItemRequest request = requests.get(index);
+            if (request == null) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST, "Topic item request must not be null");
+            }
+            String itemType = normalizeTopicItemType(request.itemType());
+            Long itemId = request.itemId();
+            String duplicateKey = itemType + ":" + itemId;
+            if (!duplicateKeys.add(duplicateKey)) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST,
+                        "Duplicate topic item is not allowed: " + itemType + "#" + itemId);
+            }
+            if (request.sortOrder() != null && request.sortOrder() < 1) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST, "sortOrder must be greater than 0");
+            }
+            requireTopicItemResourceSummary(itemType, itemId);
+            int requestedSortOrder = request.sortOrder() == null ? index + 1 : request.sortOrder();
+            normalizedRequests.add(new NormalizedTopicItemRequest(itemType, itemId, requestedSortOrder, index));
+        }
+        normalizedRequests.sort(Comparator.comparingInt(NormalizedTopicItemRequest::sortOrder)
+                .thenComparingInt(NormalizedTopicItemRequest::requestIndex));
+        List<NormalizedTopicItemRequest> result = new ArrayList<>(normalizedRequests.size());
+        for (int index = 0; index < normalizedRequests.size(); index++) {
+            NormalizedTopicItemRequest request = normalizedRequests.get(index);
+            result.add(new NormalizedTopicItemRequest(request.itemType(), request.itemId(), index + 1,
+                    request.requestIndex()));
+        }
+        return result;
+    }
+
+    private String normalizeTopicItemType(String itemType) {
+        String normalizedType = itemType == null ? "" : itemType.trim().toLowerCase(Locale.ROOT);
+        if (!TOPIC_ITEM_TYPE_LABELS.containsKey(normalizedType)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Unsupported topic itemType: " + itemType);
+        }
+        return normalizedType;
+    }
+
+    private TopicItemResourceSummary loadTopicItemResourceSummarySafely(String itemType, Long itemId) {
+        try {
+            return requireTopicItemResourceSummary(itemType, itemId);
+        } catch (BusinessException exception) {
+            return null;
+        }
+    }
+
+    private TopicItemResourceSummary requireTopicItemResourceSummary(String itemType, Long itemId) {
+        return switch (itemType) {
+            case RESOURCE_TYPE_COURSE -> {
+                Course course = requireTopicCourse(itemId);
+                yield new TopicItemResourceSummary(course.getCourseName(), course.getLecturerName(),
+                        course.getCoverUrl(), course.getReviewStatus(),
+                        course.getPublishStatus());
+            }
+            case RESOURCE_TYPE_BOOK -> {
+                Book book = requireTopicBook(itemId);
+                yield new TopicItemResourceSummary(book.getBookName(), book.getAuthor(), book.getCoverUrl(),
+                        book.getReviewStatus(), book.getPublishStatus());
+            }
+            case RESOURCE_TYPE_PODCAST -> {
+                Podcast podcast = requireTopicPodcast(itemId);
+                yield new TopicItemResourceSummary(podcast.getTitle(), podcast.getSpeakerName(),
+                        podcast.getCoverUrl(), podcast.getReviewStatus(),
+                        podcast.getPublishStatus());
+            }
+            default -> throw new BusinessException(ErrorCode.BAD_REQUEST, "Unsupported topic itemType: " + itemType);
+        };
+    }
+
+    private Course requireTopicCourse(Long id) {
+        Course course = courseMapper.selectById(id);
+        if (course == null || !Objects.equals(course.getDeleted(), 0)) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Course does not exist");
+        }
+        return course;
+    }
+
+    private Book requireTopicBook(Long id) {
+        Book book = bookMapper.selectById(id);
+        if (book == null || !Objects.equals(book.getDeleted(), 0)) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Book does not exist");
+        }
+        return book;
+    }
+
+    private Podcast requireTopicPodcast(Long id) {
+        Podcast podcast = podcastMapper.selectById(id);
+        if (podcast == null || !Objects.equals(podcast.getDeleted(), 0)) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Podcast does not exist");
+        }
+        return podcast;
     }
 
     private FileAssetResponse toFileAssetResponse(FileAsset fileAsset) {
@@ -635,5 +770,17 @@ public class AdminContentService {
 
     private boolean hasText(String value) {
         return value != null && !value.isBlank();
+    }
+
+    private record NormalizedTopicItemRequest(String itemType, Long itemId, int sortOrder, int requestIndex) {
+    }
+
+    private record TopicItemResourceSummary(
+            String itemTitle,
+            String itemSubtitle,
+            String itemCoverUrl,
+            ReviewStatus reviewStatus,
+            PublishStatus publishStatus
+    ) {
     }
 }

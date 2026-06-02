@@ -56,7 +56,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 @Service
@@ -247,11 +249,18 @@ public class AdminLearningService {
                                 .like(Book::getAuthor, query.keyword()))
                         .orderByAsc("sortOrderAsc".equals(query.sort()), Book::getSortOrder)
                         .orderByDesc(!"sortOrderAsc".equals(query.sort()), Book::getCreatedAt));
-        return pageResponse(page, page.getRecords().stream().map(this::toBookResponse).toList());
+        Map<Long, String> paperNameMap = loadExamPaperNameMap(page.getRecords().stream()
+                .map(Book::getPaperId)
+                .filter(Objects::nonNull)
+                .toList());
+        return pageResponse(page, page.getRecords().stream()
+                .map(book -> toBookResponse(book, paperNameMap.get(book.getPaperId())))
+                .toList());
     }
 
     public BookResponse bookDetail(Long id) {
-        return toBookResponse(requireBook(id));
+        Book book = requireBook(id);
+        return toBookResponse(book, loadExamPaperName(book.getPaperId()));
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -259,11 +268,14 @@ public class AdminLearningService {
         if (request.categoryId() != null) {
             requireBookCategory(request.categoryId());
         }
+        if (request.paperId() != null) {
+            requireExamPaper(request.paperId());
+        }
         Book book = new Book();
         fillBook(book, request);
         book.setDeleted(0);
         bookMapper.insert(book);
-        return toBookResponse(book);
+        return toBookResponse(book, loadExamPaperName(book.getPaperId()));
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -272,9 +284,12 @@ public class AdminLearningService {
         if (request.categoryId() != null) {
             requireBookCategory(request.categoryId());
         }
+        if (request.paperId() != null) {
+            requireExamPaper(request.paperId());
+        }
         fillBook(book, request);
         bookMapper.updateById(book);
-        return toBookResponse(book);
+        return toBookResponse(book, loadExamPaperName(book.getPaperId()));
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -284,7 +299,7 @@ public class AdminLearningService {
         applyReview(book, request.reviewStatus());
         bookMapper.updateById(book);
         saveAudit("book", id, before, request.reviewStatus(), request.comment());
-        return toBookResponse(book);
+        return toBookResponse(book, loadExamPaperName(book.getPaperId()));
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -692,11 +707,34 @@ public class AdminLearningService {
                 category.getSortOrder(), category.getStatus());
     }
 
-    private BookResponse toBookResponse(Book book) {
+    private BookResponse toBookResponse(Book book, String paperTitle) {
         return new BookResponse(book.getId(), book.getCategoryId(), book.getBookName(), book.getAuthor(),
                 book.getPublisher(), book.getCoverUrl(), book.getIntroduction(), book.getTotalPages(),
-                book.getPaperId(), book.getSortOrder(), book.getReviewStatus(), book.getPublishStatus(),
+                book.getPaperId(), paperTitle, book.getSortOrder(), book.getReviewStatus(), book.getPublishStatus(),
                 book.getPublishedAt());
+    }
+
+    private Map<Long, String> loadExamPaperNameMap(List<Long> paperIds) {
+        if (paperIds == null || paperIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, String> result = new HashMap<>();
+        examPaperMapper.selectList(new LambdaQueryWrapper<ExamPaper>()
+                        .in(ExamPaper::getId, paperIds)
+                        .eq(ExamPaper::getDeleted, 0))
+                .forEach(paper -> result.put(paper.getId(), paper.getPaperName()));
+        return result;
+    }
+
+    private String loadExamPaperName(Long paperId) {
+        if (paperId == null) {
+            return null;
+        }
+        ExamPaper paper = examPaperMapper.selectById(paperId);
+        if (paper == null || !Objects.equals(paper.getDeleted(), 0)) {
+            return null;
+        }
+        return paper.getPaperName();
     }
 
     private BookChapterResponse toBookChapterResponse(BookChapter chapter) {

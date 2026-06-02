@@ -2,6 +2,7 @@ package com.gugugaga.jsmedicine.module.learning.admin.dto;
 
 import com.gugugaga.jsmedicine.common.enums.PublishStatus;
 import com.gugugaga.jsmedicine.common.enums.ReviewStatus;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
@@ -30,6 +31,8 @@ public record BookRequest(
         @Min(value = 0, message = "totalPages must be greater than or equal to 0")
         Integer totalPages,
 
+        @Schema(description = "图书级单考卷配置字段。传考卷 ID 表示绑定一张考卷，传 null 表示不配置考卷；复用图书新增/修改接口维护，不单独提供图书考卷配置接口",
+                example = "12")
         Long paperId,
         Integer sortOrder,
 

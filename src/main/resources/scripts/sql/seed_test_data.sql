@@ -404,10 +404,9 @@ SET @topic_01 = (SELECT id FROM topics WHERE title = '[TD]针灸临床专题' AN
 INSERT INTO topic_items (topic_id, item_type, item_id, sort_order)
 VALUES
 (@topic_01, 'course', @course_01, 1),
-(@topic_01, 'book', @book_01, 2),
-(@topic_01, 'article', @article_01, 3),
-(@topic_01, 'podcast', @podcast_01, 4),
-(@topic_01, 'question', @question_01, 5);
+(@topic_01, 'course', @course_02, 2),
+(@topic_01, 'book', @book_01, 3),
+(@topic_01, 'podcast', @podcast_01, 4);
 
 -- 专家与直播
 INSERT INTO expert_categories (parent_id, category_name, sort_order, status, created_by, updated_by, deleted)

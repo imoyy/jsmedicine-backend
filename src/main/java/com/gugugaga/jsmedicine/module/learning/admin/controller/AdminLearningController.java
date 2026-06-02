@@ -187,21 +187,21 @@ public class AdminLearningController {
         return ApiResponse.ok(adminLearningService.pageBooks(new AdminLearningPageQuery(page, size, sort, keyword, categoryId, null, reviewStatus)));
     }
 
-    @Operation(summary = "查询图书详情")
+    @Operation(summary = "查询图书详情", description = "图书当前采用单考卷配置模型，返回的 `paperId` / `paperTitle` 即该图书关联考卷；如需选择考卷，可复用考卷列表与详情接口。")
     @PreAuthorize("hasAuthority('learning:book:view')")
     @GetMapping("/books/{id}")
     public ApiResponse<BookResponse> bookDetail(@PathVariable Long id) {
         return ApiResponse.ok(adminLearningService.bookDetail(id));
     }
 
-    @Operation(summary = "新增图书")
+    @Operation(summary = "新增图书", description = "通过请求体中的 `paperId` 维护图书级单考卷配置；传 null 表示不绑定考卷，不提供独立图书考卷配置接口。")
     @PreAuthorize("hasAuthority('learning:book:edit')")
     @PostMapping("/books")
     public ApiResponse<BookResponse> createBook(@Valid @RequestBody BookRequest request) {
         return ApiResponse.ok(adminLearningService.createBook(request));
     }
 
-    @Operation(summary = "修改图书")
+    @Operation(summary = "修改图书", description = "通过请求体中的 `paperId` 维护图书级单考卷配置；如需更换考卷，直接调用本接口更新 `paperId`。")
     @PreAuthorize("hasAuthority('learning:book:edit')")
     @PutMapping("/books/{id}")
     public ApiResponse<BookResponse> updateBook(@PathVariable Long id, @Valid @RequestBody BookRequest request) {

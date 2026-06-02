@@ -717,9 +717,18 @@ public class AppLearningService {
                         .eq(TopicItem::getTopicId, topicId)
                         .orderByAsc(TopicItem::getSortOrder))
                 .stream()
-                .map(item -> new AppTopicItemResponse(item.getId(), item.getTopicId(), item.getItemType(),
-                        item.getItemId(), item.getSortOrder(), resolveTopicItemResource(item)))
+                .map(this::resolveTopicItemResponse)
+                .filter(Objects::nonNull)
                 .toList();
+    }
+
+    private AppTopicItemResponse resolveTopicItemResponse(TopicItem item) {
+        Object resource = resolveTopicItemResource(item);
+        if (resource == null) {
+            return null;
+        }
+        return new AppTopicItemResponse(item.getId(), item.getTopicId(), item.getItemType(),
+                item.getItemId(), item.getSortOrder(), resource);
     }
 
     private Object resolveTopicItemResource(TopicItem item) {
