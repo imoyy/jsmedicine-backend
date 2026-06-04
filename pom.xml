@@ -27,6 +27,7 @@
         <aliyun.credentials.version>1.0.3</aliyun.credentials.version>
         <darabonba.core.version>0.2.15-beta</darabonba.core.version>
         <minio.version>8.6.0</minio.version>
+        <poi.version>5.4.1</poi.version>
     </properties>
 
     <repositories>
@@ -113,6 +114,11 @@
             <groupId>cn.hutool</groupId>
             <artifactId>hutool-all</artifactId>
             <version>5.8.39</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>${poi.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>

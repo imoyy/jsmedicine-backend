@@ -194,6 +194,7 @@
   8. 用户反馈字段语义：已完成第一轮语义说明收口，当前继续保留 `feedbackType` 自由文本模型，不强行收成枚举；Swagger 已明确 `feedbackType` 为前端约定/用户自填分类，`contact` 为主联系方式字段，可填写手机号、微信号、邮箱等一种便于回访的信息。
   9. 答疑状态：已完成第一轮语义化输出收口，在保留现有 `status=0/1/2` 数值兼容的前提下，管理端和用户端问答响应已补 `statusCode`、`statusLabel`，前端无需再自行硬编码状态映射。
   10. 公开资源图片地址：已完成当前阶段契约收口。现阶段仅用户头像稳定走 `/api/v1/files/{id}/content`；其余课程/图书/播客/专题/直播/专家/知识库/首页等资源地址仍是普通 URL 字段，dev 种子中的 `https://example.com/assets/...`、`https://example.com/live/...` 统一视为占位数据，不承诺真实可访问；共享联调与前端文档已明确真实资源应优先使用可访问公网地址或 `/api/v1/files/{id}/content`，且不得把对象存储临时签名 URL 当长期真相源。
+  11. 学员导出运行时 500：已完成修复。2026-06-04 复核前端联调反馈后，本地复现 `GET /api/v1/admin/students/export` 返回 `Internal server error`，根因是 Hutool ExcelWriter 运行时缺少 Apache POI，抛出 `ClassNotFoundException: org.apache.poi.ss.usermodel.Sheet`；已在 `pom.xml` 补充 `org.apache.poi:poi-ooxml:5.4.1`，并用打包产物实际验证导出接口可返回 `200` 和有效 `.xlsx` 文件。
 - `[ ]` 统计管理补齐：从汇总接口扩展到“卡片 + 明细表 + 图表 + 导出”的页面级契约，补学员成绩管理和平台数据统计缺口。
 - `[ ]` 工作台与附加内容补齐：确认首页工作台、附加内容管理是否进入当前范围；若保留，补对应接口和契约。
 
@@ -343,6 +344,7 @@
 
 ## 变更记录
 
+- 2026-06-04：修复管理端学员导出运行时 500。根因是 `AdminUserService.exportStudents` 调用 Hutool ExcelWriter 时运行时缺少 Apache POI，导致 `GET /api/v1/admin/students/export` 抛出 `ClassNotFoundException: org.apache.poi.ss.usermodel.Sheet`；已在 `pom.xml` 补充 `poi-ooxml` 依赖，并用打包产物实测导出接口返回 `200` 和有效 `.xlsx` 文件。
 - 2026-06-02：收口公开资源地址策略：明确当前仅用户头像稳定走 `/api/v1/files/{id}/content`，课程/图书/播客/专题/直播/专家/知识库/首页等封面与音视频地址仍是普通 URL 字段；dev 种子中的 `example.com/assets/...`、`example.com/live/...` 统一作为占位数据处理，并同步更新 API 文档、前端测试数据文档和共享联调环境约定。
 - 2026-06-02：完成官网专题页页面化契约收口：用户端专题列表改为显式卡片 DTO，专题详情改为 `学习 / 视频 / 音频` 分区结构，并新增专题分区分页接口；固定映射 `learning=book`、`video=course`、`audio=podcast`，同步更新文档与 OpenAPI 契约。
 - 2026-06-02：收口反馈字段语义与答疑状态输出契约：反馈继续保留 `feedbackType` 自由文本模型，并在 Swagger 明确 `contact` 为主联系方式字段；问答响应在兼容原 `status=0/1/2` 的前提下新增 `statusCode`、`statusLabel` 语义字段，同时更新 Swagger 契约。
