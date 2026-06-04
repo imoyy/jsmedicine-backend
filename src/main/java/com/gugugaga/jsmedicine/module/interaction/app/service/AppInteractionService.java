@@ -30,6 +30,8 @@ import com.gugugaga.jsmedicine.module.interaction.qa.entity.QaAnswer;
 import com.gugugaga.jsmedicine.module.interaction.qa.entity.QaQuestion;
 import com.gugugaga.jsmedicine.module.interaction.qa.mapper.QaAnswerMapper;
 import com.gugugaga.jsmedicine.module.interaction.qa.mapper.QaQuestionMapper;
+import com.gugugaga.jsmedicine.module.content.article.entity.Article;
+import com.gugugaga.jsmedicine.module.content.article.mapper.ArticleMapper;
 import com.gugugaga.jsmedicine.module.learning.book.entity.Book;
 import com.gugugaga.jsmedicine.module.learning.book.mapper.BookMapper;
 import com.gugugaga.jsmedicine.module.learning.course.entity.Course;
@@ -54,6 +56,7 @@ public class AppInteractionService {
     private static final long DEFAULT_PAGE = 1L;
     private static final long DEFAULT_SIZE = 20L;
     private static final long MAX_SIZE = 100L;
+    private static final String RESOURCE_TYPE_ARTICLE = "article";
     private static final String RESOURCE_TYPE_COURSE = "course";
     private static final String RESOURCE_TYPE_BOOK = "book";
     private static final String RESOURCE_TYPE_PODCAST = "podcast";
@@ -66,6 +69,7 @@ public class AppInteractionService {
     private final FeedbackMapper feedbackMapper;
     private final UserFavoriteMapper userFavoriteMapper;
     private final UserBrowseHistoryMapper userBrowseHistoryMapper;
+    private final ArticleMapper articleMapper;
     private final CourseMapper courseMapper;
     private final BookMapper bookMapper;
     private final PodcastMapper podcastMapper;
@@ -79,6 +83,7 @@ public class AppInteractionService {
             FeedbackMapper feedbackMapper,
             UserFavoriteMapper userFavoriteMapper,
             UserBrowseHistoryMapper userBrowseHistoryMapper,
+            ArticleMapper articleMapper,
             CourseMapper courseMapper,
             BookMapper bookMapper,
             PodcastMapper podcastMapper,
@@ -91,6 +96,7 @@ public class AppInteractionService {
         this.feedbackMapper = feedbackMapper;
         this.userFavoriteMapper = userFavoriteMapper;
         this.userBrowseHistoryMapper = userBrowseHistoryMapper;
+        this.articleMapper = articleMapper;
         this.courseMapper = courseMapper;
         this.bookMapper = bookMapper;
         this.podcastMapper = podcastMapper;
@@ -203,9 +209,7 @@ public class AppInteractionService {
         } else {
             userBrowseHistoryMapper.updateById(history);
         }
-        if (RESOURCE_TYPE_TOPIC.equals(request.resourceType())) {
-            syncTopicViewCount(request.resourceId());
-        }
+        syncResourceViewCount(request.resourceType(), request.resourceId());
         return buildInteractionResponse(session.userId(), request.resourceType(), request.resourceId());
     }
 
@@ -219,11 +223,19 @@ public class AppInteractionService {
 
     private void validateVisibleResource(String resourceType, Long resourceId) {
         switch (resourceType) {
+            case RESOURCE_TYPE_ARTICLE -> requireVisibleArticle(resourceId);
             case RESOURCE_TYPE_COURSE -> requireVisibleCourse(resourceId);
             case RESOURCE_TYPE_BOOK -> requireVisibleBook(resourceId);
             case RESOURCE_TYPE_PODCAST -> requireVisiblePodcast(resourceId);
             case RESOURCE_TYPE_TOPIC -> requireVisibleTopic(resourceId);
             default -> throw new BusinessException(ErrorCode.BAD_REQUEST, "Unsupported interaction resource type");
+        }
+    }
+
+    private void requireVisibleArticle(Long resourceId) {
+        Article article = articleMapper.selectById(resourceId);
+        if (article == null || !isVisible(article.getDeleted(), article.getReviewStatus(), article.getPublishStatus())) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Article does not exist");
         }
     }
 
@@ -274,19 +286,38 @@ public class AppInteractionService {
         return new AppResourceInteractionResponse(resourceType, resourceId, browseCount, favoriteCount, favorited);
     }
 
-    private void syncTopicViewCount(Long topicId) {
-        Topic topic = topicMapper.selectById(topicId);
-        if (topic == null) {
-            return;
-        }
+    private void syncResourceViewCount(String resourceType, Long resourceId) {
         long browseCount = userBrowseHistoryMapper.selectList(new LambdaQueryWrapper<UserBrowseHistory>()
-                        .eq(UserBrowseHistory::getResourceType, RESOURCE_TYPE_TOPIC)
-                        .eq(UserBrowseHistory::getResourceId, topicId))
+                        .eq(UserBrowseHistory::getResourceType, resourceType)
+                        .eq(UserBrowseHistory::getResourceId, resourceId))
                 .stream()
                 .map(UserBrowseHistory::getViewCount)
                 .filter(Objects::nonNull)
                 .mapToLong(Integer::longValue)
                 .sum();
+        switch (resourceType) {
+            case RESOURCE_TYPE_ARTICLE -> syncArticleViewCount(resourceId, browseCount);
+            case RESOURCE_TYPE_TOPIC -> syncTopicViewCount(resourceId, browseCount);
+            default -> {
+                // Courses, books and podcasts compute browse counts from interaction records on read.
+            }
+        }
+    }
+
+    private void syncArticleViewCount(Long articleId, long browseCount) {
+        Article article = articleMapper.selectById(articleId);
+        if (article == null) {
+            return;
+        }
+        article.setViewCount(browseCount);
+        articleMapper.updateById(article);
+    }
+
+    private void syncTopicViewCount(Long topicId, long browseCount) {
+        Topic topic = topicMapper.selectById(topicId);
+        if (topic == null) {
+            return;
+        }
         topic.setViewCount(browseCount);
         topicMapper.updateById(topic);
     }
