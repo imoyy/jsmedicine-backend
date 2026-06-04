@@ -182,9 +182,6 @@
   2026-06-02：根据官网专题页效果图完成第一轮缺口审计，确认当前后端已有专题列表/详情与专题关联资源能力，但仍缺少专题主标签、详情分区结构、显式卡片 DTO 和“更多”分页接口，暂不建议继续沿用平铺 `items + Object resource` 作为最终契约。
   2026-06-02：已先完成专题关联资源第一轮稳定性收口，`AppLearningService` 不再向用户端返回 `resource = null` 的静默分项；但专题详情仍未拆出页面分区和显式卡片 DTO，后续继续在该任务下推进。
   2026-06-02：已完成页面化契约落地。`GET /api/v1/app/learning/topics` 改为专题卡片 DTO，`GET /api/v1/app/learning/topics/{id}` 改为分区详情 DTO，并新增 `GET /api/v1/app/learning/topics/{id}/sections/{sectionType}` 分页接口；固定映射为 `learning=book`、`video=course`、`audio=podcast`。
-- `[x]` 用户端资讯页契约补齐：补充资讯列表、资讯详情接口，并让资讯接入现有收藏/浏览互动资源类型，支撑小程序资讯详情页联调。
-  2026-06-04：根据小程序“资讯详情”效果图复核后确认当前仓库仅有管理端 `/api/v1/admin/content/articles`，缺少用户端资讯入口。
-  2026-06-04：已新增 `GET /api/v1/app/content/articles`、`GET /api/v1/app/content/articles/{id}`，返回显式卡片/详情 DTO，并补 `viewCount/favoriteCount/favorited/tags/source/publishedAt` 等页面字段；同时把 `article` 纳入 `AppInteractionService` 的收藏/浏览资源类型，支持 `/api/v1/app/interaction/favorites`、`/api/v1/app/interaction/browse-histories` 直接作用于资讯资源。
 - `[x]` 管理端联调第二批差距补齐：
   2026-06-02：已完成代码侧第一轮核对，当前研判如下：
   1. 学员导入接口：已完成，新增正式业务入口，限定 Excel 文件上传，返回成功数、失败数与失败行明细。
@@ -347,7 +344,6 @@
 ## 变更记录
 
 - 2026-06-02：收口公开资源地址策略：明确当前仅用户头像稳定走 `/api/v1/files/{id}/content`，课程/图书/播客/专题/直播/专家/知识库/首页等封面与音视频地址仍是普通 URL 字段；dev 种子中的 `example.com/assets/...`、`example.com/live/...` 统一作为占位数据处理，并同步更新 API 文档、前端测试数据文档和共享联调环境约定。
-- 2026-06-04：补齐用户端资讯页契约，新增 `GET /api/v1/app/content/articles`、`GET /api/v1/app/content/articles/{id}`，并将 `article` 接入现有收藏/浏览互动资源类型，推进小程序资讯详情页联调。
 - 2026-06-02：完成官网专题页页面化契约收口：用户端专题列表改为显式卡片 DTO，专题详情改为 `学习 / 视频 / 音频` 分区结构，并新增专题分区分页接口；固定映射 `learning=book`、`video=course`、`audio=podcast`，同步更新文档与 OpenAPI 契约。
 - 2026-06-02：收口反馈字段语义与答疑状态输出契约：反馈继续保留 `feedbackType` 自由文本模型，并在 Swagger 明确 `contact` 为主联系方式字段；问答响应在兼容原 `status=0/1/2` 的前提下新增 `statusCode`、`statusLabel` 语义字段，同时更新 Swagger 契约。
 - 2026-06-02：收口专家分类二级层级与首页内容快捷配置契约：专家分类继续复用 `parentId` 两级模型，补层级语义字段和父子/删除约束；首页内容继续复用统一 `contentType + targetId` 模型，收口为 `course/book/podcast/topic/live` 五类资源并补资源存在性与时间范围校验，同时更新 Swagger 契约。
