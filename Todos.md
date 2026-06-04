@@ -178,6 +178,8 @@
 - `[~]` 图像上传存储治理：补齐对象存储签名上传、头像/管理端封面确认入库和稳定读取地址，逐步替换用户端直接写 `avatarUrl` 与管理端手填 `coverUrl` / 先外传再回填 URL 的模式。
 - `[x]` 学习页契约补齐：补充课程、图书、播客、专题接口的浏览/收藏统计与当前用户收藏态，并新增用户端收藏切换、浏览记录上报接口，支撑小程序学习页联调。
   2026-06-02：已在 `AppLearningController` 返回 DTO 中补 `browseCount/favoriteCount/favorited` 等字段，在 `AppInteractionController` 新增 `/favorites`、`/browse-histories` 写接口；评论数与学习首页聚合流仍未建模，后续按页面真实契约继续收敛。
+- `[x]` 用户端资讯联调修复：补回用户端资讯列表/详情源码实现，并让资讯支持收藏与浏览记录联动。
+  2026-06-04：已新增 `GET /api/v1/app/content/articles`、`GET /api/v1/app/content/articles/{id}` 的本地源码实现，统一按 `deleted=0 + review=APPROVED + publish=PUBLISHED` 暴露资讯；同时在 `AppInteractionService` 补齐 `article` 资源类型校验与浏览量同步，修复资讯列表/详情 `500` 以及资讯收藏/浏览上报 `400 Unsupported interaction resource type`。
 - `[x]` 管理端统一封面上传接口补齐：复用现有 MinIO 预签名上传与 `file_assets` 入库链路，新增 `POST /api/v1/admin/content/files/covers/upload-url`、`POST /api/v1/admin/content/files/covers/confirm`，统一承接资讯、课程、图书、播客、专题、直播、专家、知识库、首页内容等封面上传；确认后返回稳定读取地址 `/api/v1/files/{id}/content`，不再要求前端手填 `coverUrl` 或自行维护外部 URL。
   2026-06-04：已完成第一轮落地，新增管理端封面 `usage` 约束、对象 key 规则、二次 `statObject` 校验和 `file_assets` 持久化；同时扩展公开文件读取策略，允许管理端封面通过稳定地址公开读取。
   2026-06-04：已完成第二轮收口，管理端内容、学习、直播、专家、知识库等所有写入 `coverUrl` 的保存入口现已统一校验，只接受管理端封面上传接口返回的稳定文件地址；手填外链和对象存储临时 URL 会直接返回业务错误。
@@ -229,6 +231,7 @@
 - `[~]` 收敛专题/首页内容/资源图片配置真相源：若封面、音频、视频等资源后续统一走 `file_assets` 稳定读取地址，则需补迁移与回填策略；若部分资源继续使用外链，则需明确哪些字段允许外链、哪些只是 dev 占位数据。
   2026-06-04：已先完成管理端封面上传统一入口，新增稳定封面上传/确认接口并允许封面类 `file_assets` 通过 `/api/v1/files/{id}/content` 公开读取；同时已封死管理端手填 `coverUrl` 的保存路径，后续新增/修改封面必须走统一上传接口。历史 `cover_url` 数据尚未回填，音频、视频与非封面图片仍未统一切换到稳定文件地址。
   2026-06-04：已完成第二轮数据真相源收口，课程、图书、资讯、播客、专题、首页内容、直播、专家、知识库等管理端封面写入链路现会同步持久化 `cover_file_asset_id`；`V24__normalize_cover_file_asset_references.sql` 用于给历史 `cover_url` 回填关联，避免后续只保存字符串 URL 而丢失 `file_assets` 真相源。
+  2026-06-04：已在本地 dev 库实际执行 `V24` 并完成回填核验，`flyway_schema_history` 已到 `v24`；当前 dev 种子里的历史封面仍是 `https://example.com/assets/...` 占位外链，且 `file_assets` 中暂无 `admin/covers/` 对象，因此各业务表历史 `cover_url -> cover_file_asset_id` 回填结果为 `0`，符合当前占位数据现状，不是迁移失败。
 - `[ ]` 检查知识库分类删除时是否处理子分类和条目约束。
 - `[ ]` 使用接口调用和数据库明细核对验证关键 Service 一致性，不新增测试文件。
 
@@ -353,6 +356,7 @@
 - 2026-06-04：启动管理端统一封面上传治理，复用现有对象存储预签名上传与 `file_assets` 入库链路，新增 `POST /api/v1/admin/content/files/covers/upload-url`、`POST /api/v1/admin/content/files/covers/confirm`；封面确认成功后直接返回稳定读取地址 `/api/v1/files/{id}/content`，并扩展公开文件读取白名单以支持管理端封面对象前缀。
 - 2026-06-04：继续收口管理端封面契约，新增 `StableCoverUrlService`，统一校验内容、学习、直播、专家、知识库等管理端保存接口中的 `coverUrl`；现仅接受管理端封面上传接口返回的稳定文件地址，拒绝手填外链和对象存储临时 URL，并同步更新 Swagger 字段说明。
 - 2026-06-04：继续推进封面文件真相源治理，补齐内容、学习、直播、专家、知识库等管理端保存链路对 `cover_file_asset_id` 的同步持久化，并新增 `V24__normalize_cover_file_asset_references.sql` 为历史封面 URL 回填 `file_assets` 关联；通过现有测试和打包验证，未涉及接口结构变更。
+- 2026-06-04：在本地 `dev` 库通过 `spring-boot:run` 实际执行 `V24` 并核验回填结果，Flyway 已从 `v23` 升到 `v24`；由于当前 dev 验收数据里的课程、图书、资讯、专题、专家等历史封面仍是 `example.com/assets/...` 占位 URL，且 `file_assets` 中暂无 `admin/covers/` 记录，历史数据回填数为 `0`，后续需用真实管理端封面上传链路新增或编辑资源，才能看到 `cover_file_asset_id` 实际落库。
 - 2026-06-02：收口公开资源地址策略：明确当前仅用户头像稳定走 `/api/v1/files/{id}/content`，课程/图书/播客/专题/直播/专家/知识库/首页等封面与音视频地址仍是普通 URL 字段；dev 种子中的 `example.com/assets/...`、`example.com/live/...` 统一作为占位数据处理，并同步更新 API 文档、前端测试数据文档和共享联调环境约定。
 - 2026-06-02：完成官网专题页页面化契约收口：用户端专题列表改为显式卡片 DTO，专题详情改为 `学习 / 视频 / 音频` 分区结构，并新增专题分区分页接口；固定映射 `learning=book`、`video=course`、`audio=podcast`，同步更新文档与 OpenAPI 契约。
 - 2026-06-02：收口反馈字段语义与答疑状态输出契约：反馈继续保留 `feedbackType` 自由文本模型，并在 Swagger 明确 `contact` 为主联系方式字段；问答响应在兼容原 `status=0/1/2` 的前提下新增 `statusCode`、`statusLabel` 语义字段，同时更新 Swagger 契约。
