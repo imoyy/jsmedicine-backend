@@ -508,9 +508,15 @@ public class AdminLearningService {
     }
 
     private void fillCourse(Course course, CourseRequest request) {
+        StableCoverUrlService.CoverBinding coverBinding = stableCoverUrlService.resolveCoverBinding(
+                request.coverUrl(),
+                course.getCoverUrl(),
+                course.getCoverFileAssetId()
+        );
         course.setCourseName(request.courseName());
         course.setSubtitle(request.subtitle());
-        course.setCoverUrl(stableCoverUrlService.requireStableCoverUrl(request.coverUrl()));
+        course.setCoverUrl(coverBinding.coverUrl());
+        course.setCoverFileAssetId(coverBinding.fileAssetId());
         course.setLecturerName(request.lecturerName());
         course.setIntroduction(request.introduction());
         course.setPaperId(request.paperId());
@@ -538,11 +544,17 @@ public class AdminLearningService {
     }
 
     private void fillBook(Book book, BookRequest request) {
+        StableCoverUrlService.CoverBinding coverBinding = stableCoverUrlService.resolveCoverBinding(
+                request.coverUrl(),
+                book.getCoverUrl(),
+                book.getCoverFileAssetId()
+        );
         book.setCategoryId(request.categoryId());
         book.setBookName(request.bookName());
         book.setAuthor(request.author());
         book.setPublisher(request.publisher());
-        book.setCoverUrl(stableCoverUrlService.requireStableCoverUrl(request.coverUrl()));
+        book.setCoverUrl(coverBinding.coverUrl());
+        book.setCoverFileAssetId(coverBinding.fileAssetId());
         book.setIntroduction(request.introduction());
         book.setTotalPages(request.totalPages());
         book.setPaperId(request.paperId());

@@ -14,6 +14,7 @@ public class Book extends ReviewableEntity {
     private String author;
     private String publisher;
     private String coverUrl;
+    private Long coverFileAssetId;
     private String introduction;
     private Integer totalPages;
     private Long paperId;

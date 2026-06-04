@@ -175,10 +175,16 @@ public class AdminKnowledgeService {
     }
 
     private void fillEntry(KnowledgeEntry entry, KnowledgeEntryRequest request) {
+        StableCoverUrlService.CoverBinding coverBinding = stableCoverUrlService.resolveCoverBinding(
+                request.coverUrl(),
+                entry.getCoverUrl(),
+                entry.getCoverFileAssetId()
+        );
         entry.setCategoryId(request.categoryId());
         entry.setTitle(request.title());
         entry.setSummary(request.summary());
-        entry.setCoverUrl(stableCoverUrlService.requireStableCoverUrl(request.coverUrl()));
+        entry.setCoverUrl(coverBinding.coverUrl());
+        entry.setCoverFileAssetId(coverBinding.fileAssetId());
         entry.setContent(request.content());
         entry.setKeywords(request.keywords());
         entry.setSource(request.source());

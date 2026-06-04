@@ -17,6 +17,7 @@ public class HomeContent extends ManagedEntity {
     private Long targetId;
     private String title;
     private String coverUrl;
+    private Long coverFileAssetId;
     private String linkUrl;
     private Integer sortOrder;
     private LocalDateTime startAt;

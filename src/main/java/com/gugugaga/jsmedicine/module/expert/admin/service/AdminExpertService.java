@@ -211,13 +211,19 @@ public class AdminExpertService {
     }
 
     private void fillExpert(Expert expert, ExpertRequest request) {
+        StableCoverUrlService.CoverBinding coverBinding = stableCoverUrlService.resolveCoverBinding(
+                request.coverUrl(),
+                expert.getCoverUrl(),
+                expert.getCoverFileAssetId()
+        );
         expert.setUserId(validateAndNormalizeUserId(request.userId(), expert.getId()));
         expert.setRealName(request.realName());
         expert.setGender(request.gender());
         expert.setBirthDate(request.birthDate());
         expert.setMobile(request.mobile());
         expert.setAvatarUrl(request.avatarUrl());
-        expert.setCoverUrl(stableCoverUrlService.requireStableCoverUrl(request.coverUrl()));
+        expert.setCoverUrl(coverBinding.coverUrl());
+        expert.setCoverFileAssetId(coverBinding.fileAssetId());
         expert.setTitle(request.title());
         expert.setOrganization(request.organization());
         expert.setOrganizationId(request.organizationId());

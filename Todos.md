@@ -228,6 +228,7 @@
   2026-06-02：已完成第二步，专题详情与分区分页已切到显式卡片和分区结构，不再对前端暴露 `Object resource`；后续仍需补历史脏数据清理与更严格的管理端可见性校验。
 - `[~]` 收敛专题/首页内容/资源图片配置真相源：若封面、音频、视频等资源后续统一走 `file_assets` 稳定读取地址，则需补迁移与回填策略；若部分资源继续使用外链，则需明确哪些字段允许外链、哪些只是 dev 占位数据。
   2026-06-04：已先完成管理端封面上传统一入口，新增稳定封面上传/确认接口并允许封面类 `file_assets` 通过 `/api/v1/files/{id}/content` 公开读取；同时已封死管理端手填 `coverUrl` 的保存路径，后续新增/修改封面必须走统一上传接口。历史 `cover_url` 数据尚未回填，音频、视频与非封面图片仍未统一切换到稳定文件地址。
+  2026-06-04：已完成第二轮数据真相源收口，课程、图书、资讯、播客、专题、首页内容、直播、专家、知识库等管理端封面写入链路现会同步持久化 `cover_file_asset_id`；`V24__normalize_cover_file_asset_references.sql` 用于给历史 `cover_url` 回填关联，避免后续只保存字符串 URL 而丢失 `file_assets` 真相源。
 - `[ ]` 检查知识库分类删除时是否处理子分类和条目约束。
 - `[ ]` 使用接口调用和数据库明细核对验证关键 Service 一致性，不新增测试文件。
 
@@ -351,6 +352,7 @@
 - 2026-06-04：修复管理端学员导出运行时 500。根因是 `AdminUserService.exportStudents` 调用 Hutool ExcelWriter 时运行时缺少 Apache POI，导致 `GET /api/v1/admin/students/export` 抛出 `ClassNotFoundException: org.apache.poi.ss.usermodel.Sheet`；已在 `pom.xml` 补充 `poi-ooxml` 依赖，并用打包产物实测导出接口返回 `200` 和有效 `.xlsx` 文件。
 - 2026-06-04：启动管理端统一封面上传治理，复用现有对象存储预签名上传与 `file_assets` 入库链路，新增 `POST /api/v1/admin/content/files/covers/upload-url`、`POST /api/v1/admin/content/files/covers/confirm`；封面确认成功后直接返回稳定读取地址 `/api/v1/files/{id}/content`，并扩展公开文件读取白名单以支持管理端封面对象前缀。
 - 2026-06-04：继续收口管理端封面契约，新增 `StableCoverUrlService`，统一校验内容、学习、直播、专家、知识库等管理端保存接口中的 `coverUrl`；现仅接受管理端封面上传接口返回的稳定文件地址，拒绝手填外链和对象存储临时 URL，并同步更新 Swagger 字段说明。
+- 2026-06-04：继续推进封面文件真相源治理，补齐内容、学习、直播、专家、知识库等管理端保存链路对 `cover_file_asset_id` 的同步持久化，并新增 `V24__normalize_cover_file_asset_references.sql` 为历史封面 URL 回填 `file_assets` 关联；通过现有测试和打包验证，未涉及接口结构变更。
 - 2026-06-02：收口公开资源地址策略：明确当前仅用户头像稳定走 `/api/v1/files/{id}/content`，课程/图书/播客/专题/直播/专家/知识库/首页等封面与音视频地址仍是普通 URL 字段；dev 种子中的 `example.com/assets/...`、`example.com/live/...` 统一作为占位数据处理，并同步更新 API 文档、前端测试数据文档和共享联调环境约定。
 - 2026-06-02：完成官网专题页页面化契约收口：用户端专题列表改为显式卡片 DTO，专题详情改为 `学习 / 视频 / 音频` 分区结构，并新增专题分区分页接口；固定映射 `learning=book`、`video=course`、`audio=podcast`，同步更新文档与 OpenAPI 契约。
 - 2026-06-02：收口反馈字段语义与答疑状态输出契约：反馈继续保留 `feedbackType` 自由文本模型，并在 Swagger 明确 `contact` 为主联系方式字段；问答响应在兼容原 `status=0/1/2` 的前提下新增 `statusCode`、`statusLabel` 语义字段，同时更新 Swagger 契约。

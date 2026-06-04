@@ -15,6 +15,7 @@ import java.time.LocalDateTime;
 public class LiveSession extends ManagedEntity {
     private String title;
     private String coverUrl;
+    private Long coverFileAssetId;
     private String anchorName;
     private String speakerName;
     private String liveUrl;

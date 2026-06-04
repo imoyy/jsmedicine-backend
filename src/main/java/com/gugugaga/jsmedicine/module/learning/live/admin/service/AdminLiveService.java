@@ -157,8 +157,14 @@ public class AdminLiveService {
     }
 
     private void fillLive(LiveSession live, LiveSessionRequest request) {
+        StableCoverUrlService.CoverBinding coverBinding = stableCoverUrlService.resolveCoverBinding(
+                request.coverUrl(),
+                live.getCoverUrl(),
+                live.getCoverFileAssetId()
+        );
         live.setTitle(request.title());
-        live.setCoverUrl(stableCoverUrlService.requireStableCoverUrl(request.coverUrl()));
+        live.setCoverUrl(coverBinding.coverUrl());
+        live.setCoverFileAssetId(coverBinding.fileAssetId());
         String anchorName = hasText(request.anchorName()) ? request.anchorName() : request.speakerName();
         String speakerName = hasText(request.speakerName()) ? request.speakerName() : request.anchorName();
         live.setAnchorName(anchorName);

@@ -12,6 +12,7 @@ public class Course extends ReviewableEntity {
     private String courseName;
     private String subtitle;
     private String coverUrl;
+    private Long coverFileAssetId;
     private String lecturerName;
     private String introduction;
     private Long paperId;

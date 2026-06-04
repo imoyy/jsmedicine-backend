@@ -20,6 +20,7 @@ public class Expert extends ManagedEntity {
     private String mobile;
     private String avatarUrl;
     private String coverUrl;
+    private Long coverFileAssetId;
     private String title;
     private String organization;
     private Long organizationId;

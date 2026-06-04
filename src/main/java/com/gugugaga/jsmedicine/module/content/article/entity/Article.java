@@ -12,6 +12,7 @@ public class Article extends ReviewableEntity {
     private String title;
     private String summary;
     private String coverUrl;
+    private Long coverFileAssetId;
     private String content;
     private String authorName;
     private String source;

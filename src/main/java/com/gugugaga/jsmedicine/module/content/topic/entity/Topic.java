@@ -13,6 +13,7 @@ public class Topic extends ReviewableEntity {
     private String summary;
     private String learningRequirements;
     private String coverUrl;
+    private Long coverFileAssetId;
     private Integer sortOrder;
     private Long viewCount;
 }

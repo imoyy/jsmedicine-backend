@@ -476,11 +476,17 @@ public class AdminContentService {
     }
 
     private void fillHomeContent(HomeContent content, NormalizedHomeContentRequest request) {
+        StableCoverUrlService.CoverBinding coverBinding = stableCoverUrlService.resolveCoverBinding(
+                request.coverUrl(),
+                content.getCoverUrl(),
+                content.getCoverFileAssetId()
+        );
         content.setCategoryId(request.categoryId());
         content.setContentType(request.contentType());
         content.setTargetId(request.targetId());
         content.setTitle(request.title());
-        content.setCoverUrl(stableCoverUrlService.requireStableCoverUrl(request.coverUrl()));
+        content.setCoverUrl(coverBinding.coverUrl());
+        content.setCoverFileAssetId(coverBinding.fileAssetId());
         content.setLinkUrl(request.linkUrl());
         content.setSortOrder(request.sortOrder());
         content.setStartAt(request.startAt());
@@ -489,9 +495,15 @@ public class AdminContentService {
     }
 
     private void fillArticle(Article article, ArticleRequest request) {
+        StableCoverUrlService.CoverBinding coverBinding = stableCoverUrlService.resolveCoverBinding(
+                request.coverUrl(),
+                article.getCoverUrl(),
+                article.getCoverFileAssetId()
+        );
         article.setTitle(request.title());
         article.setSummary(request.summary());
-        article.setCoverUrl(stableCoverUrlService.requireStableCoverUrl(request.coverUrl()));
+        article.setCoverUrl(coverBinding.coverUrl());
+        article.setCoverFileAssetId(coverBinding.fileAssetId());
         article.setContent(request.content());
         article.setAuthorName(request.authorName());
         article.setSource(request.source());
@@ -501,9 +513,15 @@ public class AdminContentService {
     }
 
     private void fillPodcast(Podcast podcast, PodcastRequest request) {
+        StableCoverUrlService.CoverBinding coverBinding = stableCoverUrlService.resolveCoverBinding(
+                request.coverUrl(),
+                podcast.getCoverUrl(),
+                podcast.getCoverFileAssetId()
+        );
         podcast.setTitle(request.title());
         podcast.setSummary(request.summary());
-        podcast.setCoverUrl(stableCoverUrlService.requireStableCoverUrl(request.coverUrl()));
+        podcast.setCoverUrl(coverBinding.coverUrl());
+        podcast.setCoverFileAssetId(coverBinding.fileAssetId());
         podcast.setSpeakerName(request.speakerName());
         podcast.setSortOrder(request.sortOrder() == null ? 0 : request.sortOrder());
         podcast.setReviewStatus(request.reviewStatus());
@@ -522,10 +540,16 @@ public class AdminContentService {
     }
 
     private void fillTopic(Topic topic, TopicRequest request) {
+        StableCoverUrlService.CoverBinding coverBinding = stableCoverUrlService.resolveCoverBinding(
+                request.coverUrl(),
+                topic.getCoverUrl(),
+                topic.getCoverFileAssetId()
+        );
         topic.setTitle(request.title());
         topic.setSummary(request.summary());
         topic.setLearningRequirements(request.learningRequirements());
-        topic.setCoverUrl(stableCoverUrlService.requireStableCoverUrl(request.coverUrl()));
+        topic.setCoverUrl(coverBinding.coverUrl());
+        topic.setCoverFileAssetId(coverBinding.fileAssetId());
         topic.setSortOrder(request.sortOrder() == null ? 0 : request.sortOrder());
         topic.setReviewStatus(request.reviewStatus());
         topic.setPublishStatus(request.publishStatus());
@@ -724,7 +748,7 @@ public class AdminContentService {
                 normalizedContentType,
                 request.targetId(),
                 request.title(),
-                stableCoverUrlService.requireStableCoverUrl(request.coverUrl()),
+                request.coverUrl(),
                 request.linkUrl(),
                 request.sortOrder() == null ? 0 : request.sortOrder(),
                 request.startAt(),

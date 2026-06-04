@@ -24,8 +24,32 @@ public class StableCoverUrlService {
     }
 
     public String requireStableCoverUrl(String coverUrl) {
+        return resolveCoverUrl(coverUrl, null);
+    }
+
+    public String resolveCoverUrl(String requestedCoverUrl, String currentCoverUrl) {
+        return resolveCoverBinding(requestedCoverUrl, currentCoverUrl, null).coverUrl();
+    }
+
+    public CoverBinding resolveCoverBinding(
+            String requestedCoverUrl,
+            String currentCoverUrl,
+            Long currentCoverFileAssetId
+    ) {
+        String normalizedRequestedCoverUrl = normalizeNullable(requestedCoverUrl);
+        String normalizedCurrentCoverUrl = normalizeNullable(currentCoverUrl);
+        if (normalizedRequestedCoverUrl.equals(normalizedCurrentCoverUrl)) {
+            return new CoverBinding(currentCoverFileAssetId, requestedCoverUrl);
+        }
+        if (!hasText(requestedCoverUrl)) {
+            return new CoverBinding(null, requestedCoverUrl);
+        }
+        return requireStableCoverUrlChange(requestedCoverUrl);
+    }
+
+    private CoverBinding requireStableCoverUrlChange(String coverUrl) {
         if (!hasText(coverUrl)) {
-            return coverUrl;
+            return new CoverBinding(null, coverUrl);
         }
         String normalizedCoverUrl = coverUrl.trim();
         Long fileAssetId = extractFileAssetId(normalizedCoverUrl);
@@ -43,7 +67,7 @@ public class StableCoverUrlService {
                 && !normalizedCoverUrl.equals(normalizeNullable(fileAsset.getUrl()))) {
             throw invalidCoverUrl();
         }
-        return hasText(fileAsset.getUrl()) ? fileAsset.getUrl().trim() : relativeUrl;
+        return new CoverBinding(fileAssetId, hasText(fileAsset.getUrl()) ? fileAsset.getUrl().trim() : relativeUrl);
     }
 
     private Long extractFileAssetId(String coverUrl) {
@@ -98,5 +122,8 @@ public class StableCoverUrlService {
 
     private boolean hasText(String value) {
         return value != null && !value.isBlank();
+    }
+
+    public record CoverBinding(Long fileAssetId, String coverUrl) {
     }
 }
