@@ -8,6 +8,7 @@ import com.gugugaga.jsmedicine.common.exception.BusinessException;
 import com.gugugaga.jsmedicine.common.exception.ErrorCode;
 import com.gugugaga.jsmedicine.common.response.PageResponse;
 import com.gugugaga.jsmedicine.infrastructure.security.CurrentAdminAccessor;
+import com.gugugaga.jsmedicine.infrastructure.storage.service.StableCoverUrlService;
 import com.gugugaga.jsmedicine.module.learning.admin.dto.AdminLearningPageQuery;
 import com.gugugaga.jsmedicine.module.learning.admin.dto.BookCategoryRequest;
 import com.gugugaga.jsmedicine.module.learning.admin.dto.BookCategoryResponse;
@@ -80,6 +81,7 @@ public class AdminLearningService {
     private final ExamPaperQuestionMapper examPaperQuestionMapper;
     private final AuditRecordService auditRecordService;
     private final CurrentAdminAccessor currentAdminAccessor;
+    private final StableCoverUrlService stableCoverUrlService;
 
     public AdminLearningService(
             CourseMapper courseMapper,
@@ -93,7 +95,8 @@ public class AdminLearningService {
             ExamPaperMapper examPaperMapper,
             ExamPaperQuestionMapper examPaperQuestionMapper,
             AuditRecordService auditRecordService,
-            CurrentAdminAccessor currentAdminAccessor
+            CurrentAdminAccessor currentAdminAccessor,
+            StableCoverUrlService stableCoverUrlService
     ) {
         this.courseMapper = courseMapper;
         this.courseVideoMapper = courseVideoMapper;
@@ -107,6 +110,7 @@ public class AdminLearningService {
         this.examPaperQuestionMapper = examPaperQuestionMapper;
         this.auditRecordService = auditRecordService;
         this.currentAdminAccessor = currentAdminAccessor;
+        this.stableCoverUrlService = stableCoverUrlService;
     }
 
     public PageResponse<CourseResponse> pageCourses(AdminLearningPageQuery query) {
@@ -506,7 +510,7 @@ public class AdminLearningService {
     private void fillCourse(Course course, CourseRequest request) {
         course.setCourseName(request.courseName());
         course.setSubtitle(request.subtitle());
-        course.setCoverUrl(request.coverUrl());
+        course.setCoverUrl(stableCoverUrlService.requireStableCoverUrl(request.coverUrl()));
         course.setLecturerName(request.lecturerName());
         course.setIntroduction(request.introduction());
         course.setPaperId(request.paperId());
@@ -538,7 +542,7 @@ public class AdminLearningService {
         book.setBookName(request.bookName());
         book.setAuthor(request.author());
         book.setPublisher(request.publisher());
-        book.setCoverUrl(request.coverUrl());
+        book.setCoverUrl(stableCoverUrlService.requireStableCoverUrl(request.coverUrl()));
         book.setIntroduction(request.introduction());
         book.setTotalPages(request.totalPages());
         book.setPaperId(request.paperId());

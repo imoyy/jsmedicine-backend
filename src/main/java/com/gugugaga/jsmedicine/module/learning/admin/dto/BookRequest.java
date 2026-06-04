@@ -24,6 +24,7 @@ public record BookRequest(
         String publisher,
 
         @Size(max = 512, message = "coverUrl length must be less than 512")
+        @Schema(description = "封面稳定读取地址，只能填写管理端封面上传接口返回的 /api/v1/files/{id}/content", example = "/api/v1/files/106/content")
         String coverUrl,
 
         String introduction,

@@ -9,6 +9,7 @@ import com.gugugaga.jsmedicine.common.exception.ErrorCode;
 import com.gugugaga.jsmedicine.common.response.PageResponse;
 import com.gugugaga.jsmedicine.common.service.ResourceTagService;
 import com.gugugaga.jsmedicine.infrastructure.security.CurrentAdminAccessor;
+import com.gugugaga.jsmedicine.infrastructure.storage.service.StableCoverUrlService;
 import com.gugugaga.jsmedicine.infrastructure.storage.entity.FileAsset;
 import com.gugugaga.jsmedicine.infrastructure.storage.mapper.FileAssetMapper;
 import com.gugugaga.jsmedicine.module.content.admin.dto.AdminContentPageQuery;
@@ -103,6 +104,7 @@ public class AdminContentService {
     private final AuditRecordService auditRecordService;
     private final CurrentAdminAccessor currentAdminAccessor;
     private final ResourceTagService resourceTagService;
+    private final StableCoverUrlService stableCoverUrlService;
 
     public AdminContentService(
             HomeCategoryMapper homeCategoryMapper,
@@ -118,7 +120,8 @@ public class AdminContentService {
             FileAssetMapper fileAssetMapper,
             AuditRecordService auditRecordService,
             CurrentAdminAccessor currentAdminAccessor,
-            ResourceTagService resourceTagService
+            ResourceTagService resourceTagService,
+            StableCoverUrlService stableCoverUrlService
     ) {
         this.homeCategoryMapper = homeCategoryMapper;
         this.homeContentMapper = homeContentMapper;
@@ -134,6 +137,7 @@ public class AdminContentService {
         this.auditRecordService = auditRecordService;
         this.currentAdminAccessor = currentAdminAccessor;
         this.resourceTagService = resourceTagService;
+        this.stableCoverUrlService = stableCoverUrlService;
     }
 
     public PageResponse<HomeCategoryResponse> pageHomeCategories(AdminContentPageQuery query) {
@@ -476,7 +480,7 @@ public class AdminContentService {
         content.setContentType(request.contentType());
         content.setTargetId(request.targetId());
         content.setTitle(request.title());
-        content.setCoverUrl(request.coverUrl());
+        content.setCoverUrl(stableCoverUrlService.requireStableCoverUrl(request.coverUrl()));
         content.setLinkUrl(request.linkUrl());
         content.setSortOrder(request.sortOrder());
         content.setStartAt(request.startAt());
@@ -487,7 +491,7 @@ public class AdminContentService {
     private void fillArticle(Article article, ArticleRequest request) {
         article.setTitle(request.title());
         article.setSummary(request.summary());
-        article.setCoverUrl(request.coverUrl());
+        article.setCoverUrl(stableCoverUrlService.requireStableCoverUrl(request.coverUrl()));
         article.setContent(request.content());
         article.setAuthorName(request.authorName());
         article.setSource(request.source());
@@ -499,7 +503,7 @@ public class AdminContentService {
     private void fillPodcast(Podcast podcast, PodcastRequest request) {
         podcast.setTitle(request.title());
         podcast.setSummary(request.summary());
-        podcast.setCoverUrl(request.coverUrl());
+        podcast.setCoverUrl(stableCoverUrlService.requireStableCoverUrl(request.coverUrl()));
         podcast.setSpeakerName(request.speakerName());
         podcast.setSortOrder(request.sortOrder() == null ? 0 : request.sortOrder());
         podcast.setReviewStatus(request.reviewStatus());
@@ -521,7 +525,7 @@ public class AdminContentService {
         topic.setTitle(request.title());
         topic.setSummary(request.summary());
         topic.setLearningRequirements(request.learningRequirements());
-        topic.setCoverUrl(request.coverUrl());
+        topic.setCoverUrl(stableCoverUrlService.requireStableCoverUrl(request.coverUrl()));
         topic.setSortOrder(request.sortOrder() == null ? 0 : request.sortOrder());
         topic.setReviewStatus(request.reviewStatus());
         topic.setPublishStatus(request.publishStatus());
@@ -720,7 +724,7 @@ public class AdminContentService {
                 normalizedContentType,
                 request.targetId(),
                 request.title(),
-                request.coverUrl(),
+                stableCoverUrlService.requireStableCoverUrl(request.coverUrl()),
                 request.linkUrl(),
                 request.sortOrder() == null ? 0 : request.sortOrder(),
                 request.startAt(),

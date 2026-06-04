@@ -9,6 +9,7 @@ import com.gugugaga.jsmedicine.common.exception.ErrorCode;
 import com.gugugaga.jsmedicine.common.response.PageResponse;
 import com.gugugaga.jsmedicine.common.service.ResourceTagService;
 import com.gugugaga.jsmedicine.infrastructure.security.CurrentAdminAccessor;
+import com.gugugaga.jsmedicine.infrastructure.storage.service.StableCoverUrlService;
 import com.gugugaga.jsmedicine.module.learning.live.admin.dto.LiveSessionRequest;
 import com.gugugaga.jsmedicine.module.learning.live.admin.dto.LiveSessionResponse;
 import com.gugugaga.jsmedicine.module.learning.live.admin.dto.LiveSessionVideoRequest;
@@ -39,19 +40,22 @@ public class AdminLiveService {
     private final CurrentAdminAccessor currentAdminAccessor;
     private final AuditRecordService auditRecordService;
     private final ResourceTagService resourceTagService;
+    private final StableCoverUrlService stableCoverUrlService;
 
     public AdminLiveService(
             LiveSessionMapper liveSessionMapper,
             LiveSessionVideoMapper liveSessionVideoMapper,
             CurrentAdminAccessor currentAdminAccessor,
             AuditRecordService auditRecordService,
-            ResourceTagService resourceTagService
+            ResourceTagService resourceTagService,
+            StableCoverUrlService stableCoverUrlService
     ) {
         this.liveSessionMapper = liveSessionMapper;
         this.liveSessionVideoMapper = liveSessionVideoMapper;
         this.currentAdminAccessor = currentAdminAccessor;
         this.auditRecordService = auditRecordService;
         this.resourceTagService = resourceTagService;
+        this.stableCoverUrlService = stableCoverUrlService;
     }
 
     public PageResponse<LiveSessionResponse> pageLives(long page, long size, String keyword, ReviewStatus reviewStatus, LiveStatus liveStatus) {
@@ -154,7 +158,7 @@ public class AdminLiveService {
 
     private void fillLive(LiveSession live, LiveSessionRequest request) {
         live.setTitle(request.title());
-        live.setCoverUrl(request.coverUrl());
+        live.setCoverUrl(stableCoverUrlService.requireStableCoverUrl(request.coverUrl()));
         String anchorName = hasText(request.anchorName()) ? request.anchorName() : request.speakerName();
         String speakerName = hasText(request.speakerName()) ? request.speakerName() : request.anchorName();
         live.setAnchorName(anchorName);

@@ -16,6 +16,7 @@ public class StorageProperties {
     private String presignedUploadBaseUrl;
     private boolean autoCreateBucket = true;
     private Avatar avatar = new Avatar();
+    private Cover cover = new Cover();
 
     public String getProvider() {
         return provider;
@@ -81,9 +82,69 @@ public class StorageProperties {
         this.avatar = avatar;
     }
 
+    public Cover getCover() {
+        return cover;
+    }
+
+    public void setCover(Cover cover) {
+        this.cover = cover;
+    }
+
     public static class Avatar {
         private String bucketName = "public";
         private String objectPrefix = "app-users";
+        private long maxFileSizeBytes = 5L * 1024 * 1024;
+        private long uploadUrlTtlSeconds = 900;
+        private List<String> allowedContentTypes = new ArrayList<>(List.of(
+                "image/jpeg",
+                "image/png",
+                "image/webp"
+        ));
+
+        public String getBucketName() {
+            return bucketName;
+        }
+
+        public void setBucketName(String bucketName) {
+            this.bucketName = bucketName;
+        }
+
+        public String getObjectPrefix() {
+            return objectPrefix;
+        }
+
+        public void setObjectPrefix(String objectPrefix) {
+            this.objectPrefix = objectPrefix;
+        }
+
+        public long getMaxFileSizeBytes() {
+            return maxFileSizeBytes;
+        }
+
+        public void setMaxFileSizeBytes(long maxFileSizeBytes) {
+            this.maxFileSizeBytes = maxFileSizeBytes;
+        }
+
+        public long getUploadUrlTtlSeconds() {
+            return uploadUrlTtlSeconds;
+        }
+
+        public void setUploadUrlTtlSeconds(long uploadUrlTtlSeconds) {
+            this.uploadUrlTtlSeconds = uploadUrlTtlSeconds;
+        }
+
+        public List<String> getAllowedContentTypes() {
+            return allowedContentTypes;
+        }
+
+        public void setAllowedContentTypes(List<String> allowedContentTypes) {
+            this.allowedContentTypes = allowedContentTypes == null ? new ArrayList<>() : new ArrayList<>(allowedContentTypes);
+        }
+    }
+
+    public static class Cover {
+        private String bucketName = "public";
+        private String objectPrefix = "admin/covers";
         private long maxFileSizeBytes = 5L * 1024 * 1024;
         private long uploadUrlTtlSeconds = 900;
         private List<String> allowedContentTypes = new ArrayList<>(List.of(

@@ -8,6 +8,7 @@ import com.gugugaga.jsmedicine.common.enums.EnabledStatus;
 import com.gugugaga.jsmedicine.common.exception.BusinessException;
 import com.gugugaga.jsmedicine.common.exception.ErrorCode;
 import com.gugugaga.jsmedicine.common.response.PageResponse;
+import com.gugugaga.jsmedicine.infrastructure.storage.service.StableCoverUrlService;
 import com.gugugaga.jsmedicine.module.expert.admin.dto.ExpertCategoryRequest;
 import com.gugugaga.jsmedicine.module.expert.admin.dto.ExpertCategoryResponse;
 import com.gugugaga.jsmedicine.module.expert.admin.dto.ExpertExperienceRequest;
@@ -46,6 +47,7 @@ public class AdminExpertService {
     private final ExpertExperienceMapper expertExperienceMapper;
     private final AppUserMapper appUserMapper;
     private final AppUserIdentityMapper appUserIdentityMapper;
+    private final StableCoverUrlService stableCoverUrlService;
 
     public AdminExpertService(
             ExpertCategoryMapper expertCategoryMapper,
@@ -53,7 +55,8 @@ public class AdminExpertService {
             ExpertCategoryRelationMapper expertCategoryRelationMapper,
             ExpertExperienceMapper expertExperienceMapper,
             AppUserMapper appUserMapper,
-            AppUserIdentityMapper appUserIdentityMapper
+            AppUserIdentityMapper appUserIdentityMapper,
+            StableCoverUrlService stableCoverUrlService
     ) {
         this.expertCategoryMapper = expertCategoryMapper;
         this.expertMapper = expertMapper;
@@ -61,6 +64,7 @@ public class AdminExpertService {
         this.expertExperienceMapper = expertExperienceMapper;
         this.appUserMapper = appUserMapper;
         this.appUserIdentityMapper = appUserIdentityMapper;
+        this.stableCoverUrlService = stableCoverUrlService;
     }
 
     public PageResponse<ExpertCategoryResponse> pageCategories(long page, long size, String keyword, Long parentId, EnabledStatus status) {
@@ -213,7 +217,7 @@ public class AdminExpertService {
         expert.setBirthDate(request.birthDate());
         expert.setMobile(request.mobile());
         expert.setAvatarUrl(request.avatarUrl());
-        expert.setCoverUrl(request.coverUrl());
+        expert.setCoverUrl(stableCoverUrlService.requireStableCoverUrl(request.coverUrl()));
         expert.setTitle(request.title());
         expert.setOrganization(request.organization());
         expert.setOrganizationId(request.organizationId());

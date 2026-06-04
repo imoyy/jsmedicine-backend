@@ -30,7 +30,7 @@ public record HomeContentRequest(
         String title,
 
         @Size(max = 512, message = "coverUrl length must be less than 512")
-        @Schema(description = "首页展示封面地址，可与关联资源封面保持一致", example = "https://example.com/assets/home-course.jpg")
+        @Schema(description = "首页展示封面稳定读取地址，只能填写管理端封面上传接口返回的 /api/v1/files/{id}/content；如需复用关联资源封面，也应先使用统一封面上传链路登记", example = "/api/v1/files/102/content")
         String coverUrl,
 
         @Size(max = 512, message = "linkUrl length must be less than 512")

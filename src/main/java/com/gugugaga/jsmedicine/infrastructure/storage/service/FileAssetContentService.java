@@ -30,10 +30,14 @@ public class FileAssetContentService {
 
     public StorageObjectStream loadPublicContent(Long id) {
         FileAsset fileAsset = fileAssetMapper.selectById(id);
-        if (fileAsset == null || !Objects.equals(fileAsset.getDeleted(), 0) || !isPublicAvatarAsset(fileAsset)) {
+        if (fileAsset == null || !Objects.equals(fileAsset.getDeleted(), 0) || !isPublicAsset(fileAsset)) {
             throw new BusinessException(ErrorCode.NOT_FOUND, "File asset does not exist");
         }
         return storageClient.getObject(fileAsset.getBucketName(), fileAsset.getObjectKey());
+    }
+
+    private boolean isPublicAsset(FileAsset fileAsset) {
+        return isPublicAvatarAsset(fileAsset) || isPublicCoverAsset(fileAsset);
     }
 
     private boolean isPublicAvatarAsset(FileAsset fileAsset) {
@@ -41,5 +45,11 @@ public class FileAssetContentService {
                 && fileAsset.getObjectKey() != null
                 && fileAsset.getObjectKey().startsWith(storageProperties.getAvatar().getObjectPrefix() + "/")
                 && fileAsset.getObjectKey().contains("/avatars/");
+    }
+
+    private boolean isPublicCoverAsset(FileAsset fileAsset) {
+        return "image".equalsIgnoreCase(fileAsset.getAssetType())
+                && fileAsset.getObjectKey() != null
+                && fileAsset.getObjectKey().startsWith(storageProperties.getCover().getObjectPrefix() + "/");
     }
 }

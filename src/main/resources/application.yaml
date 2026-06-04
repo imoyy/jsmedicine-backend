@@ -118,3 +118,9 @@ app:
       max-file-size-bytes: ${APP_STORAGE_AVATAR_MAX_FILE_SIZE_BYTES:5242880}
       upload-url-ttl-seconds: ${APP_STORAGE_AVATAR_UPLOAD_URL_TTL_SECONDS:900}
       allowed-content-types: ${APP_STORAGE_AVATAR_ALLOWED_CONTENT_TYPES:image/jpeg,image/png,image/webp}
+    cover:
+      bucket-name: ${APP_STORAGE_COVER_BUCKET_NAME:public}
+      object-prefix: ${APP_STORAGE_COVER_OBJECT_PREFIX:admin/covers}
+      max-file-size-bytes: ${APP_STORAGE_COVER_MAX_FILE_SIZE_BYTES:5242880}
+      upload-url-ttl-seconds: ${APP_STORAGE_COVER_UPLOAD_URL_TTL_SECONDS:900}
+      allowed-content-types: ${APP_STORAGE_COVER_ALLOWED_CONTENT_TYPES:image/jpeg,image/png,image/webp}

@@ -9,6 +9,7 @@ import com.gugugaga.jsmedicine.common.exception.BusinessException;
 import com.gugugaga.jsmedicine.common.exception.ErrorCode;
 import com.gugugaga.jsmedicine.common.response.PageResponse;
 import com.gugugaga.jsmedicine.infrastructure.security.CurrentAdminAccessor;
+import com.gugugaga.jsmedicine.infrastructure.storage.service.StableCoverUrlService;
 import com.gugugaga.jsmedicine.module.knowledge.admin.dto.KnowledgeCategoryRequest;
 import com.gugugaga.jsmedicine.module.knowledge.admin.dto.KnowledgeCategoryResponse;
 import com.gugugaga.jsmedicine.module.knowledge.admin.dto.KnowledgeEntryRequest;
@@ -38,17 +39,20 @@ public class AdminKnowledgeService {
     private final KnowledgeEntryMapper entryMapper;
     private final AuditRecordService auditRecordService;
     private final CurrentAdminAccessor currentAdminAccessor;
+    private final StableCoverUrlService stableCoverUrlService;
 
     public AdminKnowledgeService(
             KnowledgeCategoryMapper categoryMapper,
             KnowledgeEntryMapper entryMapper,
             AuditRecordService auditRecordService,
-            CurrentAdminAccessor currentAdminAccessor
+            CurrentAdminAccessor currentAdminAccessor,
+            StableCoverUrlService stableCoverUrlService
     ) {
         this.categoryMapper = categoryMapper;
         this.entryMapper = entryMapper;
         this.auditRecordService = auditRecordService;
         this.currentAdminAccessor = currentAdminAccessor;
+        this.stableCoverUrlService = stableCoverUrlService;
     }
 
     public PageResponse<KnowledgeCategoryResponse> pageCategories(long page, long size, String keyword, Long parentId, EnabledStatus status) {
@@ -174,7 +178,7 @@ public class AdminKnowledgeService {
         entry.setCategoryId(request.categoryId());
         entry.setTitle(request.title());
         entry.setSummary(request.summary());
-        entry.setCoverUrl(request.coverUrl());
+        entry.setCoverUrl(stableCoverUrlService.requireStableCoverUrl(request.coverUrl()));
         entry.setContent(request.content());
         entry.setKeywords(request.keywords());
         entry.setSource(request.source());

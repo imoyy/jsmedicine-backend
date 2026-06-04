@@ -2,6 +2,7 @@ package com.gugugaga.jsmedicine.module.knowledge.admin.dto;
 
 import com.gugugaga.jsmedicine.common.enums.PublishStatus;
 import com.gugugaga.jsmedicine.common.enums.ReviewStatus;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -19,6 +20,7 @@ public record KnowledgeEntryRequest(
         String summary,
 
         @Size(max = 512, message = "coverUrl length must be less than 512")
+        @Schema(description = "封面稳定读取地址，只能填写管理端封面上传接口返回的 /api/v1/files/{id}/content", example = "/api/v1/files/108/content")
         String coverUrl,
 
         @NotBlank(message = "content must not be blank")

@@ -3,6 +3,10 @@ package com.gugugaga.jsmedicine.module.content.admin.controller;
 import com.gugugaga.jsmedicine.common.response.ApiResponse;
 import com.gugugaga.jsmedicine.common.response.PageResponse;
 import com.gugugaga.jsmedicine.module.content.admin.dto.AdminContentPageQuery;
+import com.gugugaga.jsmedicine.module.content.admin.dto.AdminCoverAssetResponse;
+import com.gugugaga.jsmedicine.module.content.admin.dto.AdminCoverConfirmRequest;
+import com.gugugaga.jsmedicine.module.content.admin.dto.AdminCoverUploadRequest;
+import com.gugugaga.jsmedicine.module.content.admin.dto.AdminCoverUploadResponse;
 import com.gugugaga.jsmedicine.module.content.admin.dto.ArticleRequest;
 import com.gugugaga.jsmedicine.module.content.admin.dto.ArticleResponse;
 import com.gugugaga.jsmedicine.module.content.admin.dto.FileAssetRequest;
@@ -20,6 +24,7 @@ import com.gugugaga.jsmedicine.module.content.admin.dto.TopicItemRequest;
 import com.gugugaga.jsmedicine.module.content.admin.dto.TopicItemResponse;
 import com.gugugaga.jsmedicine.module.content.admin.dto.TopicRequest;
 import com.gugugaga.jsmedicine.module.content.admin.dto.TopicResponse;
+import com.gugugaga.jsmedicine.module.content.admin.service.AdminCoverUploadService;
 import com.gugugaga.jsmedicine.module.content.admin.service.AdminContentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -44,9 +49,14 @@ import java.util.List;
 public class AdminContentController {
 
     private final AdminContentService adminContentService;
+    private final AdminCoverUploadService adminCoverUploadService;
 
-    public AdminContentController(AdminContentService adminContentService) {
+    public AdminContentController(
+            AdminContentService adminContentService,
+            AdminCoverUploadService adminCoverUploadService
+    ) {
         this.adminContentService = adminContentService;
+        this.adminCoverUploadService = adminCoverUploadService;
     }
 
     @Operation(summary = "分页查询首页分类")
@@ -303,6 +313,30 @@ public class AdminContentController {
     @PostMapping("/files")
     public ApiResponse<FileAssetResponse> createFileAsset(@Valid @RequestBody FileAssetRequest request) {
         return ApiResponse.ok(adminContentService.createFileAsset(request));
+    }
+
+    @Operation(
+            summary = "申请封面上传地址",
+            description = "统一用于资讯、课程、图书、播客、专题、直播、专家、知识库、首页内容等管理端封面上传。前端先调用本接口获取预签名上传地址，上传完成后再调用确认接口换取稳定 coverUrl。"
+    )
+    @PreAuthorize("hasAuthority('content:file:edit')")
+    @PostMapping("/files/covers/upload-url")
+    public ApiResponse<AdminCoverUploadResponse> createCoverUploadUrl(
+            @Valid @RequestBody AdminCoverUploadRequest request
+    ) {
+        return ApiResponse.ok(adminCoverUploadService.createUploadUrl(request));
+    }
+
+    @Operation(
+            summary = "确认封面上传",
+            description = "确认成功后会写入 file_assets，并返回稳定读取地址 /api/v1/files/{id}/content；业务表中的 coverUrl 应保存该稳定地址，而不是对象存储临时签名 URL。"
+    )
+    @PreAuthorize("hasAuthority('content:file:edit')")
+    @PostMapping("/files/covers/confirm")
+    public ApiResponse<AdminCoverAssetResponse> confirmCoverUpload(
+            @Valid @RequestBody AdminCoverConfirmRequest request
+    ) {
+        return ApiResponse.ok(adminCoverUploadService.confirmUpload(request));
     }
 
     @Operation(summary = "删除文件资源")
