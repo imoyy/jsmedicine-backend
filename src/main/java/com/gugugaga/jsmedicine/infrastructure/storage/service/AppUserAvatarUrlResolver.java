@@ -39,7 +39,7 @@ public class AppUserAvatarUrlResolver {
             }
         }
         if (userId == null) {
-            return null;
+            return DEFAULT_AVATAR_URL;
         }
         FileAsset latestAvatar = fileAssetMapper.selectOne(new LambdaQueryWrapper<FileAsset>()
                 .eq(FileAsset::getDeleted, 0)

@@ -8,6 +8,7 @@ import com.gugugaga.jsmedicine.common.enums.EnabledStatus;
 import com.gugugaga.jsmedicine.common.exception.BusinessException;
 import com.gugugaga.jsmedicine.common.exception.ErrorCode;
 import com.gugugaga.jsmedicine.common.response.PageResponse;
+import com.gugugaga.jsmedicine.infrastructure.storage.service.AppUserAvatarUrlResolver;
 import com.gugugaga.jsmedicine.infrastructure.storage.service.StableCoverUrlService;
 import com.gugugaga.jsmedicine.module.expert.admin.dto.ExpertCategoryRequest;
 import com.gugugaga.jsmedicine.module.expert.admin.dto.ExpertCategoryResponse;
@@ -48,6 +49,7 @@ public class AdminExpertService {
     private final AppUserMapper appUserMapper;
     private final AppUserIdentityMapper appUserIdentityMapper;
     private final StableCoverUrlService stableCoverUrlService;
+    private final AppUserAvatarUrlResolver appUserAvatarUrlResolver;
 
     public AdminExpertService(
             ExpertCategoryMapper expertCategoryMapper,
@@ -56,7 +58,8 @@ public class AdminExpertService {
             ExpertExperienceMapper expertExperienceMapper,
             AppUserMapper appUserMapper,
             AppUserIdentityMapper appUserIdentityMapper,
-            StableCoverUrlService stableCoverUrlService
+            StableCoverUrlService stableCoverUrlService,
+            AppUserAvatarUrlResolver appUserAvatarUrlResolver
     ) {
         this.expertCategoryMapper = expertCategoryMapper;
         this.expertMapper = expertMapper;
@@ -65,6 +68,7 @@ public class AdminExpertService {
         this.appUserMapper = appUserMapper;
         this.appUserIdentityMapper = appUserIdentityMapper;
         this.stableCoverUrlService = stableCoverUrlService;
+        this.appUserAvatarUrlResolver = appUserAvatarUrlResolver;
     }
 
     public PageResponse<ExpertCategoryResponse> pageCategories(long page, long size, String keyword, Long parentId, EnabledStatus status) {
@@ -337,7 +341,8 @@ public class AdminExpertService {
 
     private ExpertResponse toExpertResponse(Expert expert, boolean includeDetails) {
         return new ExpertResponse(expert.getId(), expert.getUserId(), expert.getRealName(), expert.getGender(),
-                expert.getBirthDate(), expert.getMobile(), expert.getAvatarUrl(), expert.getCoverUrl(), expert.getTitle(),
+                expert.getBirthDate(), expert.getMobile(), appUserAvatarUrlResolver.resolve(null, expert.getAvatarUrl()),
+                expert.getCoverUrl(), expert.getTitle(),
                 expert.getOrganization(), expert.getOrganizationId(), expert.getSpecialty(), expert.getPracticeTypeId(),
                 expert.getIntroduction(), expert.getStatus(), expert.getConsultEnabled(), expert.getConsultationNotice(), expert.getSortOrder(),
                 includeDetails ? loadCategoryIds(expert.getId()) : List.of(),

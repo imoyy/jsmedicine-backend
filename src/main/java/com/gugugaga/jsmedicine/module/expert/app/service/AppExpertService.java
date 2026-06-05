@@ -6,6 +6,7 @@ import com.gugugaga.jsmedicine.common.enums.EnabledStatus;
 import com.gugugaga.jsmedicine.common.exception.BusinessException;
 import com.gugugaga.jsmedicine.common.exception.ErrorCode;
 import com.gugugaga.jsmedicine.common.response.PageResponse;
+import com.gugugaga.jsmedicine.infrastructure.storage.service.AppUserAvatarUrlResolver;
 import com.gugugaga.jsmedicine.module.expert.admin.dto.ExpertExperienceResponse;
 import com.gugugaga.jsmedicine.module.expert.app.dto.AppExpertCategoryResponse;
 import com.gugugaga.jsmedicine.module.expert.app.dto.AppExpertResponse;
@@ -33,17 +34,20 @@ public class AppExpertService {
     private final ExpertMapper expertMapper;
     private final ExpertCategoryRelationMapper expertCategoryRelationMapper;
     private final ExpertExperienceMapper expertExperienceMapper;
+    private final AppUserAvatarUrlResolver appUserAvatarUrlResolver;
 
     public AppExpertService(
             ExpertCategoryMapper expertCategoryMapper,
             ExpertMapper expertMapper,
             ExpertCategoryRelationMapper expertCategoryRelationMapper,
-            ExpertExperienceMapper expertExperienceMapper
+            ExpertExperienceMapper expertExperienceMapper,
+            AppUserAvatarUrlResolver appUserAvatarUrlResolver
     ) {
         this.expertCategoryMapper = expertCategoryMapper;
         this.expertMapper = expertMapper;
         this.expertCategoryRelationMapper = expertCategoryRelationMapper;
         this.expertExperienceMapper = expertExperienceMapper;
+        this.appUserAvatarUrlResolver = appUserAvatarUrlResolver;
     }
 
     public PageResponse<AppExpertCategoryResponse> pageCategories(long page, long size, String keyword, Long parentId) {
@@ -105,7 +109,7 @@ public class AppExpertService {
 
     private AppExpertResponse toExpertResponse(Expert expert, boolean includeDetails) {
         return new AppExpertResponse(expert.getId(), expert.getRealName(), expert.getGender(), expert.getBirthDate(),
-                expert.getMobile(), expert.getAvatarUrl(), expert.getCoverUrl(), expert.getTitle(),
+                expert.getMobile(), appUserAvatarUrlResolver.resolve(null, expert.getAvatarUrl()), expert.getCoverUrl(), expert.getTitle(),
                 expert.getOrganization(), expert.getSpecialty(), expert.getIntroduction(),
                 expert.getConsultationNotice(), expert.getSortOrder(), includeDetails ? loadCategoryIds(expert.getId()) : List.of(),
                 includeDetails ? loadExperiences(expert.getId()) : List.of());

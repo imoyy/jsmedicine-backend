@@ -8,6 +8,7 @@ import com.gugugaga.jsmedicine.common.exception.BusinessException;
 import com.gugugaga.jsmedicine.common.exception.ErrorCode;
 import com.gugugaga.jsmedicine.common.response.PageResponse;
 import com.gugugaga.jsmedicine.infrastructure.security.CurrentAdminAccessor;
+import com.gugugaga.jsmedicine.infrastructure.storage.service.AppUserAvatarUrlResolver;
 import com.gugugaga.jsmedicine.module.system.dto.AuditRecordPageQuery;
 import com.gugugaga.jsmedicine.module.system.dto.AuditRecordResponse;
 import com.gugugaga.jsmedicine.module.system.dto.SysAdminPageQuery;
@@ -74,6 +75,7 @@ public class SystemAdminService {
     private final AuditRecordMapper auditRecordMapper;
     private final PasswordEncoder passwordEncoder;
     private final CurrentAdminAccessor currentAdminAccessor;
+    private final AppUserAvatarUrlResolver appUserAvatarUrlResolver;
 
     public SystemAdminService(
             SysAdminMapper sysAdminMapper,
@@ -83,7 +85,8 @@ public class SystemAdminService {
             SysRolePermissionMapper sysRolePermissionMapper,
             AuditRecordMapper auditRecordMapper,
             PasswordEncoder passwordEncoder,
-            CurrentAdminAccessor currentAdminAccessor
+            CurrentAdminAccessor currentAdminAccessor,
+            AppUserAvatarUrlResolver appUserAvatarUrlResolver
     ) {
         this.sysAdminMapper = sysAdminMapper;
         this.sysRoleMapper = sysRoleMapper;
@@ -93,6 +96,7 @@ public class SystemAdminService {
         this.auditRecordMapper = auditRecordMapper;
         this.passwordEncoder = passwordEncoder;
         this.currentAdminAccessor = currentAdminAccessor;
+        this.appUserAvatarUrlResolver = appUserAvatarUrlResolver;
     }
 
     public PageResponse<SysAdminResponse> pageAdmins(SysAdminPageQuery query) {
@@ -435,7 +439,7 @@ public class SystemAdminService {
                 admin.getRealName(),
                 admin.getMobile(),
                 admin.getEmail(),
-                admin.getAvatarUrl(),
+                appUserAvatarUrlResolver.resolve(null, admin.getAvatarUrl()),
                 admin.getStatus(),
                 admin.getLastLoginAt(),
                 admin.getLastLoginIp(),
