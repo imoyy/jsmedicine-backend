@@ -136,7 +136,35 @@ services:
       timeout: 5s
       retries: 10
 
+  srs:
+    image: ${SRS_IMAGE:-ossrs/srs:5}
+    container_name: jsmedicine-test-srs
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+      APP_LIVE_APP_NAME: ${APP_LIVE_APP_NAME:-live}
+      APP_LIVE_CALLBACK_TOKEN: ${APP_LIVE_CALLBACK_TOKEN:-}
+      SRS_CALLBACK_BASE_URL: ${SRS_CALLBACK_BASE_URL:-http://app:8080/api/v1/integrations/srs/live-hooks}
+    command: ["sh", "/usr/local/srs/conf/start-srs.sh"]
+    volumes:
+      - ./docker/srs/srs.template.conf:/usr/local/srs/conf/docker-live.template.conf:ro
+      - ./docker/srs/start-srs.sh:/usr/local/srs/conf/start-srs.sh:ro
+      - srs_test_data:/usr/local/srs/objs/nginx/html
+    ports:
+      - "${SRS_RTMP_BIND_HOST:-0.0.0.0}:${APP_LIVE_RTMP_PORT:-1935}:1935"
+      - "${SRS_API_BIND_HOST:-127.0.0.1}:${SRS_API_PORT:-1985}:1985"
+      - "${SRS_HTTP_BIND_HOST:-0.0.0.0}:${APP_LIVE_HTTP_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:1985/api/v1/versions || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
 volumes:
   mysql_test_data:
   redis_test_data:
   minio_test_data:
+  srs_test_data:
