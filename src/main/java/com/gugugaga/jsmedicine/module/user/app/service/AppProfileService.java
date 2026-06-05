@@ -13,6 +13,7 @@ import com.gugugaga.jsmedicine.common.response.PageResponse;
 import com.gugugaga.jsmedicine.infrastructure.storage.StorageClient;
 import com.gugugaga.jsmedicine.infrastructure.storage.StorageObjectStat;
 import com.gugugaga.jsmedicine.infrastructure.storage.StorageProperties;
+import com.gugugaga.jsmedicine.infrastructure.storage.service.AppUserAvatarUrlResolver;
 import com.gugugaga.jsmedicine.infrastructure.storage.entity.FileAsset;
 import com.gugugaga.jsmedicine.infrastructure.storage.mapper.FileAssetMapper;
 import com.gugugaga.jsmedicine.module.auth.app.entity.AppUserSession;
@@ -78,6 +79,7 @@ public class AppProfileService {
     private final FileAssetMapper fileAssetMapper;
     private final StorageClient storageClient;
     private final StorageProperties storageProperties;
+    private final AppUserAvatarUrlResolver appUserAvatarUrlResolver;
 
     public AppProfileService(
             CurrentAppUserResolver currentAppUserResolver,
@@ -89,7 +91,8 @@ public class AppProfileService {
             UserBrowseHistoryMapper userBrowseHistoryMapper,
             FileAssetMapper fileAssetMapper,
             StorageClient storageClient,
-            StorageProperties storageProperties
+            StorageProperties storageProperties,
+            AppUserAvatarUrlResolver appUserAvatarUrlResolver
     ) {
         this.currentAppUserResolver = currentAppUserResolver;
         this.appUserMapper = appUserMapper;
@@ -101,6 +104,7 @@ public class AppProfileService {
         this.fileAssetMapper = fileAssetMapper;
         this.storageClient = storageClient;
         this.storageProperties = storageProperties;
+        this.appUserAvatarUrlResolver = appUserAvatarUrlResolver;
     }
 
     public AppProfileResponse currentProfile() {
@@ -347,7 +351,7 @@ public class AppProfileService {
                 user.getEmail(),
                 user.getNickname(),
                 user.getProfileSignature(),
-                user.getAvatarUrl(),
+                appUserAvatarUrlResolver.resolve(user.getId(), user.getAvatarUrl()),
                 user.getAuthProvider(),
                 user.getGender(),
                 user.getStatus(),

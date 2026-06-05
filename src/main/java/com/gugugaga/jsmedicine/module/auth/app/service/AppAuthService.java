@@ -7,6 +7,7 @@ import com.gugugaga.jsmedicine.common.enums.Gender;
 import com.gugugaga.jsmedicine.common.enums.UserAuthProvider;
 import com.gugugaga.jsmedicine.common.exception.BusinessException;
 import com.gugugaga.jsmedicine.common.exception.ErrorCode;
+import com.gugugaga.jsmedicine.infrastructure.storage.service.AppUserAvatarUrlResolver;
 import com.gugugaga.jsmedicine.module.auth.app.dto.AppLoginRequest;
 import com.gugugaga.jsmedicine.module.auth.app.dto.AppLoginResponse;
 import com.gugugaga.jsmedicine.module.auth.app.dto.AppSmsLoginRequest;
@@ -62,6 +63,7 @@ public class AppAuthService {
     private final WechatWebClient wechatWebClient;
     private final WechatWebStateService wechatWebStateService;
     private final WechatWebBindTokenService wechatWebBindTokenService;
+    private final AppUserAvatarUrlResolver appUserAvatarUrlResolver;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public AppAuthService(
@@ -77,7 +79,8 @@ public class AppAuthService {
             WechatBindTokenService wechatBindTokenService,
             WechatWebClient wechatWebClient,
             WechatWebStateService wechatWebStateService,
-            WechatWebBindTokenService wechatWebBindTokenService
+            WechatWebBindTokenService wechatWebBindTokenService,
+            AppUserAvatarUrlResolver appUserAvatarUrlResolver
     ) {
         this.appUserAuthenticationProvider = appUserAuthenticationProvider;
         this.appUserMapper = appUserMapper;
@@ -92,6 +95,7 @@ public class AppAuthService {
         this.wechatWebClient = wechatWebClient;
         this.wechatWebStateService = wechatWebStateService;
         this.wechatWebBindTokenService = wechatWebBindTokenService;
+        this.appUserAvatarUrlResolver = appUserAvatarUrlResolver;
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -262,7 +266,7 @@ public class AppAuthService {
                 appUser.getId(),
                 appUser.getUsername(),
                 appUser.getNickname(),
-                appUser.getAvatarUrl(),
+                appUserAvatarUrlResolver.resolve(appUser.getId(), appUser.getAvatarUrl()),
                 appUser.getMobile(),
                 appUser.getEmail(),
                 appUser.getProfileCompleted(),
@@ -297,7 +301,7 @@ public class AppAuthService {
                         refreshed.getId(),
                         refreshed.getUsername(),
                         refreshed.getNickname(),
-                        refreshed.getAvatarUrl(),
+                        appUserAvatarUrlResolver.resolve(refreshed.getId(), refreshed.getAvatarUrl()),
                         now
                 )
         );

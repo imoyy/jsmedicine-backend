@@ -13,6 +13,7 @@ public class AppUserAvatarUrlResolver {
 
     private static final String IMAGE_ASSET_TYPE = "image";
     private static final String PUBLIC_FILE_URL_TEMPLATE = "/api/v1/files/%d/content";
+    private static final String DEFAULT_AVATAR_URL = "/images/default-avatar.svg";
 
     private final FileAssetMapper fileAssetMapper;
     private final StorageProperties storageProperties;
@@ -49,7 +50,7 @@ public class AppUserAvatarUrlResolver {
         if (isPublicAvatarAsset(latestAvatar)) {
             return buildPublicFileUrl(latestAvatar.getId());
         }
-        return null;
+        return DEFAULT_AVATAR_URL;
     }
 
     private String normalizeStableUrl(String currentAvatarUrl) {
