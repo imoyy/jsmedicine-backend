@@ -47,7 +47,8 @@ public class SecurityConfig {
                                 "/api/v1/app/auth/wechat-login",
                                 "/api/v1/app/auth/wechat-bind-mobile",
                                 "/api/v1/app/auth/wechat-web/qr-config",
-                                "/api/v1/app/auth/wechat-web/login"
+                                "/api/v1/app/auth/wechat-web/login",
+                                "/api/v1/integrations/srs/live-hooks"
                         ).permitAll()
                         .requestMatchers("/api/v1/app/**").hasRole("APP_USER")
                         .anyRequest().authenticated()

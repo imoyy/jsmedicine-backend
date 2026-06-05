@@ -12,16 +12,19 @@ import com.gugugaga.jsmedicine.infrastructure.security.CurrentAdminAccessor;
 import com.gugugaga.jsmedicine.infrastructure.storage.service.StableCoverUrlService;
 import com.gugugaga.jsmedicine.module.learning.live.admin.dto.LiveSessionRequest;
 import com.gugugaga.jsmedicine.module.learning.live.admin.dto.LiveSessionResponse;
+import com.gugugaga.jsmedicine.module.learning.live.admin.dto.LiveSessionStreamResponse;
 import com.gugugaga.jsmedicine.module.learning.live.admin.dto.LiveSessionVideoRequest;
 import com.gugugaga.jsmedicine.module.learning.live.admin.dto.LiveSessionVideoResponse;
 import com.gugugaga.jsmedicine.module.learning.live.entity.LiveSession;
 import com.gugugaga.jsmedicine.module.learning.live.entity.LiveSessionVideo;
 import com.gugugaga.jsmedicine.module.learning.live.mapper.LiveSessionMapper;
 import com.gugugaga.jsmedicine.module.learning.live.mapper.LiveSessionVideoMapper;
+import com.gugugaga.jsmedicine.module.learning.live.service.LiveStreamService;
 import com.gugugaga.jsmedicine.module.system.entity.AuditRecord;
 import com.gugugaga.jsmedicine.module.system.service.AuditRecordService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -41,6 +44,7 @@ public class AdminLiveService {
     private final AuditRecordService auditRecordService;
     private final ResourceTagService resourceTagService;
     private final StableCoverUrlService stableCoverUrlService;
+    private final LiveStreamService liveStreamService;
 
     public AdminLiveService(
             LiveSessionMapper liveSessionMapper,
@@ -48,7 +52,8 @@ public class AdminLiveService {
             CurrentAdminAccessor currentAdminAccessor,
             AuditRecordService auditRecordService,
             ResourceTagService resourceTagService,
-            StableCoverUrlService stableCoverUrlService
+            StableCoverUrlService stableCoverUrlService,
+            LiveStreamService liveStreamService
     ) {
         this.liveSessionMapper = liveSessionMapper;
         this.liveSessionVideoMapper = liveSessionVideoMapper;
@@ -56,6 +61,7 @@ public class AdminLiveService {
         this.auditRecordService = auditRecordService;
         this.resourceTagService = resourceTagService;
         this.stableCoverUrlService = stableCoverUrlService;
+        this.liveStreamService = liveStreamService;
     }
 
     public PageResponse<LiveSessionResponse> pageLives(long page, long size, String keyword, ReviewStatus reviewStatus, LiveStatus liveStatus) {
@@ -78,6 +84,10 @@ public class AdminLiveService {
         return toResponse(requireLive(id), true);
     }
 
+    public LiveSessionStreamResponse liveStreamDetail(Long id) {
+        return liveStreamService.buildStreamResponse(requireLive(id));
+    }
+
     public PageResponse<LiveSessionVideoResponse> pageLiveVideos(Long liveSessionId, long page, long size) {
         Page<LiveSessionVideo> videoPage = liveSessionVideoMapper.selectPage(new Page<>(normalizePage(page), normalizeSize(size)),
                 new LambdaQueryWrapper<LiveSessionVideo>()
@@ -94,9 +104,17 @@ public class AdminLiveService {
         LiveSession live = new LiveSession();
         fillLive(live, request);
         live.setDeleted(0);
+        if (StringUtils.hasText(live.getStreamName())) {
+            liveStreamService.ensureUniqueStreamName(live.getStreamName(), null);
+        }
         liveSessionMapper.insert(live);
+        if (!StringUtils.hasText(live.getStreamName())) {
+            live.setStreamName(liveStreamService.buildDefaultStreamName(live.getId()));
+            liveStreamService.ensureUniqueStreamName(live.getStreamName(), live.getId());
+            liveSessionMapper.updateById(live);
+        }
         resourceTagService.replaceTags(RESOURCE_TYPE_LIVE, live.getId(), request.tags());
-        return toResponse(live, true);
+        return toResponse(requireLive(live.getId()), true);
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -104,9 +122,12 @@ public class AdminLiveService {
         validateTime(request.startAt(), request.endAt());
         LiveSession live = requireLive(id);
         fillLive(live, request);
+        if (StringUtils.hasText(live.getStreamName())) {
+            liveStreamService.ensureUniqueStreamName(live.getStreamName(), live.getId());
+        }
         liveSessionMapper.updateById(live);
         resourceTagService.replaceTags(RESOURCE_TYPE_LIVE, live.getId(), request.tags());
-        return toResponse(live, true);
+        return toResponse(requireLive(id), true);
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -118,8 +139,8 @@ public class AdminLiveService {
             live.setLiveStatus(LiveStatus.CANCELED);
         }
         liveSessionMapper.updateById(live);
-        saveAudit("live_session", id, before.getValue(), reviewStatus.getValue(), comment);
-        return toResponse(live, true);
+        saveAudit(id, before.getValue(), reviewStatus.getValue(), comment);
+        return toResponse(requireLive(id), true);
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -168,6 +189,7 @@ public class AdminLiveService {
         String anchorName = hasText(request.anchorName()) ? request.anchorName() : request.speakerName();
         String speakerName = hasText(request.speakerName()) ? request.speakerName() : request.anchorName();
         live.setAnchorName(anchorName);
+        live.setStreamName(hasText(request.streamName()) ? request.streamName() : live.getStreamName());
         live.setSpeakerName(speakerName);
         live.setLiveUrl(request.liveUrl());
         live.setPlaybackUrl(request.playbackUrl());
@@ -210,7 +232,7 @@ public class AdminLiveService {
 
     private LiveSessionResponse toResponse(LiveSession live, boolean includeVideos) {
         return new LiveSessionResponse(live.getId(), live.getTitle(), live.getCoverUrl(), live.getAnchorName(),
-                resolvedSpeakerName(live), resourceTagService.loadTagNames(RESOURCE_TYPE_LIVE, live.getId()),
+                live.getStreamName(), resolvedSpeakerName(live), resourceTagService.loadTagNames(RESOURCE_TYPE_LIVE, live.getId()),
                 live.getLiveUrl(), live.getPlaybackUrl(), live.getStartAt(), live.getEndAt(),
                 live.getReviewStatus(), live.getLiveStatus(), includeVideos ? loadLiveVideos(live.getId()) : List.of());
     }
@@ -235,9 +257,9 @@ public class AdminLiveService {
         return hasText(live.getSpeakerName()) ? live.getSpeakerName() : live.getAnchorName();
     }
 
-    private void saveAudit(String targetType, Long targetId, Integer before, Integer after, String comment) {
+    private void saveAudit(Long targetId, Integer before, Integer after, String comment) {
         AuditRecord record = new AuditRecord();
-        record.setTargetType(targetType);
+        record.setTargetType("live_session");
         record.setTargetId(targetId);
         record.setBeforeStatus(before);
         record.setAfterStatus(after);

@@ -22,6 +22,10 @@ public record LiveSessionRequest(
         @Size(max = 128, message = "anchorName length must be less than 128")
         String anchorName,
 
+        @Size(max = 128, message = "streamName length must be less than 128")
+        @Schema(description = "直播流名称，用于 SRS 推拉流与回调定位，留空时后端会自动生成")
+        String streamName,
+
         @Size(max = 128, message = "speakerName length must be less than 128")
         String speakerName,
 

@@ -17,6 +17,7 @@ public class LiveSession extends ManagedEntity {
     private String coverUrl;
     private Long coverFileAssetId;
     private String anchorName;
+    private String streamName;
     private String speakerName;
     private String liveUrl;
     private String playbackUrl;
@@ -25,4 +26,3 @@ public class LiveSession extends ManagedEntity {
     private ReviewStatus reviewStatus;
     private LiveStatus liveStatus;
 }
-

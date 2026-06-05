@@ -7,6 +7,7 @@ import com.gugugaga.jsmedicine.common.response.PageResponse;
 import com.gugugaga.jsmedicine.module.content.admin.dto.ReviewRequest;
 import com.gugugaga.jsmedicine.module.learning.live.admin.dto.LiveSessionRequest;
 import com.gugugaga.jsmedicine.module.learning.live.admin.dto.LiveSessionResponse;
+import com.gugugaga.jsmedicine.module.learning.live.admin.dto.LiveSessionStreamResponse;
 import com.gugugaga.jsmedicine.module.learning.live.admin.dto.LiveSessionVideoRequest;
 import com.gugugaga.jsmedicine.module.learning.live.admin.dto.LiveSessionVideoResponse;
 import com.gugugaga.jsmedicine.module.learning.live.admin.service.AdminLiveService;
@@ -54,6 +55,13 @@ public class AdminLiveController {
     @GetMapping("/{id}")
     public ApiResponse<LiveSessionResponse> liveDetail(@PathVariable Long id) {
         return ApiResponse.ok(adminLiveService.liveDetail(id));
+    }
+
+    @Operation(summary = "直播流配置")
+    @PreAuthorize("hasAuthority('live:view')")
+    @GetMapping("/{id}/streaming")
+    public ApiResponse<LiveSessionStreamResponse> liveStreamDetail(@PathVariable Long id) {
+        return ApiResponse.ok(adminLiveService.liveStreamDetail(id));
     }
 
     @Operation(summary = "分页查询直播视频")

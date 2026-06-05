@@ -11,6 +11,7 @@ public record LiveSessionResponse(
         String title,
         String coverUrl,
         String anchorName,
+        String streamName,
         String speakerName,
         List<String> tags,
         String liveUrl,

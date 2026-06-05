@@ -124,3 +124,12 @@ app:
       max-file-size-bytes: ${APP_STORAGE_COVER_MAX_FILE_SIZE_BYTES:5242880}
       upload-url-ttl-seconds: ${APP_STORAGE_COVER_UPLOAD_URL_TTL_SECONDS:900}
       allowed-content-types: ${APP_STORAGE_COVER_ALLOWED_CONTENT_TYPES:image/jpeg,image/png,image/webp}
+  live:
+    enabled: ${APP_LIVE_ENABLED:true}
+    media-host: ${APP_LIVE_MEDIA_HOST:127.0.0.1}
+    rtmp-port: ${APP_LIVE_RTMP_PORT:1935}
+    http-port: ${APP_LIVE_HTTP_PORT:8080}
+    app-name: ${APP_LIVE_APP_NAME:live}
+    callback-base-url: ${APP_LIVE_CALLBACK_BASE_URL:http://127.0.0.1:${SERVER_PORT:8080}}
+    callback-path: ${APP_LIVE_CALLBACK_PATH:/api/v1/integrations/srs/live-hooks}
+    callback-token: ${APP_LIVE_CALLBACK_TOKEN:}

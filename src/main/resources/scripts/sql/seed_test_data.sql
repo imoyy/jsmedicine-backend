@@ -509,13 +509,13 @@ VALUES
 (@expert_01, 'achievement', '[TD]省级课题负责人', '主持省级针灸临床路径优化课题，形成院内带教标准化流程。', '2022-01-01', NULL, 2, @admin_td_admin, @admin_td_admin, 0),
 (@expert_02, 'education', '[TD]中医方剂学博士', '系统研究补益剂与和解剂配伍规律，用于课程和直播答疑内容设计。', '2008-09-01', '2011-06-30', 1, @admin_td_admin, @admin_td_admin, 0);
 
-INSERT INTO live_sessions (title, cover_url, anchor_name, speaker_name, live_url, playback_url, start_at, end_at, review_status, live_status, created_by, updated_by, deleted)
+INSERT INTO live_sessions (title, cover_url, anchor_name, stream_name, speaker_name, live_url, playback_url, start_at, end_at, review_status, live_status, created_by, updated_by, deleted)
 VALUES
-('[TD]针灸实操直播', 'https://example.com/assets/td/live-cover-1.jpg', '陈景岐', '陈景岐', 'https://example.com/live/td-1', 'https://example.com/live/td-1/playback', NOW() + INTERVAL 2 DAY, NOW() + INTERVAL 2 DAY + INTERVAL 2 HOUR, 2, 0, @admin_td_admin, @admin_td_admin, 0),
-('[TD]方剂答疑直播', 'https://example.com/assets/td/live-cover-2.jpg', '宋本草', '宋本草', 'https://example.com/live/td-2', NULL, NOW() - INTERVAL 3 DAY, NOW() - INTERVAL 3 DAY + INTERVAL 1 HOUR, 2, 2, @admin_td_admin, @admin_td_admin, 0),
-('[TD]门诊病例晨会', 'https://example.com/assets/td/live-cover-3.jpg', '赵明岚', '赵明岚', 'https://example.com/live/td-3', 'https://example.com/live/td-3/playback', NOW() - INTERVAL 1 DAY, NOW() - INTERVAL 1 DAY + INTERVAL 45 MINUTE, 2, 1, @admin_td_admin, @admin_td_admin, 0),
-('[TD]耳穴压豆答疑场', 'https://example.com/assets/td/live-cover-4.jpg', '何循经', '何循经', 'https://example.com/live/td-4', NULL, NOW() + INTERVAL 5 DAY, NOW() + INTERVAL 5 DAY + INTERVAL 90 MINUTE, 2, 0, @admin_td_admin, @admin_td_admin, 0),
-('[TD]暑期带教预备会', 'https://example.com/assets/td/live-cover-5.jpg', '陈思远', '陈思远', 'https://example.com/live/td-5', NULL, NOW() + INTERVAL 7 DAY, NOW() + INTERVAL 7 DAY + INTERVAL 60 MINUTE, 1, 0, @admin_td_admin, @admin_td_admin, 0);
+('[TD]针灸实操直播', 'https://example.com/assets/td/live-cover-1.jpg', '陈景岐', 'td-live-1', '陈景岐', 'https://example.com/live/td-1', 'https://example.com/live/td-1/playback', NOW() + INTERVAL 2 DAY, NOW() + INTERVAL 2 DAY + INTERVAL 2 HOUR, 2, 0, @admin_td_admin, @admin_td_admin, 0),
+('[TD]方剂答疑直播', 'https://example.com/assets/td/live-cover-2.jpg', '宋本草', 'td-live-2', '宋本草', 'https://example.com/live/td-2', NULL, NOW() - INTERVAL 3 DAY, NOW() - INTERVAL 3 DAY + INTERVAL 1 HOUR, 2, 2, @admin_td_admin, @admin_td_admin, 0),
+('[TD]门诊病例晨会', 'https://example.com/assets/td/live-cover-3.jpg', '赵明岚', 'td-live-3', '赵明岚', 'https://example.com/live/td-3', 'https://example.com/live/td-3/playback', NOW() - INTERVAL 1 DAY, NOW() - INTERVAL 1 DAY + INTERVAL 45 MINUTE, 2, 1, @admin_td_admin, @admin_td_admin, 0),
+('[TD]耳穴压豆答疑场', 'https://example.com/assets/td/live-cover-4.jpg', '何循经', 'td-live-4', '何循经', 'https://example.com/live/td-4', NULL, NOW() + INTERVAL 5 DAY, NOW() + INTERVAL 5 DAY + INTERVAL 90 MINUTE, 2, 0, @admin_td_admin, @admin_td_admin, 0),
+('[TD]暑期带教预备会', 'https://example.com/assets/td/live-cover-5.jpg', '陈思远', 'td-live-5', '陈思远', 'https://example.com/live/td-5', NULL, NOW() + INTERVAL 7 DAY, NOW() + INTERVAL 7 DAY + INTERVAL 60 MINUTE, 1, 0, @admin_td_admin, @admin_td_admin, 0);
 
 SET @live_01 = (SELECT id FROM live_sessions WHERE title = '[TD]针灸实操直播' AND deleted = 0 LIMIT 1);
 SET @live_02 = (SELECT id FROM live_sessions WHERE title = '[TD]方剂答疑直播' AND deleted = 0 LIMIT 1);
