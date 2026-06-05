@@ -182,6 +182,8 @@
   2026-06-04：已新增 `GET /api/v1/app/content/articles`、`GET /api/v1/app/content/articles/{id}` 的本地源码实现，统一按 `deleted=0 + review=APPROVED + publish=PUBLISHED` 暴露资讯；同时在 `AppInteractionService` 补齐 `article` 资源类型校验与浏览量同步，修复资讯列表/详情 `500` 以及资讯收藏/浏览上报 `400 Unsupported interaction resource type`。
 - `[x]` 用户端直播收藏联调修复：让互动域正式支持 `live` 资源收藏，并给直播列表/详情回传收藏统计与当前用户收藏态。
   2026-06-05：已在 `AppInteractionService` 补齐 `live` 资源类型可见性校验，修复 `POST /api/v1/app/interaction/favorites` 对直播返回 `400 Unsupported interaction resource type`；同时新增用户端专用直播响应 DTO，`GET /api/v1/app/live-sessions` 与 `GET /api/v1/app/live-sessions/{id}` 现统一返回 `browseCount/favoriteCount/favorited`，并已重新导出 `api/api.json`。
+- `[x]` 管理端直播 SRS 接入：补齐直播流信息查询与 SRS 回调，支持按 `streamName` 维护直播状态。
+  2026-06-05：已新增管理端直播流信息接口 `GET /api/v1/admin/live-sessions/{id}/streaming` 与公开回调 `POST /api/v1/integrations/srs/live-hooks`，通过 `streamName` 反查直播并在 `on_publish` / `on_unpublish` 时同步更新 `liveStatus`；同时补充 `app.live` 配置、`streamName` 字段、数据库迁移 `V25__live_stream_name_and_srs_hooks.sql`，并重新导出 `api/api.json`。
 - `[x]` dev 验收数据补强：补齐直播与互动联调所需的更真实种子数据，避免继续依赖过度占位的演示文案和空资源。
   2026-06-05：已更新 `seed_test_data.sql`，补充直播标签、直播子视频、首页直播推荐、直播收藏/浏览/分享记录，并把课程、图书、资讯、播客、知识库、专家简介等关键展示文案改为更贴近真实联调场景的数据。
 - `[x]` 管理端统一封面上传接口补齐：复用现有 MinIO 预签名上传与 `file_assets` 入库链路，新增 `POST /api/v1/admin/content/files/covers/upload-url`、`POST /api/v1/admin/content/files/covers/confirm`，统一承接资讯、课程、图书、播客、专题、直播、专家、知识库、首页内容等封面上传；确认后返回稳定读取地址 `/api/v1/files/{id}/content`，不再要求前端手填 `coverUrl` 或自行维护外部 URL。
