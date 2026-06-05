@@ -176,6 +176,7 @@
 - `[x]` 学习资源补齐：课程视频、播客音频补 `paperId`；图书补 `totalPages`；章节补 `startPage`、`pageCount`。
 - `[x]` 专家与直播补齐：专家补 `gender`、`birthDate`、`mobile` 等展示字段；直播拆出视频子资源，支撑直播配置弹窗。
 - `[~]` 图像上传存储治理：补齐对象存储签名上传、头像/管理端封面确认入库和稳定读取地址，逐步替换用户端直接写 `avatarUrl` 与管理端手填 `coverUrl` / 先外传再回填 URL 的模式。
+- `2026-06-05`：已补头像读取兜底收口。`AppUserAvatarUrlResolver` 现在只会在头像 `file_assets` 元数据和对象存储对象都真实存在时返回 `/api/v1/files/{id}/content`；若头像对象缺失，则统一回退 `/images/default-avatar.svg`，同时在 `SecurityConfig` 放开 `/images/**`，避免管理端用户列表继续出现头像破图。
 - `[x]` 学习页契约补齐：补充课程、图书、播客、专题接口的浏览/收藏统计与当前用户收藏态，并新增用户端收藏切换、浏览记录上报接口，支撑小程序学习页联调。
   2026-06-02：已在 `AppLearningController` 返回 DTO 中补 `browseCount/favoriteCount/favorited` 等字段，在 `AppInteractionController` 新增 `/favorites`、`/browse-histories` 写接口；评论数与学习首页聚合流仍未建模，后续按页面真实契约继续收敛。
 - `[x]` 用户端资讯联调修复：补回用户端资讯列表/详情源码实现，并让资讯支持收藏与浏览记录联动。
