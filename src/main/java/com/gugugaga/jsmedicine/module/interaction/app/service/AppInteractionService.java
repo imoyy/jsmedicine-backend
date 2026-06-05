@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.gugugaga.jsmedicine.common.enums.EnabledStatus;
 import com.gugugaga.jsmedicine.common.enums.FeedbackStatus;
+import com.gugugaga.jsmedicine.common.enums.LiveStatus;
 import com.gugugaga.jsmedicine.common.enums.PublishStatus;
 import com.gugugaga.jsmedicine.common.enums.QaStatus;
 import com.gugugaga.jsmedicine.common.enums.ReviewStatus;
@@ -36,6 +37,8 @@ import com.gugugaga.jsmedicine.module.learning.book.entity.Book;
 import com.gugugaga.jsmedicine.module.learning.book.mapper.BookMapper;
 import com.gugugaga.jsmedicine.module.learning.course.entity.Course;
 import com.gugugaga.jsmedicine.module.learning.course.mapper.CourseMapper;
+import com.gugugaga.jsmedicine.module.learning.live.entity.LiveSession;
+import com.gugugaga.jsmedicine.module.learning.live.mapper.LiveSessionMapper;
 import com.gugugaga.jsmedicine.module.learning.podcast.entity.Podcast;
 import com.gugugaga.jsmedicine.module.learning.podcast.mapper.PodcastMapper;
 import com.gugugaga.jsmedicine.module.content.topic.entity.Topic;
@@ -61,6 +64,7 @@ public class AppInteractionService {
     private static final String RESOURCE_TYPE_BOOK = "book";
     private static final String RESOURCE_TYPE_PODCAST = "podcast";
     private static final String RESOURCE_TYPE_TOPIC = "topic";
+    private static final String RESOURCE_TYPE_LIVE = "live";
 
     private final CurrentAppUserResolver currentAppUserResolver;
     private final StudentMapper studentMapper;
@@ -74,6 +78,7 @@ public class AppInteractionService {
     private final BookMapper bookMapper;
     private final PodcastMapper podcastMapper;
     private final TopicMapper topicMapper;
+    private final LiveSessionMapper liveSessionMapper;
 
     public AppInteractionService(
             CurrentAppUserResolver currentAppUserResolver,
@@ -87,7 +92,8 @@ public class AppInteractionService {
             CourseMapper courseMapper,
             BookMapper bookMapper,
             PodcastMapper podcastMapper,
-            TopicMapper topicMapper
+            TopicMapper topicMapper,
+            LiveSessionMapper liveSessionMapper
     ) {
         this.currentAppUserResolver = currentAppUserResolver;
         this.studentMapper = studentMapper;
@@ -101,6 +107,7 @@ public class AppInteractionService {
         this.bookMapper = bookMapper;
         this.podcastMapper = podcastMapper;
         this.topicMapper = topicMapper;
+        this.liveSessionMapper = liveSessionMapper;
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -233,6 +240,7 @@ public class AppInteractionService {
             case RESOURCE_TYPE_BOOK -> requireVisibleBook(resourceId);
             case RESOURCE_TYPE_PODCAST -> requireVisiblePodcast(resourceId);
             case RESOURCE_TYPE_TOPIC -> requireVisibleTopic(resourceId);
+            case RESOURCE_TYPE_LIVE -> requireVisibleLive(resourceId);
             default -> throw new BusinessException(ErrorCode.BAD_REQUEST, "Unsupported interaction resource type");
         }
     }
@@ -269,6 +277,17 @@ public class AppInteractionService {
         Topic topic = topicMapper.selectById(resourceId);
         if (topic == null || !isVisible(topic.getDeleted(), topic.getReviewStatus(), topic.getPublishStatus())) {
             throw new BusinessException(ErrorCode.NOT_FOUND, "Topic does not exist");
+        }
+    }
+
+    private void requireVisibleLive(Long resourceId) {
+        LiveSession liveSession = liveSessionMapper.selectById(resourceId);
+        if (liveSession == null
+                || !Objects.equals(liveSession.getDeleted(), 0)
+                || liveSession.getReviewStatus() != ReviewStatus.APPROVED
+                || liveSession.getLiveStatus() == null
+                || liveSession.getLiveStatus() == LiveStatus.CANCELED) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Live session does not exist");
         }
     }
 

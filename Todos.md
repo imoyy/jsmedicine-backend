@@ -180,6 +180,8 @@
   2026-06-02：已在 `AppLearningController` 返回 DTO 中补 `browseCount/favoriteCount/favorited` 等字段，在 `AppInteractionController` 新增 `/favorites`、`/browse-histories` 写接口；评论数与学习首页聚合流仍未建模，后续按页面真实契约继续收敛。
 - `[x]` 用户端资讯联调修复：补回用户端资讯列表/详情源码实现，并让资讯支持收藏与浏览记录联动。
   2026-06-04：已新增 `GET /api/v1/app/content/articles`、`GET /api/v1/app/content/articles/{id}` 的本地源码实现，统一按 `deleted=0 + review=APPROVED + publish=PUBLISHED` 暴露资讯；同时在 `AppInteractionService` 补齐 `article` 资源类型校验与浏览量同步，修复资讯列表/详情 `500` 以及资讯收藏/浏览上报 `400 Unsupported interaction resource type`。
+- `[x]` 用户端直播收藏联调修复：让互动域正式支持 `live` 资源收藏，并给直播列表/详情回传收藏统计与当前用户收藏态。
+  2026-06-05：已在 `AppInteractionService` 补齐 `live` 资源类型可见性校验，修复 `POST /api/v1/app/interaction/favorites` 对直播返回 `400 Unsupported interaction resource type`；同时新增用户端专用直播响应 DTO，`GET /api/v1/app/live-sessions` 与 `GET /api/v1/app/live-sessions/{id}` 现统一返回 `browseCount/favoriteCount/favorited`，并已重新导出 `api/api.json`。
 - `[x]` 管理端统一封面上传接口补齐：复用现有 MinIO 预签名上传与 `file_assets` 入库链路，新增 `POST /api/v1/admin/content/files/covers/upload-url`、`POST /api/v1/admin/content/files/covers/confirm`，统一承接资讯、课程、图书、播客、专题、直播、专家、知识库、首页内容等封面上传；确认后返回稳定读取地址 `/api/v1/files/{id}/content`，不再要求前端手填 `coverUrl` 或自行维护外部 URL。
   2026-06-04：已完成第一轮落地，新增管理端封面 `usage` 约束、对象 key 规则、二次 `statObject` 校验和 `file_assets` 持久化；同时扩展公开文件读取策略，允许管理端封面通过稳定地址公开读取。
   2026-06-04：已完成第二轮收口，管理端内容、学习、直播、专家、知识库等所有写入 `coverUrl` 的保存入口现已统一校验，只接受管理端封面上传接口返回的稳定文件地址；手填外链和对象存储临时 URL 会直接返回业务错误。

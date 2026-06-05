@@ -3,7 +3,7 @@ package com.gugugaga.jsmedicine.module.learning.live.app.controller;
 import com.gugugaga.jsmedicine.common.enums.LiveStatus;
 import com.gugugaga.jsmedicine.common.response.ApiResponse;
 import com.gugugaga.jsmedicine.common.response.PageResponse;
-import com.gugugaga.jsmedicine.module.learning.live.admin.dto.LiveSessionResponse;
+import com.gugugaga.jsmedicine.module.learning.live.app.dto.AppLiveSessionResponse;
 import com.gugugaga.jsmedicine.module.learning.live.app.service.AppLiveService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -26,7 +26,7 @@ public class AppLiveController {
 
     @Operation(summary = "分页查询直播")
     @GetMapping
-    public ApiResponse<PageResponse<LiveSessionResponse>> pageLives(
+    public ApiResponse<PageResponse<AppLiveSessionResponse>> pageLives(
             @RequestParam(defaultValue = "1") long page,
             @RequestParam(defaultValue = "20") long size,
             @RequestParam(required = false) String keyword,
@@ -37,7 +37,7 @@ public class AppLiveController {
 
     @Operation(summary = "直播详情")
     @GetMapping("/{id}")
-    public ApiResponse<LiveSessionResponse> liveDetail(@PathVariable Long id) {
+    public ApiResponse<AppLiveSessionResponse> liveDetail(@PathVariable Long id) {
         return ApiResponse.ok(appLiveService.liveDetail(id));
     }
 }
