@@ -153,6 +153,14 @@ public class AdminLiveService {
     }
 
     @Transactional(rollbackFor = Exception.class)
+    public void batchDeleteLives(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "ids must not be empty");
+        }
+        ids.stream().distinct().forEach(this::deleteLive);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
     public LiveSessionVideoResponse createLiveVideo(LiveSessionVideoRequest request) {
         requireLive(request.liveSessionId());
         LiveSessionVideo video = new LiveSessionVideo();

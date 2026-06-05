@@ -4,6 +4,7 @@ import com.gugugaga.jsmedicine.common.enums.LiveStatus;
 import com.gugugaga.jsmedicine.common.enums.ReviewStatus;
 import com.gugugaga.jsmedicine.common.response.ApiResponse;
 import com.gugugaga.jsmedicine.common.response.PageResponse;
+import com.gugugaga.jsmedicine.module.system.dto.IdListRequest;
 import com.gugugaga.jsmedicine.module.content.admin.dto.ReviewRequest;
 import com.gugugaga.jsmedicine.module.learning.live.admin.dto.LiveSessionRequest;
 import com.gugugaga.jsmedicine.module.learning.live.admin.dto.LiveSessionResponse;
@@ -115,6 +116,14 @@ public class AdminLiveController {
     @DeleteMapping("/{id}")
     public ApiResponse<Void> deleteLive(@PathVariable Long id) {
         adminLiveService.deleteLive(id);
+        return ApiResponse.ok();
+    }
+
+    @Operation(summary = "批量删除直播")
+    @PreAuthorize("hasAuthority('live:edit')")
+    @PostMapping("/batch-delete")
+    public ApiResponse<Void> batchDeleteLives(@Valid @RequestBody IdListRequest request) {
+        adminLiveService.batchDeleteLives(request.ids());
         return ApiResponse.ok();
     }
 
