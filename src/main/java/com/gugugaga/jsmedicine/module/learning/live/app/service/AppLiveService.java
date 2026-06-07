@@ -15,7 +15,9 @@ import com.gugugaga.jsmedicine.module.interaction.favorite.entity.UserFavorite;
 import com.gugugaga.jsmedicine.module.interaction.favorite.mapper.UserFavoriteMapper;
 import com.gugugaga.jsmedicine.module.interaction.history.entity.UserBrowseHistory;
 import com.gugugaga.jsmedicine.module.interaction.history.mapper.UserBrowseHistoryMapper;
+import com.gugugaga.jsmedicine.module.learning.live.admin.dto.LiveSessionStreamResponse;
 import com.gugugaga.jsmedicine.module.learning.live.admin.dto.LiveSessionVideoResponse;
+import com.gugugaga.jsmedicine.module.learning.live.service.LiveStreamService;
 import com.gugugaga.jsmedicine.module.learning.live.app.dto.AppLiveSessionResponse;
 import com.gugugaga.jsmedicine.module.learning.live.entity.LiveSession;
 import com.gugugaga.jsmedicine.module.learning.live.entity.LiveSessionVideo;
@@ -46,6 +48,7 @@ public class AppLiveService {
     private final UserFavoriteMapper userFavoriteMapper;
     private final UserBrowseHistoryMapper userBrowseHistoryMapper;
     private final ResourceTagService resourceTagService;
+    private final LiveStreamService liveStreamService;
 
     public AppLiveService(
             CurrentAppUserResolver currentAppUserResolver,
@@ -53,7 +56,8 @@ public class AppLiveService {
             LiveSessionVideoMapper liveSessionVideoMapper,
             UserFavoriteMapper userFavoriteMapper,
             UserBrowseHistoryMapper userBrowseHistoryMapper,
-            ResourceTagService resourceTagService
+            ResourceTagService resourceTagService,
+            LiveStreamService liveStreamService
     ) {
         this.currentAppUserResolver = currentAppUserResolver;
         this.liveSessionMapper = liveSessionMapper;
@@ -61,6 +65,7 @@ public class AppLiveService {
         this.userFavoriteMapper = userFavoriteMapper;
         this.userBrowseHistoryMapper = userBrowseHistoryMapper;
         this.resourceTagService = resourceTagService;
+        this.liveStreamService = liveStreamService;
     }
 
     public PageResponse<AppLiveSessionResponse> pageLives(long page, long size, String keyword, LiveStatus liveStatus) {
@@ -106,9 +111,12 @@ public class AppLiveService {
             ResourceInteractionSnapshot snapshot
     ) {
         ResourceInteractionSnapshot resolvedSnapshot = snapshot == null ? ResourceInteractionSnapshot.empty() : snapshot;
+        LiveSessionStreamResponse streamResponse = liveStreamService.buildStreamResponse(live);
         return new AppLiveSessionResponse(live.getId(), live.getTitle(), live.getCoverUrl(), live.getAnchorName(),
                 resolvedSpeakerName(live), resourceTagService.loadTagNames(RESOURCE_TYPE_LIVE, live.getId()),
-                live.getLiveUrl(), live.getPlaybackUrl(), live.getStartAt(), live.getEndAt(),
+                streamResponse.liveUrl(), streamResponse.playbackUrl(),
+                streamResponse.streamName(), streamResponse.httpFlvUrl(), streamResponse.hlsUrl(),
+                live.getStartAt(), live.getEndAt(),
                 live.getReviewStatus(), live.getLiveStatus(), resolvedSnapshot.browseCount(),
                 resolvedSnapshot.favoriteCount(), resolvedSnapshot.favorited(),
                 includeVideos ? loadLiveVideos(live.getId()) : List.of());

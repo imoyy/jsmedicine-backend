@@ -127,6 +127,9 @@ app:
   live:
     enabled: ${APP_LIVE_ENABLED:true}
     media-host: ${APP_LIVE_MEDIA_HOST:127.0.0.1}
+    publish-host: ${APP_LIVE_PUBLISH_HOST:${APP_LIVE_MEDIA_HOST:127.0.0.1}}
+    playback-host: ${APP_LIVE_PLAYBACK_HOST:${APP_LIVE_MEDIA_HOST:127.0.0.1}}
+    playback-scheme: ${APP_LIVE_PLAYBACK_SCHEME:http}
     rtmp-port: ${APP_LIVE_RTMP_PORT:1935}
     http-port: ${APP_LIVE_HTTP_PORT:8080}
     app-name: ${APP_LIVE_APP_NAME:live}

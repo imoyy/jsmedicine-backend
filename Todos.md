@@ -183,9 +183,16 @@
   2026-06-04：已新增 `GET /api/v1/app/content/articles`、`GET /api/v1/app/content/articles/{id}` 的本地源码实现，统一按 `deleted=0 + review=APPROVED + publish=PUBLISHED` 暴露资讯；同时在 `AppInteractionService` 补齐 `article` 资源类型校验与浏览量同步，修复资讯列表/详情 `500` 以及资讯收藏/浏览上报 `400 Unsupported interaction resource type`。
 - `[x]` 用户端直播收藏联调修复：让互动域正式支持 `live` 资源收藏，并给直播列表/详情回传收藏统计与当前用户收藏态。
   2026-06-05：已在 `AppInteractionService` 补齐 `live` 资源类型可见性校验，修复 `POST /api/v1/app/interaction/favorites` 对直播返回 `400 Unsupported interaction resource type`；同时新增用户端专用直播响应 DTO，`GET /api/v1/app/live-sessions` 与 `GET /api/v1/app/live-sessions/{id}` 现统一返回 `browseCount/favoriteCount/favorited`，并已重新导出 `api/api.json`。
+  2026-06-07：已补用户端直播播放契约收口，`GET /api/v1/app/live-sessions` 与 `GET /api/v1/app/live-sessions/{id}` 现额外返回 `streamName`、`httpFlvUrl`、`hlsUrl`；当管理端未手填 `liveUrl` / `playbackUrl` 时，后端会基于 `streamName + app.live` 自动回退到 SRS 播放地址，避免前端拿不到可播流地址。
 - `[x]` 管理端直播 SRS 接入：补齐直播流信息查询与 SRS 回调，支持按 `streamName` 维护直播状态。
   2026-06-05：已新增管理端直播流信息接口 `GET /api/v1/admin/live-sessions/{id}/streaming` 与公开回调 `POST /api/v1/integrations/srs/live-hooks`，通过 `streamName` 反查直播并在 `on_publish` / `on_unpublish` 时同步更新 `liveStatus`；同时补充 `app.live` 配置、`streamName` 字段、数据库迁移 `V25__live_stream_name_and_srs_hooks.sql`，并重新导出 `api/api.json`。
   2026-06-05：补齐管理端直播批量删除接口 `POST /api/v1/admin/live-sessions/batch-delete`，与学员管理保持一致的 `IdListRequest` 语义。
+  2026-06-07：已补直播地址配置收口。`app.live` 现支持分别配置 `publish-host`、`playback-host`、`playback-scheme`，避免继续用单一 `mediaHost` 同时承担 OBS 推流地址和前端播放地址，支持公网推流与 HTTPS 页面播放分离部署。
+  2026-06-07：已新增脚本化直播冒烟验收资产 `scripts/live-smoke.sh`，覆盖管理端登录、创建直播、审核、查询流配置，以及用户端登录、查询直播详情，便于后续用 dev 验收账号快速校验 OBS 推流前置配置是否齐全。
+  2026-06-07：已增强 `scripts/live-smoke.sh`，新增对 `POST /api/v1/integrations/srs/live-hooks` 的 `on_publish` / `on_unpublish` 模拟回调校验，确保直播状态可按 `NOT_STARTED -> LIVE -> ENDED` 正常流转。
+  2026-06-07：已完成一次最小媒体层实跑验证。使用独立 `ossrs/srs:5` 容器和本机 `ffmpeg` 成功推送测试流到 `rtmp://127.0.0.1:1935/live/smoke-media-test`，确认 `GET /api/v1/versions` 正常、`GET /live/smoke-media-test.m3u8` 返回有效 HLS 清单，且 SRS 日志可见 HTTP-FLV consumer 创建记录；相关实操步骤已补入 `docs/直播功能接入说明.md`。
+  2026-06-07：已新增媒体层自动化验收脚本 `scripts/live-media-smoke.sh`，可自动拉起独立 SRS 容器、用 `ffmpeg` 推送测试流，并校验 RTMP -> HTTP-FLV/HLS 最小链路是否可用。
+  2026-06-07：已新增本地直播调试页 `src/main/resources/static/debug/live.html`，支持直接输入 `httpFlvUrl` / `hlsUrl` 在浏览器里验证播放，帮助把媒体链路问题与业务前端播放器问题分开排查。
 - `[x]` dev 验收数据补强：补齐直播与互动联调所需的更真实种子数据，避免继续依赖过度占位的演示文案和空资源。
   2026-06-05：已更新 `seed_test_data.sql`，补充直播标签、直播子视频、首页直播推荐、直播收藏/浏览/分享记录，并把课程、图书、资讯、播客、知识库、专家简介等关键展示文案改为更贴近真实联调场景的数据。
 - `[x]` 管理端统一封面上传接口补齐：复用现有 MinIO 预签名上传与 `file_assets` 入库链路，新增 `POST /api/v1/admin/content/files/covers/upload-url`、`POST /api/v1/admin/content/files/covers/confirm`，统一承接资讯、课程、图书、播客、专题、直播、专家、知识库、首页内容等封面上传；确认后返回稳定读取地址 `/api/v1/files/{id}/content`，不再要求前端手填 `coverUrl` 或自行维护外部 URL。

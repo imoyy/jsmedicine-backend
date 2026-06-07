@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Live Debug</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      margin: 0;
+      background: #f5f7fa;
+      color: #1f2937;
+    }
+
+    .page {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    h1 {
+      margin: 0 0 16px;
+      font-size: 24px;
+    }
+
+    .panel {
+      background: #fff;
+      border: 1px solid #dbe2ea;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    input, select, button {
+      font: inherit;
+    }
+
+    input, select {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 10px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      background: #fff;
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: 1px solid #cbd5e1;
+      background: #fff;
+      border-radius: 6px;
+      padding: 10px 14px;
+      cursor: pointer;
+    }
+
+    button.primary {
+      background: #111827;
+      border-color: #111827;
+      color: #fff;
+    }
+
+    video {
+      width: 100%;
+      background: #000;
+      border-radius: 8px;
+      aspect-ratio: 16 / 9;
+    }
+
+    pre {
+      margin: 0;
+      padding: 12px;
+      border-radius: 6px;
+      background: #0f172a;
+      color: #e2e8f0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      min-height: 120px;
+    }
+
+    .hint {
+      margin: 0;
+      font-size: 13px;
+      color: #64748b;
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+  <h1>直播调试页</h1>
+
+  <div class="panel grid">
+    <label>
+      播放协议
+      <select id="mode">
+        <option value="hls">HLS</option>
+        <option value="flv">HTTP-FLV</option>
+      </select>
+    </label>
+
+    <label>
+      播放地址
+      <input id="url" type="text" placeholder="http://127.0.0.1:8080/live/demo.m3u8">
+    </label>
+
+    <div class="actions">
+      <button id="load" class="primary" type="button">加载播放</button>
+      <button id="stop" type="button">停止</button>
+      <button id="sample-hls" type="button">填入 HLS 示例</button>
+      <button id="sample-flv" type="button">填入 FLV 示例</button>
+    </div>
+
+    <p class="hint">HLS 在 Safari 可原生播放。Chrome/Edge 会优先尝试 hls.js。HTTP-FLV 依赖 mpegts.js。</p>
+  </div>
+
+  <div class="panel">
+    <video id="player" controls playsinline></video>
+  </div>
+
+  <div class="panel">
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.18/dist/hls.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mpegts.js@1.8.0/dist/mpegts.min.js"></script>
+<script>
+  const modeEl = document.getElementById('mode');
+  const urlEl = document.getElementById('url');
+  const player = document.getElementById('player');
+  const logEl = document.getElementById('log');
+  let hlsInstance = null;
+  let flvPlayer = null;
+
+  function log(message) {
+    const time = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+    logEl.textContent = `[${time}] ${message}\n` + logEl.textContent;
+  }
+
+  function destroyPlayers() {
+    if (hlsInstance) {
+      hlsInstance.destroy();
+      hlsInstance = null;
+    }
+    if (flvPlayer) {
+      flvPlayer.unload();
+      flvPlayer.detachMediaElement();
+      flvPlayer.destroy();
+      flvPlayer = null;
+    }
+    player.pause();
+    player.removeAttribute('src');
+    player.load();
+  }
+
+  function loadHls(url) {
+    if (player.canPlayType('application/vnd.apple.mpegurl')) {
+      player.src = url;
+      player.play().catch((error) => log(`HLS native play rejected: ${error.message}`));
+      log('Using native HLS playback.');
+      return;
+    }
+    if (!window.Hls || !window.Hls.isSupported()) {
+      log('hls.js is not available in this browser.');
+      return;
+    }
+    hlsInstance = new window.Hls();
+    hlsInstance.loadSource(url);
+    hlsInstance.attachMedia(player);
+    hlsInstance.on(window.Hls.Events.MANIFEST_PARSED, () => {
+      log('HLS manifest parsed.');
+      player.play().catch((error) => log(`HLS play rejected: ${error.message}`));
+    });
+    hlsInstance.on(window.Hls.Events.ERROR, (_event, data) => {
+      log(`HLS error: ${data.type} / ${data.details}`);
+    });
+  }
+
+  function loadFlv(url) {
+    if (!window.mpegts || !window.mpegts.isSupported()) {
+      log('mpegts.js is not available in this browser.');
+      return;
+    }
+    flvPlayer = window.mpegts.createPlayer({
+      type: 'flv',
+      isLive: true,
+      url
+    });
+    flvPlayer.attachMediaElement(player);
+    flvPlayer.load();
+    flvPlayer.play().catch((error) => log(`FLV play rejected: ${error.message}`));
+    flvPlayer.on(window.mpegts.Events.ERROR, (type, detail) => {
+      log(`FLV error: ${type} / ${detail}`);
+    });
+    log('HTTP-FLV player started.');
+  }
+
+  document.getElementById('load').addEventListener('click', () => {
+    const mode = modeEl.value;
+    const url = urlEl.value.trim();
+    if (!url) {
+      log('Please provide a playback URL.');
+      return;
+    }
+    destroyPlayers();
+    log(`Loading ${mode.toUpperCase()} URL: ${url}`);
+    if (mode === 'hls') {
+      loadHls(url);
+    } else {
+      loadFlv(url);
+    }
+  });
+
+  document.getElementById('stop').addEventListener('click', () => {
+    destroyPlayers();
+    log('Playback stopped.');
+  });
+
+  document.getElementById('sample-hls').addEventListener('click', () => {
+    modeEl.value = 'hls';
+    urlEl.value = 'http://127.0.0.1:8080/live/smoke-media-test.m3u8';
+  });
+
+  document.getElementById('sample-flv').addEventListener('click', () => {
+    modeEl.value = 'flv';
+    urlEl.value = 'http://127.0.0.1:8080/live/smoke-media-test.flv';
+  });
+
+  player.addEventListener('playing', () => log('Video is playing.'));
+  player.addEventListener('error', () => {
+    const mediaError = player.error;
+    log(`Video element error: ${mediaError ? mediaError.message || mediaError.code : 'unknown'}`);
+  });
+
+  log('Live debug page ready.');
+</script>
+</body>
+</html>

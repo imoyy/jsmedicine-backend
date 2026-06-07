@@ -8,6 +8,9 @@ public class LiveStreamingProperties {
 
     private boolean enabled = true;
     private String mediaHost = "127.0.0.1";
+    private String publishHost;
+    private String playbackHost;
+    private String playbackScheme = "http";
     private int rtmpPort = 1935;
     private int httpPort = 8080;
     private String appName = "live";
@@ -29,6 +32,30 @@ public class LiveStreamingProperties {
 
     public void setMediaHost(String mediaHost) {
         this.mediaHost = mediaHost;
+    }
+
+    public String getPublishHost() {
+        return publishHost;
+    }
+
+    public void setPublishHost(String publishHost) {
+        this.publishHost = publishHost;
+    }
+
+    public String getPlaybackHost() {
+        return playbackHost;
+    }
+
+    public void setPlaybackHost(String playbackHost) {
+        this.playbackHost = playbackHost;
+    }
+
+    public String getPlaybackScheme() {
+        return playbackScheme;
+    }
+
+    public void setPlaybackScheme(String playbackScheme) {
+        this.playbackScheme = playbackScheme;
     }
 
     public int getRtmpPort() {
@@ -80,15 +107,15 @@ public class LiveStreamingProperties {
     }
 
     public String buildPublishUrl(String streamName) {
-        return String.format("rtmp://%s:%d/%s/%s", mediaHost, rtmpPort, appName, streamName);
+        return String.format("rtmp://%s:%d/%s/%s", resolvedPublishHost(), rtmpPort, appName, streamName);
     }
 
     public String buildHttpFlvUrl(String streamName) {
-        return String.format("http://%s:%d/%s/%s.flv", mediaHost, httpPort, appName, streamName);
+        return String.format("%s://%s:%d/%s/%s.flv", resolvedPlaybackScheme(), resolvedPlaybackHost(), httpPort, appName, streamName);
     }
 
     public String buildHlsUrl(String streamName) {
-        return String.format("http://%s:%d/%s/%s.m3u8", mediaHost, httpPort, appName, streamName);
+        return String.format("%s://%s:%d/%s/%s.m3u8", resolvedPlaybackScheme(), resolvedPlaybackHost(), httpPort, appName, streamName);
     }
 
     public String buildCallbackUrl() {
@@ -97,5 +124,21 @@ public class LiveStreamingProperties {
             builder.queryParam("token", callbackToken);
         }
         return builder.toUriString();
+    }
+
+    private String resolvedPublishHost() {
+        return hasText(publishHost) ? publishHost.trim() : mediaHost;
+    }
+
+    private String resolvedPlaybackHost() {
+        return hasText(playbackHost) ? playbackHost.trim() : mediaHost;
+    }
+
+    private String resolvedPlaybackScheme() {
+        return hasText(playbackScheme) ? playbackScheme.trim() : "http";
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 }

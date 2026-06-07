@@ -41,11 +41,33 @@ public class LiveStreamService {
                 liveStreamingProperties.buildHttpFlvUrl(streamName),
                 liveStreamingProperties.buildHlsUrl(streamName),
                 liveStreamingProperties.buildCallbackUrl(),
-                liveSession.getLiveUrl(),
-                liveSession.getPlaybackUrl(),
+                resolveLiveUrl(liveSession),
+                resolvePlaybackUrl(liveSession),
                 liveSession.getReviewStatus(),
                 liveSession.getLiveStatus()
         );
+    }
+
+    public String resolveLiveUrl(LiveSession liveSession) {
+        if (liveSession == null) {
+            return null;
+        }
+        if (StringUtils.hasText(liveSession.getLiveUrl())) {
+            return liveSession.getLiveUrl().trim();
+        }
+        String streamName = resolveStreamName(liveSession);
+        return StringUtils.hasText(streamName) ? liveStreamingProperties.buildHttpFlvUrl(streamName) : null;
+    }
+
+    public String resolvePlaybackUrl(LiveSession liveSession) {
+        if (liveSession == null) {
+            return null;
+        }
+        if (StringUtils.hasText(liveSession.getPlaybackUrl())) {
+            return liveSession.getPlaybackUrl().trim();
+        }
+        String streamName = resolveStreamName(liveSession);
+        return StringUtils.hasText(streamName) ? liveStreamingProperties.buildHlsUrl(streamName) : null;
     }
 
     public String resolveStreamName(LiveSession liveSession) {
