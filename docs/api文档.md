@@ -345,8 +345,12 @@
 | --- | --- | --- |
 | GET | `/api/v1/admin/learning/book-categories` | 分页查询图书分类 |
 | POST | `/api/v1/admin/learning/book-categories` | 新增图书分类 |
+| GET | `/api/v1/admin/learning/book-categories/{id}` | 查询图书分类详情 |
 | PUT | `/api/v1/admin/learning/book-categories/{id}` | 修改图书分类 |
 | DELETE | `/api/v1/admin/learning/book-categories/{id}` | 删除图书分类 |
+| GET | `/api/v1/admin/learning/book-categories/{id}/books` | 分页查询分类下图书 |
+| POST | `/api/v1/admin/learning/book-categories/{id}/books` | 分类批量加入图书 |
+| DELETE | `/api/v1/admin/learning/book-categories/{id}/books` | 分类批量移除图书 |
 | GET | `/api/v1/admin/learning/books` | 分页查询图书 |
 | POST | `/api/v1/admin/learning/books` | 新增图书 |
 | GET | `/api/v1/admin/learning/books/{id}` | 查询图书详情 |
@@ -385,6 +389,53 @@
 | PUT | `/api/v1/admin/learning/questions/{id}/options` | 替换题目选项 |
 
 #### 5.1 学习资源字段补充
+
+图书分类管理当前补充了分类详情、分类下图书查询和分类维度批量绑定能力。图书继续采用单分类模型：一本图书只有一个 `categoryId`，不是多分类关系表。
+
+`GET /api/v1/admin/learning/book-categories` 与 `GET /api/v1/admin/learning/book-categories/{id}` 当前统一返回：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | `integer` | 图书分类 ID |
+| `parentId` | `integer` | 父级分类 ID，可为空 |
+| `categoryName` | `string` | 分类名称 |
+| `sortOrder` | `integer` | 排序值 |
+| `status` | `string` | 分类状态 |
+| `createdAt` | `string(date-time)` | 创建时间 |
+| `updatedAt` | `string(date-time)` | 更新时间 |
+
+`GET /api/v1/admin/learning/book-categories/{id}/books` 用于分类编辑弹窗内查看当前分类已绑定图书，请求参数如下：
+
+| 参数 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `page` | `integer` | 否 | 页码，默认 `1` |
+| `size` | `integer` | 否 | 每页条数，默认 `20` |
+| `sort` | `string` | 否 | 当前支持 `sortOrderAsc`，其余值按更新时间倒序 |
+| `keyword` | `string` | 否 | 图书名称或作者关键字 |
+
+分类下图书响应记录当前统一包含：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | `integer` | 图书 ID |
+| `categoryId` | `integer` | 当前分类 ID |
+| `bookName` | `string` | 图书名称 |
+| `author` | `string` | 作者 |
+| `coverUrl` | `string` | 封面地址 |
+| `reviewStatus` | `string` | 审核状态 |
+| `publishStatus` | `string` | 发布状态 |
+| `updatedAt` | `string(date-time)` | 更新时间 |
+
+`POST /api/v1/admin/learning/book-categories/{id}/books` 与 `DELETE /api/v1/admin/learning/book-categories/{id}/books` 请求体统一为：
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `bookIds` | `array<integer>` | 是 | 需要加入或移除的图书 ID 列表 |
+
+处理语义：
+
+- 批量加入：把 `bookIds` 对应图书的 `categoryId` 统一改为路径中的分类 ID。
+- 批量移除：仅允许移除当前 `categoryId = {id}` 的图书；移除后直接把 `books.categoryId` 置空。
 
 `POST /api/v1/admin/learning/courses/videos`、`PUT /api/v1/admin/learning/courses/videos/{id}` 额外支持：
 

@@ -10,6 +10,8 @@ import com.gugugaga.jsmedicine.common.response.PageResponse;
 import com.gugugaga.jsmedicine.infrastructure.security.CurrentAdminAccessor;
 import com.gugugaga.jsmedicine.infrastructure.storage.service.StableCoverUrlService;
 import com.gugugaga.jsmedicine.module.learning.admin.dto.AdminLearningPageQuery;
+import com.gugugaga.jsmedicine.module.learning.admin.dto.BookCategoryBookBindingRequest;
+import com.gugugaga.jsmedicine.module.learning.admin.dto.BookCategoryBookResponse;
 import com.gugugaga.jsmedicine.module.learning.admin.dto.BookCategoryRequest;
 import com.gugugaga.jsmedicine.module.learning.admin.dto.BookCategoryResponse;
 import com.gugugaga.jsmedicine.module.learning.admin.dto.BookChapterRequest;
@@ -57,6 +59,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -212,6 +215,10 @@ public class AdminLearningService {
         return pageResponse(page, page.getRecords().stream().map(this::toBookCategoryResponse).toList());
     }
 
+    public BookCategoryResponse bookCategoryDetail(Long id) {
+        return toBookCategoryResponse(requireBookCategory(id));
+    }
+
     @Transactional(rollbackFor = Exception.class)
     public BookCategoryResponse createBookCategory(BookCategoryRequest request) {
         if (request.parentId() != null) {
@@ -239,6 +246,44 @@ public class AdminLearningService {
     public void deleteBookCategory(Long id) {
         requireBookCategory(id);
         bookCategoryMapper.deleteById(id);
+    }
+
+    public PageResponse<BookCategoryBookResponse> pageBooksByCategory(Long categoryId, long page, long size, String sort, String keyword) {
+        requireBookCategory(categoryId);
+        Page<Book> bookPage = bookMapper.selectPage(new Page<>(normalizePage(page), normalizeSize(size)),
+                new LambdaQueryWrapper<Book>()
+                        .eq(Book::getDeleted, 0)
+                        .eq(Book::getCategoryId, categoryId)
+                        .and(hasText(keyword), wrapper -> wrapper
+                                .like(Book::getBookName, keyword)
+                                .or()
+                                .like(Book::getAuthor, keyword))
+                        .orderByAsc("sortOrderAsc".equals(sort), Book::getSortOrder)
+                        .orderByDesc(!"sortOrderAsc".equals(sort), Book::getUpdatedAt));
+        return pageResponse(bookPage, bookPage.getRecords().stream().map(this::toBookCategoryBookResponse).toList());
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void addBooksToCategory(Long categoryId, BookCategoryBookBindingRequest request) {
+        requireBookCategory(categoryId);
+        for (Long bookId : normalizeBindingBookIds(request.bookIds())) {
+            Book book = requireBook(bookId);
+            book.setCategoryId(categoryId);
+            bookMapper.updateById(book);
+        }
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void removeBooksFromCategory(Long categoryId, BookCategoryBookBindingRequest request) {
+        requireBookCategory(categoryId);
+        for (Long bookId : normalizeBindingBookIds(request.bookIds())) {
+            Book book = requireBook(bookId);
+            if (!Objects.equals(book.getCategoryId(), categoryId)) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST, "Book does not belong to current category");
+            }
+            book.setCategoryId(null);
+            bookMapper.updateById(book);
+        }
     }
 
     public PageResponse<BookResponse> pageBooks(AdminLearningPageQuery query) {
@@ -720,7 +765,12 @@ public class AdminLearningService {
 
     private BookCategoryResponse toBookCategoryResponse(BookCategory category) {
         return new BookCategoryResponse(category.getId(), category.getParentId(), category.getCategoryName(),
-                category.getSortOrder(), category.getStatus());
+                category.getSortOrder(), category.getStatus(), category.getCreatedAt(), category.getUpdatedAt());
+    }
+
+    private BookCategoryBookResponse toBookCategoryBookResponse(Book book) {
+        return new BookCategoryBookResponse(book.getId(), book.getCategoryId(), book.getBookName(), book.getAuthor(),
+                book.getCoverUrl(), book.getReviewStatus(), book.getPublishStatus(), book.getUpdatedAt());
     }
 
     private BookResponse toBookResponse(Book book, String paperTitle) {
@@ -728,6 +778,22 @@ public class AdminLearningService {
                 book.getPublisher(), book.getCoverUrl(), book.getIntroduction(), book.getTotalPages(),
                 book.getPaperId(), paperTitle, book.getSortOrder(), book.getReviewStatus(), book.getPublishStatus(),
                 book.getPublishedAt());
+    }
+
+    private List<Long> normalizeBindingBookIds(List<Long> bookIds) {
+        if (bookIds == null || bookIds.isEmpty()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "bookIds must not be empty");
+        }
+        List<Long> normalizedIds = new ArrayList<>();
+        for (Long bookId : bookIds) {
+            if (bookId == null || bookId <= 0) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST, "bookIds must contain positive values");
+            }
+            if (!normalizedIds.contains(bookId)) {
+                normalizedIds.add(bookId);
+            }
+        }
+        return normalizedIds;
     }
 
     private Map<Long, String> loadExamPaperNameMap(List<Long> paperIds) {

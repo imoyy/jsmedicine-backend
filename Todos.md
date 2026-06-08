@@ -175,6 +175,7 @@
 - `[x]` 首页与内容补齐：资讯补 `source`、`tags`；首页内容配置补齐与页面下拉、资源关联一致的字段和查询能力。
   2026-06-08：已完成管理端首页内容第二轮契约收口，首页分类 `categoryCode` 现作为资源模块真相源；新增 `GET /api/v1/admin/content/home/candidates` 按分类分页拉取课程/图书/资讯/播客/专题/知识库/直播候选资源；首页内容保存改为按 `categoryId + targetId` 自动派生 `contentType/title/coverUrl`，并在响应中补齐 `categoryName`、`targetCoverUrl`、`createdAt`、`updatedAt` 等页面直出字段，同时拦截同分类重复绑定同一资源。
 - `[x]` 学习资源补齐：课程视频、播客音频补 `paperId`；图书补 `totalPages`；章节补 `startPage`、`pageCount`。
+  2026-06-08：已补管理端图书分类管理第二轮契约，新增 `GET /api/v1/admin/learning/book-categories/{id}`、`GET /api/v1/admin/learning/book-categories/{id}/books`、`POST /api/v1/admin/learning/book-categories/{id}/books`、`DELETE /api/v1/admin/learning/book-categories/{id}/books`；图书分类列表/详情补 `createdAt`、`updatedAt`，并明确图书继续保持单分类模型，分类移除时直接把 `books.categoryId` 置空。
 - `[x]` 专家与直播补齐：专家补 `gender`、`birthDate`、`mobile` 等展示字段；直播拆出视频子资源，支撑直播配置弹窗。
 - `[~]` 图像上传存储治理：补齐对象存储签名上传、头像/管理端封面确认入库和稳定读取地址，逐步替换用户端直接写 `avatarUrl` 与管理端手填 `coverUrl` / 先外传再回填 URL 的模式。
 - `2026-06-05`：已补头像读取兜底收口。`AppUserAvatarUrlResolver` 现在只会在头像 `file_assets` 元数据和对象存储对象都真实存在时返回 `/api/v1/files/{id}/content`；若头像对象缺失，则统一回退 `/images/default-avatar.svg`，同时在 `SecurityConfig` 放开 `/images/**`，避免管理端用户列表继续出现头像破图。

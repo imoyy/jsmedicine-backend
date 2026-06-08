@@ -5,6 +5,8 @@ import com.gugugaga.jsmedicine.common.enums.ReviewStatus;
 import com.gugugaga.jsmedicine.common.response.ApiResponse;
 import com.gugugaga.jsmedicine.common.response.PageResponse;
 import com.gugugaga.jsmedicine.module.learning.admin.dto.AdminLearningPageQuery;
+import com.gugugaga.jsmedicine.module.learning.admin.dto.BookCategoryBookBindingRequest;
+import com.gugugaga.jsmedicine.module.learning.admin.dto.BookCategoryBookResponse;
 import com.gugugaga.jsmedicine.module.learning.admin.dto.BookCategoryRequest;
 import com.gugugaga.jsmedicine.module.learning.admin.dto.BookCategoryResponse;
 import com.gugugaga.jsmedicine.module.learning.admin.dto.BookChapterRequest;
@@ -158,6 +160,13 @@ public class AdminLearningController {
         return ApiResponse.ok(adminLearningService.createBookCategory(request));
     }
 
+    @Operation(summary = "查询图书分类详情")
+    @PreAuthorize("hasAuthority('learning:book:view')")
+    @GetMapping("/book-categories/{id}")
+    public ApiResponse<BookCategoryResponse> bookCategoryDetail(@PathVariable Long id) {
+        return ApiResponse.ok(adminLearningService.bookCategoryDetail(id));
+    }
+
     @Operation(summary = "修改图书分类")
     @PreAuthorize("hasAuthority('learning:book:edit')")
     @PutMapping("/book-categories/{id}")
@@ -170,6 +179,41 @@ public class AdminLearningController {
     @DeleteMapping("/book-categories/{id}")
     public ApiResponse<Void> deleteBookCategory(@PathVariable Long id) {
         adminLearningService.deleteBookCategory(id);
+        return ApiResponse.ok();
+    }
+
+    @Operation(summary = "分页查询分类下图书")
+    @PreAuthorize("hasAuthority('learning:book:view')")
+    @GetMapping("/book-categories/{id}/books")
+    public ApiResponse<PageResponse<BookCategoryBookResponse>> pageBooksByCategory(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "1") long page,
+            @RequestParam(defaultValue = "20") long size,
+            @RequestParam(required = false) String sort,
+            @RequestParam(required = false) String keyword
+    ) {
+        return ApiResponse.ok(adminLearningService.pageBooksByCategory(id, page, size, sort, keyword));
+    }
+
+    @Operation(summary = "分类批量加入图书")
+    @PreAuthorize("hasAuthority('learning:book:edit')")
+    @PostMapping("/book-categories/{id}/books")
+    public ApiResponse<Void> addBooksToCategory(
+            @PathVariable Long id,
+            @Valid @RequestBody BookCategoryBookBindingRequest request
+    ) {
+        adminLearningService.addBooksToCategory(id, request);
+        return ApiResponse.ok();
+    }
+
+    @Operation(summary = "分类批量移除图书")
+    @PreAuthorize("hasAuthority('learning:book:edit')")
+    @DeleteMapping("/book-categories/{id}/books")
+    public ApiResponse<Void> removeBooksFromCategory(
+            @PathVariable Long id,
+            @Valid @RequestBody BookCategoryBookBindingRequest request
+    ) {
+        adminLearningService.removeBooksFromCategory(id, request);
         return ApiResponse.ok();
     }
 
