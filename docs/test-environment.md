@@ -42,6 +42,6 @@
 
 - 当前共享联调环境里，用户头像已经稳定走 `/api/v1/files/{id}/content` 公开读取路径。
 - 课程、图书、资讯、播客、专题、直播、专家、知识库、首页配置等业务字段里的 `coverUrl`，以及 `audioUrl`、`videoUrl`、`playbackUrl`、`linkUrl` 等字段，当前仍允许保存普通 URL 字符串。
-- dev 验收种子中的 `https://example.com/assets/...`、`https://example.com/live/...` 只是占位值，不保证在共享联调环境真实可访问。
+- 当前 dev 验收种子中的主要媒体样例地址已直接改成可访问的 samplefile.com 公网样例资源；共享联调环境是否继续沿用这类公网样例地址，仍需按环境单独确认。
 - 需要对前端、测试提供真实可访问资源时，优先使用真实公网地址，或将对应文件登记到 `file_assets` 并把业务字段回填为 `/api/v1/files/{id}/content`。
 - 禁止把对象存储临时签名 URL 当作长期业务真相源；签名 URL 只用于短期上传或受控下载链路。

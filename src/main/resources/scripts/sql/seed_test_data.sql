@@ -161,8 +161,8 @@ AND NOT EXISTS (
 
 INSERT INTO sys_admins (username, password_hash, real_name, mobile, email, avatar_url, status, created_by, updated_by, deleted)
 VALUES
-('td_admin', '$2a$10$er8DjyviKgNF3YaYFkHwrudM2F8DWE2mmB3SmlrU0eEyt2NglFEwG', '测试管理员', '13800000001', 'td_admin@example.com', 'https://example.com/assets/admin-1.png', 1, 0, 0, 0),
-('td_viewer', '$2a$10$er8DjyviKgNF3YaYFkHwrudM2F8DWE2mmB3SmlrU0eEyt2NglFEwG', '测试只读员', '13800000002', 'td_viewer@example.com', 'https://example.com/assets/admin-2.png', 1, 0, 0, 0);
+('td_admin', '$2a$10$er8DjyviKgNF3YaYFkHwrudM2F8DWE2mmB3SmlrU0eEyt2NglFEwG', '测试管理员', '13800000001', 'td_admin@example.com', 'https://samplefile.com/samples/download/image/png/png_100x100_sample_file_5KB.png/', 1, 0, 0, 0),
+('td_viewer', '$2a$10$er8DjyviKgNF3YaYFkHwrudM2F8DWE2mmB3SmlrU0eEyt2NglFEwG', '测试只读员', '13800000002', 'td_viewer@example.com', 'https://samplefile.com/samples/download/image/jpeg/jpeg_100x100_sample_file_3KB.jpeg/', 1, 0, 0, 0);
 
 SET @admin_td_admin = (SELECT id FROM sys_admins WHERE username = 'td_admin' AND deleted = 0 LIMIT 1);
 SET @admin_td_viewer = (SELECT id FROM sys_admins WHERE username = 'td_viewer' AND deleted = 0 LIMIT 1);
@@ -183,10 +183,10 @@ WHERE @role_viewer IS NOT NULL;
 -- 文件、标签、基础数据
 INSERT INTO file_assets (asset_type, storage_provider, bucket_name, object_key, original_name, content_type, file_size, url, created_by, deleted)
 VALUES
-('image', 'minio', 'public', 'td/course-cover-1.jpg', 'course-cover-1.jpg', 'image/jpeg', 286720, 'https://example.com/assets/td/course-cover-1.jpg', @admin_td_admin, 0),
-('image', 'minio', 'public', 'td/book-cover-1.jpg', 'book-cover-1.jpg', 'image/jpeg', 245760, 'https://example.com/assets/td/book-cover-1.jpg', @admin_td_admin, 0),
-('audio', 'minio', 'public', 'td/podcast-audio-1.mp3', 'podcast-audio-1.mp3', 'audio/mpeg', 5242880, 'https://example.com/assets/td/podcast-audio-1.mp3', @admin_td_admin, 0),
-('video', 'minio', 'public', 'td/course-video-1.mp4', 'course-video-1.mp4', 'video/mp4', 125829120, 'https://example.com/assets/td/course-video-1.mp4', @admin_td_admin, 0);
+('image', 'minio', 'public', 'td/course-cover-1.jpg', 'course-cover-1.jpg', 'image/jpeg', 286720, 'https://samplefile.com/samples/download/image/jpeg/jpeg_1000x600_sample_file_36KB.jpeg/', @admin_td_admin, 0),
+('image', 'minio', 'public', 'td/book-cover-1.jpg', 'book-cover-1.jpg', 'image/jpeg', 245760, 'https://samplefile.com/samples/download/image/jpeg/jpeg_500x300_sample_file_15KB.jpeg/', @admin_td_admin, 0),
+('audio', 'minio', 'public', 'td/podcast-audio-1.mp3', 'podcast-audio-1.mp3', 'audio/mpeg', 5242880, 'https://samplefile.com/samples/download/audio/mp3/mp3_30s_sample_file_470KB.mp3/', @admin_td_admin, 0),
+('video', 'minio', 'public', 'td/course-video-1.mp4', 'course-video-1.mp4', 'video/mp4', 125829120, 'https://samplefile.com/samples/download/video/mp4/mp4_h264_aac_12s_sample.mp4/', @admin_td_admin, 0);
 
 INSERT INTO tags (tag_name, tag_type, color, status, created_by, updated_by, deleted)
 VALUES
@@ -286,13 +286,13 @@ INSERT INTO students (
     created_by, updated_by, deleted
 )
 VALUES
-(@user_01, 'TD-STU-001', '张青云', 1, 35, '本科', '13900000001', '110101199001010011', '浙江省', '330000', '杭州市', '330100', '西湖区', '330106', '省中医院', @org_zj_hospital, '住院医师', @practice_clinical, 1, 2, NOW() - INTERVAL 21 DAY, NOW() - INTERVAL 20 DAY, @admin_td_admin, NULL, '["https://example.com/assets/td/cert-1-a.jpg","https://example.com/assets/td/cert-1-b.jpg"]', NOW() - INTERVAL 20 DAY, @admin_td_admin, @admin_td_admin, 0),
-(@user_02, 'TD-STU-002', '李若水', 2, 33, '硕士研究生', '13900000002', '110101199202020022', '江苏省', '320000', '苏州市', '320500', '姑苏区', '320508', '针灸研究所', @org_js_institute, '主治医师', @practice_acupuncture, 1, 1, NOW() - INTERVAL 19 DAY, NULL, NULL, NULL, '["https://example.com/assets/td/cert-2-a.jpg"]', NOW() - INTERVAL 18 DAY, @admin_td_admin, @admin_td_admin, 0),
-(@user_03, 'TD-STU-003', '王知秋', 1, 32, '博士研究生', '13900000003', '110101199303030033', '四川省', '510000', '成都市', '510100', '高新区', '510190', '中医药大学', @org_sc_university, '讲师', @practice_teaching, 1, 3, NOW() - INTERVAL 16 DAY, NOW() - INTERVAL 15 DAY, @admin_td_admin, '身份证照片不清晰', '["https://example.com/assets/td/cert-3-a.jpg"]', NOW() - INTERVAL 15 DAY, @admin_td_admin, @admin_td_admin, 0),
-(@user_04, 'TD-STU-004', '赵明岚', 2, 29, '本科', '13900000004', '110101199404040044', '浙江省', '330000', '杭州市', '330100', '滨江区', '330108', '省中医院', @org_zj_hospital, '康复治疗师', @practice_clinical, 1, 2, NOW() - INTERVAL 14 DAY, NOW() - INTERVAL 13 DAY, @admin_td_admin, NULL, '["https://example.com/assets/td/cert-4-a.jpg"]', NOW() - INTERVAL 13 DAY, @admin_td_admin, @admin_td_admin, 0),
-(@user_05, 'TD-STU-005', '孙问素', 1, 31, '硕士研究生', '13900000005', '110101199505050055', '江苏省', '320000', '苏州市', '320500', '工业园区', '320571', '针灸研究所', @org_js_institute, '住院总医师', @practice_acupuncture, 1, 1, NOW() - INTERVAL 11 DAY, NULL, NULL, NULL, '["https://example.com/assets/td/cert-5-a.jpg","https://example.com/assets/td/cert-5-b.jpg"]', NOW() - INTERVAL 11 DAY, @admin_td_admin, @admin_td_admin, 0),
-(@user_06, 'TD-STU-006', '何循经', 1, 38, '大专', '13900000006', '110101198806060066', '四川省', '510000', '成都市', '510100', '武侯区', '510107', '中医药大学', @org_sc_university, '门诊带教老师', @practice_teaching, 1, 2, NOW() - INTERVAL 9 DAY, NOW() - INTERVAL 8 DAY, @admin_td_admin, NULL, '["https://example.com/assets/td/cert-6-a.jpg"]', NOW() - INTERVAL 8 DAY, @admin_td_admin, @admin_td_admin, 0),
-(@user_07, 'TD-STU-007', '周砚秋', 2, 27, '本科', '13900000007', '110101199707070077', '广东省', '440000', '广州市', '440100', '天河区', '440106', '省中医院远程门诊协作点', NULL, '实习医师', @practice_clinical, 1, 3, NOW() - INTERVAL 7 DAY, NOW() - INTERVAL 6 DAY, @admin_td_admin, '执业证明材料页码缺失', '["https://example.com/assets/td/cert-7-a.jpg"]', NOW() - INTERVAL 7 DAY, @admin_td_admin, @admin_td_admin, 0);
+(@user_01, 'TD-STU-001', '张青云', 1, 35, '本科', '13900000001', '110101199001010011', '浙江省', '330000', '杭州市', '330100', '西湖区', '330106', '省中医院', @org_zj_hospital, '住院医师', @practice_clinical, 1, 2, NOW() - INTERVAL 21 DAY, NOW() - INTERVAL 20 DAY, @admin_td_admin, NULL, '["https://samplefile.com/samples/download/image/jpeg/jpeg_mobile_document_capture_sample.jpeg/","https://samplefile.com/samples/download/image/jpeg/jpeg_receipt_photo_sample.jpeg/"]', NOW() - INTERVAL 20 DAY, @admin_td_admin, @admin_td_admin, 0),
+(@user_02, 'TD-STU-002', '李若水', 2, 33, '硕士研究生', '13900000002', '110101199202020022', '江苏省', '320000', '苏州市', '320500', '姑苏区', '320508', '针灸研究所', @org_js_institute, '主治医师', @practice_acupuncture, 1, 1, NOW() - INTERVAL 19 DAY, NULL, NULL, NULL, '["https://samplefile.com/samples/download/image/png/png_receipt_scan_sample.png/"]', NOW() - INTERVAL 18 DAY, @admin_td_admin, @admin_td_admin, 0),
+(@user_03, 'TD-STU-003', '王知秋', 1, 32, '博士研究生', '13900000003', '110101199303030033', '四川省', '510000', '成都市', '510100', '高新区', '510190', '中医药大学', @org_sc_university, '讲师', @practice_teaching, 1, 3, NOW() - INTERVAL 16 DAY, NOW() - INTERVAL 15 DAY, @admin_td_admin, '身份证照片不清晰', '["https://samplefile.com/samples/download/image/png/png_ocr_noise_sample.png/"]', NOW() - INTERVAL 15 DAY, @admin_td_admin, @admin_td_admin, 0),
+(@user_04, 'TD-STU-004', '赵明岚', 2, 29, '本科', '13900000004', '110101199404040044', '浙江省', '330000', '杭州市', '330100', '滨江区', '330108', '省中医院', @org_zj_hospital, '康复治疗师', @practice_clinical, 1, 2, NOW() - INTERVAL 14 DAY, NOW() - INTERVAL 13 DAY, @admin_td_admin, NULL, '["https://samplefile.com/samples/download/image/jpeg/jpeg_mobile_document_capture_sample.jpeg/"]', NOW() - INTERVAL 13 DAY, @admin_td_admin, @admin_td_admin, 0),
+(@user_05, 'TD-STU-005', '孙问素', 1, 31, '硕士研究生', '13900000005', '110101199505050055', '江苏省', '320000', '苏州市', '320500', '工业园区', '320571', '针灸研究所', @org_js_institute, '住院总医师', @practice_acupuncture, 1, 1, NOW() - INTERVAL 11 DAY, NULL, NULL, NULL, '["https://samplefile.com/samples/download/image/jpeg/jpeg_receipt_photo_sample.jpeg/","https://samplefile.com/samples/download/image/png/png_receipt_scan_sample.png/"]', NOW() - INTERVAL 11 DAY, @admin_td_admin, @admin_td_admin, 0),
+(@user_06, 'TD-STU-006', '何循经', 1, 38, '大专', '13900000006', '110101198806060066', '四川省', '510000', '成都市', '510100', '武侯区', '510107', '中医药大学', @org_sc_university, '门诊带教老师', @practice_teaching, 1, 2, NOW() - INTERVAL 9 DAY, NOW() - INTERVAL 8 DAY, @admin_td_admin, NULL, '["https://samplefile.com/samples/download/image/png/png_ocr_noise_sample.png/"]', NOW() - INTERVAL 8 DAY, @admin_td_admin, @admin_td_admin, 0),
+(@user_07, 'TD-STU-007', '周砚秋', 2, 27, '本科', '13900000007', '110101199707070077', '广东省', '440000', '广州市', '440100', '天河区', '440106', '省中医院远程门诊协作点', NULL, '实习医师', @practice_clinical, 1, 3, NOW() - INTERVAL 7 DAY, NOW() - INTERVAL 6 DAY, @admin_td_admin, '执业证明材料页码缺失', '["https://samplefile.com/samples/download/image/jpeg/jpeg_mobile_document_capture_sample.jpeg/"]', NOW() - INTERVAL 7 DAY, @admin_td_admin, @admin_td_admin, 0);
 
 SET @student_01 = (SELECT id FROM students WHERE student_no = 'TD-STU-001' AND deleted = 0 LIMIT 1);
 SET @student_02 = (SELECT id FROM students WHERE student_no = 'TD-STU-002' AND deleted = 0 LIMIT 1);
@@ -314,21 +314,21 @@ VALUES
 
 INSERT INTO student_certification_files (student_id, file_asset_id, source_url, material_type, sort_order, created_by, updated_by, deleted)
 VALUES
-(@student_01, NULL, 'https://example.com/assets/td/cert-1-a.jpg', 'id_card', 1, @admin_td_admin, @admin_td_admin, 0),
-(@student_01, NULL, 'https://example.com/assets/td/cert-1-b.jpg', 'qualification', 2, @admin_td_admin, @admin_td_admin, 0),
-(@student_02, NULL, 'https://example.com/assets/td/cert-2-a.jpg', 'qualification', 1, @admin_td_admin, @admin_td_admin, 0),
-(@student_03, NULL, 'https://example.com/assets/td/cert-3-a.jpg', 'id_card', 1, @admin_td_admin, @admin_td_admin, 0),
-(@student_04, NULL, 'https://example.com/assets/td/cert-4-a.jpg', 'qualification', 1, @admin_td_admin, @admin_td_admin, 0),
-(@student_05, NULL, 'https://example.com/assets/td/cert-5-a.jpg', 'id_card', 1, @admin_td_admin, @admin_td_admin, 0),
-(@student_05, NULL, 'https://example.com/assets/td/cert-5-b.jpg', 'qualification', 2, @admin_td_admin, @admin_td_admin, 0),
-(@student_06, NULL, 'https://example.com/assets/td/cert-6-a.jpg', 'qualification', 1, @admin_td_admin, @admin_td_admin, 0),
-(@student_07, NULL, 'https://example.com/assets/td/cert-7-a.jpg', 'qualification', 1, @admin_td_admin, @admin_td_admin, 0);
+(@student_01, NULL, 'https://samplefile.com/samples/download/image/jpeg/jpeg_mobile_document_capture_sample.jpeg/', 'id_card', 1, @admin_td_admin, @admin_td_admin, 0),
+(@student_01, NULL, 'https://samplefile.com/samples/download/image/jpeg/jpeg_receipt_photo_sample.jpeg/', 'qualification', 2, @admin_td_admin, @admin_td_admin, 0),
+(@student_02, NULL, 'https://samplefile.com/samples/download/image/png/png_receipt_scan_sample.png/', 'qualification', 1, @admin_td_admin, @admin_td_admin, 0),
+(@student_03, NULL, 'https://samplefile.com/samples/download/image/png/png_ocr_noise_sample.png/', 'id_card', 1, @admin_td_admin, @admin_td_admin, 0),
+(@student_04, NULL, 'https://samplefile.com/samples/download/image/jpeg/jpeg_mobile_document_capture_sample.jpeg/', 'qualification', 1, @admin_td_admin, @admin_td_admin, 0),
+(@student_05, NULL, 'https://samplefile.com/samples/download/image/jpeg/jpeg_receipt_photo_sample.jpeg/', 'id_card', 1, @admin_td_admin, @admin_td_admin, 0),
+(@student_05, NULL, 'https://samplefile.com/samples/download/image/png/png_receipt_scan_sample.png/', 'qualification', 2, @admin_td_admin, @admin_td_admin, 0),
+(@student_06, NULL, 'https://samplefile.com/samples/download/image/png/png_ocr_noise_sample.png/', 'qualification', 1, @admin_td_admin, @admin_td_admin, 0),
+(@student_07, NULL, 'https://samplefile.com/samples/download/image/jpeg/jpeg_mobile_document_capture_sample.jpeg/', 'qualification', 1, @admin_td_admin, @admin_td_admin, 0);
 
 -- 首页、题库、考卷
 INSERT INTO home_categories (parent_id, category_name, category_code, icon_url, description, sort_order, status, created_by, updated_by, deleted)
 VALUES
-(NULL, '[TD]首页推荐', 'TD_HOME_REC', 'https://example.com/assets/td/home-rec.png', '测试首页推荐分类', 1, 1, @admin_td_admin, @admin_td_admin, 0),
-(NULL, '[TD]热门专题', 'TD_HOME_TOPIC', 'https://example.com/assets/td/home-topic.png', '测试首页专题分类', 2, 1, @admin_td_admin, @admin_td_admin, 0);
+(NULL, '[TD]首页推荐', 'TD_HOME_REC', 'https://samplefile.com/samples/download/image/png/png_1000x600_sample_file_21KB.png/', '测试首页推荐分类', 1, 1, @admin_td_admin, @admin_td_admin, 0),
+(NULL, '[TD]热门专题', 'TD_HOME_TOPIC', 'https://samplefile.com/samples/download/image/png/png_500x300_sample_file_13KB.png/', '测试首页专题分类', 2, 1, @admin_td_admin, @admin_td_admin, 0);
 
 SET @home_category_01 = (SELECT id FROM home_categories WHERE category_code = 'TD_HOME_REC' AND deleted = 0 LIMIT 1);
 SET @home_category_02 = (SELECT id FROM home_categories WHERE category_code = 'TD_HOME_TOPIC' AND deleted = 0 LIMIT 1);
@@ -378,12 +378,12 @@ VALUES
 -- 学习资源
 INSERT INTO courses (course_name, subtitle, cover_url, lecturer_name, introduction, review_status, publish_status, paper_id, sort_order, published_at, created_by, updated_by, deleted)
 VALUES
-('[TD]经络腧穴速学', '90 分钟掌握经络走向与常用取穴', 'https://example.com/assets/td/course-cover-1.jpg', '陈思远', '围绕十二经脉循行、常用穴定位和门诊高频配穴做系统讲解，适合执业医师与规培学员用于复训和带教前准备。', 2, 1, @paper_01, 1, NOW() - INTERVAL 10 DAY, @admin_td_admin, @admin_td_admin, 0),
-('[TD]针灸临床入门', '门诊常见疼痛证型的辨证取穴思路', 'https://example.com/assets/td/course-cover-2.jpg', '周岐黄', '从颈肩腰腿痛、失眠与脾胃虚弱三个常见场景切入，整理临床首诊问诊要点与安全操作边界，保留未发布态用于审核联调。', 1, 0, @paper_01, 2, NULL, @admin_td_admin, @admin_td_admin, 0),
-('[TD]经方辨证针灸应用', '从方证对应切入针药并用思路', 'https://example.com/assets/td/course-cover-3.jpg', '宋本草', '结合桂枝汤、四逆散与补中益气汤常见适应证，演示针药并用的病机分析路径和随访记录结构。', 2, 1, NULL, 3, NOW() - INTERVAL 9 DAY, @admin_td_admin, @admin_td_admin, 0),
-('[TD]门诊肩颈腰腿痛针法', '聚焦疼痛科门诊高频病种', 'https://example.com/assets/td/course-cover-4.jpg', '陈景岐', '覆盖落枕、肩周炎、腰椎间盘突出恢复期和膝痹四类场景，适合联调课程列表筛选与学习进度展示。', 2, 1, @paper_01, 4, NOW() - INTERVAL 8 DAY, @admin_td_admin, @admin_td_admin, 0),
-('[TD]督脉灸法基础', '灸法适应证、禁忌与操作流程', 'https://example.com/assets/td/course-cover-5.jpg', '赵明岚', '围绕督脉灸基础操作、患者沟通与不良反应观察做梳理，作为已发布但未绑定试卷的课程样本。', 2, 1, NULL, 5, NOW() - INTERVAL 6 DAY, @admin_td_admin, @admin_td_admin, 0),
-('[TD]耳穴压豆实训', '门诊可复制的轻干预项目', 'https://example.com/assets/td/course-cover-6.jpg', '何循经', '聚焦睡眠管理、情志调适与门诊复诊随访，保留待审核待发布状态，用于后台筛选联调。', 1, 0, NULL, 6, NULL, @admin_td_admin, @admin_td_admin, 0);
+('[TD]经络腧穴速学', '90 分钟掌握经络走向与常用取穴', 'https://samplefile.com/samples/download/image/jpeg/jpeg_1000x600_sample_file_36KB.jpeg/', '陈思远', '围绕十二经脉循行、常用穴定位和门诊高频配穴做系统讲解，适合执业医师与规培学员用于复训和带教前准备。', 2, 1, @paper_01, 1, NOW() - INTERVAL 10 DAY, @admin_td_admin, @admin_td_admin, 0),
+('[TD]针灸临床入门', '门诊常见疼痛证型的辨证取穴思路', 'https://samplefile.com/samples/download/image/jpeg/jpeg_500x300_sample_file_15KB.jpeg/', '周岐黄', '从颈肩腰腿痛、失眠与脾胃虚弱三个常见场景切入，整理临床首诊问诊要点与安全操作边界，保留未发布态用于审核联调。', 1, 0, @paper_01, 2, NULL, @admin_td_admin, @admin_td_admin, 0),
+('[TD]经方辨证针灸应用', '从方证对应切入针药并用思路', 'https://samplefile.com/samples/download/image/jpeg/jpeg_2000x1200_sample_file_72KB.jpeg/', '宋本草', '结合桂枝汤、四逆散与补中益气汤常见适应证，演示针药并用的病机分析路径和随访记录结构。', 2, 1, NULL, 3, NOW() - INTERVAL 9 DAY, @admin_td_admin, @admin_td_admin, 0),
+('[TD]门诊肩颈腰腿痛针法', '聚焦疼痛科门诊高频病种', 'https://samplefile.com/samples/download/image/jpeg/jpeg_1000x600_sample_file_36KB.jpeg/', '陈景岐', '覆盖落枕、肩周炎、腰椎间盘突出恢复期和膝痹四类场景，适合联调课程列表筛选与学习进度展示。', 2, 1, @paper_01, 4, NOW() - INTERVAL 8 DAY, @admin_td_admin, @admin_td_admin, 0),
+('[TD]督脉灸法基础', '灸法适应证、禁忌与操作流程', 'https://samplefile.com/samples/download/image/jpeg/jpeg_500x300_sample_file_15KB.jpeg/', '赵明岚', '围绕督脉灸基础操作、患者沟通与不良反应观察做梳理，作为已发布但未绑定试卷的课程样本。', 2, 1, NULL, 5, NOW() - INTERVAL 6 DAY, @admin_td_admin, @admin_td_admin, 0),
+('[TD]耳穴压豆实训', '门诊可复制的轻干预项目', 'https://samplefile.com/samples/download/image/jpeg/jpeg_2000x1200_sample_file_72KB.jpeg/', '何循经', '聚焦睡眠管理、情志调适与门诊复诊随访，保留待审核待发布状态，用于后台筛选联调。', 1, 0, NULL, 6, NULL, @admin_td_admin, @admin_td_admin, 0);
 
 SET @course_01 = (SELECT id FROM courses WHERE course_name = '[TD]经络腧穴速学' AND deleted = 0 LIMIT 1);
 SET @course_02 = (SELECT id FROM courses WHERE course_name = '[TD]针灸临床入门' AND deleted = 0 LIMIT 1);
@@ -393,12 +393,12 @@ SET @course_05 = (SELECT id FROM courses WHERE course_name = '[TD]督脉灸法�
 
 INSERT INTO course_videos (course_id, title, video_url, duration_seconds, paper_id, sort_order, status, created_by, updated_by, deleted)
 VALUES
-(@course_01, '[TD]经络总论', 'https://example.com/assets/td/course-video-1.mp4', 900, @paper_01, 1, 1, @admin_td_admin, @admin_td_admin, 0),
-(@course_01, '[TD]常用腧穴', 'https://example.com/assets/td/course-video-2.mp4', 1200, @paper_01, 2, 1, @admin_td_admin, @admin_td_admin, 0),
-(@course_02, '[TD]临床案例导读', 'https://example.com/assets/td/course-video-3.mp4', 1500, @paper_01, 1, 1, @admin_td_admin, @admin_td_admin, 0),
-(@course_03, '[TD]桂枝汤证与经络辨治', 'https://example.com/assets/td/course-video-4.mp4', 1320, NULL, 1, 1, @admin_td_admin, @admin_td_admin, 0),
-(@course_04, '[TD]肩井到合谷的配穴路径', 'https://example.com/assets/td/course-video-5.mp4', 1180, @paper_01, 1, 1, @admin_td_admin, @admin_td_admin, 0),
-(@course_05, '[TD]督脉灸操作准备', 'https://example.com/assets/td/course-video-6.mp4', 980, NULL, 1, 1, @admin_td_admin, @admin_td_admin, 0);
+(@course_01, '[TD]经络总论', 'https://samplefile.com/samples/download/video/mp4/mp4_h264_aac_12s_sample.mp4/', 900, @paper_01, 1, 1, @admin_td_admin, @admin_td_admin, 0),
+(@course_01, '[TD]常用腧穴', 'https://samplefile.com/samples/download/video/mp4/mp4_15s_sample_file_868KB.mp4/', 1200, @paper_01, 2, 1, @admin_td_admin, @admin_td_admin, 0),
+(@course_02, '[TD]临床案例导读', 'https://samplefile.com/samples/download/video/mp4/mp4_30s_sample_file_1.7MB.mp4/', 1500, @paper_01, 1, 1, @admin_td_admin, @admin_td_admin, 0),
+(@course_03, '[TD]桂枝汤证与经络辨治', 'https://samplefile.com/samples/download/video/mp4/mp4_h264_aac_720p_sample.mp4/', 1320, NULL, 1, 1, @admin_td_admin, @admin_td_admin, 0),
+(@course_04, '[TD]肩井到合谷的配穴路径', 'https://samplefile.com/samples/download/video/mp4/mp4_square_h264_aac_sample.mp4/', 1180, @paper_01, 1, 1, @admin_td_admin, @admin_td_admin, 0),
+(@course_05, '[TD]督脉灸操作准备', 'https://samplefile.com/samples/download/video/mp4/mp4_60s_sample_file_3.4MB.mp4/', 980, NULL, 1, 1, @admin_td_admin, @admin_td_admin, 0);
 
 INSERT INTO book_categories (parent_id, category_name, sort_order, status, created_by, updated_by, deleted)
 VALUES
@@ -410,10 +410,10 @@ SET @book_category_02 = (SELECT id FROM book_categories WHERE category_name = '[
 
 INSERT INTO books (category_id, book_name, author, publisher, cover_url, introduction, total_pages, review_status, publish_status, paper_id, sort_order, published_at, created_by, updated_by, deleted)
 VALUES
-(@book_category_01, '[TD]针灸学临证读本', '林问岐', '中医古籍出版社', 'https://example.com/assets/td/book-cover-1.jpg', '以门诊真实病种串联经络、腧穴和操作手法，适合配合课程章节与考试试卷做整套学习闭环验收。', 286, 2, 1, @paper_01, 1, NOW() - INTERVAL 14 DAY, @admin_td_admin, @admin_td_admin, 0),
-(@book_category_02, '[TD]方剂辨治精要', '许本草', '人民卫生出版社', 'https://example.com/assets/td/book-cover-2.jpg', '聚焦补益剂、和解剂和祛湿剂三类高频处方，保留待发布状态用于后台审核、预览和下架前联调。', 198, 1, 0, @paper_01, 2, NULL, @admin_td_admin, @admin_td_admin, 0),
-(@book_category_01, '[TD]针灸门诊病案手册', '陈思远', '中国中医药出版社', 'https://example.com/assets/td/book-cover-3.jpg', '按初诊、复诊、疗效评估三段整理门诊病案，方便联调图书列表、详情和阅读记录。', 232, 2, 1, NULL, 3, NOW() - INTERVAL 11 DAY, @admin_td_admin, @admin_td_admin, 0),
-(@book_category_02, '[TD]脾胃方剂速查', '宋本草', '上海科学技术出版社', 'https://example.com/assets/td/book-cover-4.jpg', '收录脾胃常见证型的基础处方、加减思路与服药提醒，作为已发布知识型图书样本。', 176, 2, 1, NULL, 4, NOW() - INTERVAL 9 DAY, @admin_td_admin, @admin_td_admin, 0);
+(@book_category_01, '[TD]针灸学临证读本', '林问岐', '中医古籍出版社', 'https://samplefile.com/samples/download/image/jpeg/jpeg_500x300_sample_file_15KB.jpeg/', '以门诊真实病种串联经络、腧穴和操作手法，适合配合课程章节与考试试卷做整套学习闭环验收。', 286, 2, 1, @paper_01, 1, NOW() - INTERVAL 14 DAY, @admin_td_admin, @admin_td_admin, 0),
+(@book_category_02, '[TD]方剂辨治精要', '许本草', '人民卫生出版社', 'https://samplefile.com/samples/download/image/jpeg/jpeg_1000x600_sample_file_36KB.jpeg/', '聚焦补益剂、和解剂和祛湿剂三类高频处方，保留待发布状态用于后台审核、预览和下架前联调。', 198, 1, 0, @paper_01, 2, NULL, @admin_td_admin, @admin_td_admin, 0),
+(@book_category_01, '[TD]针灸门诊病案手册', '陈思远', '中国中医药出版社', 'https://samplefile.com/samples/download/image/jpeg/jpeg_2000x1200_sample_file_72KB.jpeg/', '按初诊、复诊、疗效评估三段整理门诊病案，方便联调图书列表、详情和阅读记录。', 232, 2, 1, NULL, 3, NOW() - INTERVAL 11 DAY, @admin_td_admin, @admin_td_admin, 0),
+(@book_category_02, '[TD]脾胃方剂速查', '宋本草', '上海科学技术出版社', 'https://samplefile.com/samples/download/image/jpeg/jpeg_500x300_sample_file_15KB.jpeg/', '收录脾胃常见证型的基础处方、加减思路与服药提醒，作为已发布知识型图书样本。', 176, 2, 1, NULL, 4, NOW() - INTERVAL 9 DAY, @admin_td_admin, @admin_td_admin, 0);
 
 SET @book_01 = (SELECT id FROM books WHERE book_name = '[TD]针灸学临证读本' AND deleted = 0 LIMIT 1);
 SET @book_02 = (SELECT id FROM books WHERE book_name = '[TD]方剂辨治精要' AND deleted = 0 LIMIT 1);
@@ -430,35 +430,35 @@ SET @book_chapter_01 = (SELECT id FROM book_chapters WHERE chapter_title = '[TD]
 
 INSERT INTO articles (title, summary, cover_url, content, author_name, source, review_status, publish_status, published_at, view_count, created_by, updated_by, deleted)
 VALUES
-('[TD]春季养肝调气指南', '结合门诊常见失眠、胸闷与纳差表现，梳理春季疏肝理气的居家调养建议。', 'https://example.com/assets/td/article-cover-1.jpg', '<p>春季肝气升发，临床调护应兼顾作息、饮食与情志管理。</p><p>文章从起居、茶饮与穴位按揉三个方面给出可执行建议，方便前端联调富文本展示与详情页收藏浏览统计。</p>', '编辑部', '中医在线编辑部', 2, 1, NOW() - INTERVAL 6 DAY, 120, @admin_td_admin, @admin_td_admin, 0),
-('[TD]针灸门诊带教札记', '记录门诊带教中关于取穴顺序、体位保护和知情沟通的高频提醒。', 'https://example.com/assets/td/article-cover-2.jpg', '<p>门诊教学最容易忽视的是体位摆放、针前沟通和留针观察。</p><p>本文用于演示待审核资讯在后台的查看与审核流程。</p>', '陈思远', '省中医院门诊部', 1, 0, NULL, 38, @admin_td_admin, @admin_td_admin, 0),
-('[TD]三伏贴门诊安排说明', '用于公告门诊开诊时间、预约方式和贴敷注意事项。', 'https://example.com/assets/td/article-cover-3.jpg', '<p>三伏贴预约需提前登记基础病史，并避开皮肤破损区域。</p><p>本条资讯可用于联调后台列表排序与发布时间筛选。</p>', '运营中心', '治未病中心', 2, 1, NOW() - INTERVAL 3 DAY, 86, @admin_td_admin, @admin_td_admin, 0),
-('[TD]实习医师针刺规范提醒', '汇总实习医师在门诊实操中的常见失误与防范要点。', 'https://example.com/assets/td/article-cover-4.jpg', '<p>包含进针前核对、留针观察、起针后宣教三部分。</p>', '何循经', '教学办公室', 2, 1, NOW() - INTERVAL 2 DAY, 54, @admin_td_admin, @admin_td_admin, 0),
-('[TD]方剂直播预习资料', '用于直播前预习基础方证和加减规则。', 'https://example.com/assets/td/article-cover-5.jpg', '<p>配合直播答疑使用，条目保留待审核状态。</p>', '宋本草', '课程教研组', 1, 0, NULL, 12, @admin_td_admin, @admin_td_admin, 0);
+('[TD]春季养肝调气指南', '结合门诊常见失眠、胸闷与纳差表现，梳理春季疏肝理气的居家调养建议。', 'https://samplefile.com/samples/download/image/jpeg/jpeg_1000x600_sample_file_36KB.jpeg/', '<p>春季肝气升发，临床调护应兼顾作息、饮食与情志管理。</p><p>文章从起居、茶饮与穴位按揉三个方面给出可执行建议，方便前端联调富文本展示与详情页收藏浏览统计。</p>', '编辑部', '中医在线编辑部', 2, 1, NOW() - INTERVAL 6 DAY, 120, @admin_td_admin, @admin_td_admin, 0),
+('[TD]针灸门诊带教札记', '记录门诊带教中关于取穴顺序、体位保护和知情沟通的高频提醒。', 'https://samplefile.com/samples/download/image/jpeg/jpeg_500x300_sample_file_15KB.jpeg/', '<p>门诊教学最容易忽视的是体位摆放、针前沟通和留针观察。</p><p>本文用于演示待审核资讯在后台的查看与审核流程。</p>', '陈思远', '省中医院门诊部', 1, 0, NULL, 38, @admin_td_admin, @admin_td_admin, 0),
+('[TD]三伏贴门诊安排说明', '用于公告门诊开诊时间、预约方式和贴敷注意事项。', 'https://samplefile.com/samples/download/image/jpeg/jpeg_2000x1200_sample_file_72KB.jpeg/', '<p>三伏贴预约需提前登记基础病史，并避开皮肤破损区域。</p><p>本条资讯可用于联调后台列表排序与发布时间筛选。</p>', '运营中心', '治未病中心', 2, 1, NOW() - INTERVAL 3 DAY, 86, @admin_td_admin, @admin_td_admin, 0),
+('[TD]实习医师针刺规范提醒', '汇总实习医师在门诊实操中的常见失误与防范要点。', 'https://samplefile.com/samples/download/image/jpeg/jpeg_1000x600_sample_file_36KB.jpeg/', '<p>包含进针前核对、留针观察、起针后宣教三部分。</p>', '何循经', '教学办公室', 2, 1, NOW() - INTERVAL 2 DAY, 54, @admin_td_admin, @admin_td_admin, 0),
+('[TD]方剂直播预习资料', '用于直播前预习基础方证和加减规则。', 'https://samplefile.com/samples/download/image/jpeg/jpeg_500x300_sample_file_15KB.jpeg/', '<p>配合直播答疑使用，条目保留待审核状态。</p>', '宋本草', '课程教研组', 1, 0, NULL, 12, @admin_td_admin, @admin_td_admin, 0);
 
 SET @article_01 = (SELECT id FROM articles WHERE title = '[TD]春季养肝调气指南' AND deleted = 0 LIMIT 1);
 SET @article_02 = (SELECT id FROM articles WHERE title = '[TD]针灸门诊带教札记' AND deleted = 0 LIMIT 1);
 
 INSERT INTO podcasts (title, summary, cover_url, speaker_name, review_status, publish_status, published_at, sort_order, created_by, updated_by, deleted)
 VALUES
-('[TD]黄帝内经夜读', '每期 30 分钟，用通俗语言拆解经典条文与临床对应关系。', 'https://example.com/assets/td/podcast-cover-1.jpg', '陈景岐', 2, 1, NOW() - INTERVAL 5 DAY, 1, @admin_td_admin, @admin_td_admin, 0),
-('[TD]本草问答录', '围绕药对配伍、煎服要点与常见误区做短音频答疑。', 'https://example.com/assets/td/podcast-cover-2.jpg', '宋本草', 1, 0, NULL, 2, @admin_td_admin, @admin_td_admin, 0),
-('[TD]门诊复盘晨听', '10 分钟复盘前一日门诊病例与随访重点。', 'https://example.com/assets/td/podcast-cover-3.jpg', '赵明岚', 2, 1, NOW() - INTERVAL 4 DAY, 3, @admin_td_admin, @admin_td_admin, 0),
-('[TD]经络答疑速记', '面向年轻医生的碎片化经络问答。', 'https://example.com/assets/td/podcast-cover-4.jpg', '王知秋', 2, 1, NOW() - INTERVAL 1 DAY, 4, @admin_td_admin, @admin_td_admin, 0);
+('[TD]黄帝内经夜读', '每期 30 分钟，用通俗语言拆解经典条文与临床对应关系。', 'https://samplefile.com/samples/download/image/jpeg/jpeg_500x300_sample_file_15KB.jpeg/', '陈景岐', 2, 1, NOW() - INTERVAL 5 DAY, 1, @admin_td_admin, @admin_td_admin, 0),
+('[TD]本草问答录', '围绕药对配伍、煎服要点与常见误区做短音频答疑。', 'https://samplefile.com/samples/download/image/jpeg/jpeg_1000x600_sample_file_36KB.jpeg/', '宋本草', 1, 0, NULL, 2, @admin_td_admin, @admin_td_admin, 0),
+('[TD]门诊复盘晨听', '10 分钟复盘前一日门诊病例与随访重点。', 'https://samplefile.com/samples/download/image/jpeg/jpeg_500x300_sample_file_15KB.jpeg/', '赵明岚', 2, 1, NOW() - INTERVAL 4 DAY, 3, @admin_td_admin, @admin_td_admin, 0),
+('[TD]经络答疑速记', '面向年轻医生的碎片化经络问答。', 'https://samplefile.com/samples/download/image/jpeg/jpeg_1000x600_sample_file_36KB.jpeg/', '王知秋', 2, 1, NOW() - INTERVAL 1 DAY, 4, @admin_td_admin, @admin_td_admin, 0);
 
 SET @podcast_01 = (SELECT id FROM podcasts WHERE title = '[TD]黄帝内经夜读' AND deleted = 0 LIMIT 1);
 SET @podcast_02 = (SELECT id FROM podcasts WHERE title = '[TD]门诊复盘晨听' AND deleted = 0 LIMIT 1);
 
 INSERT INTO podcast_audios (podcast_id, title, audio_url, duration_seconds, paper_id, sort_order, status, created_by, updated_by, deleted)
 VALUES
-(@podcast_01, '[TD]第一期 经络循行', 'https://example.com/assets/td/podcast-audio-1.mp3', 1800, @paper_01, 1, 1, @admin_td_admin, @admin_td_admin, 0),
-(@podcast_01, '[TD]第二期 脏腑表里', 'https://example.com/assets/td/podcast-audio-2.mp3', 2100, @paper_01, 2, 1, @admin_td_admin, @admin_td_admin, 0),
-(@podcast_02, '[TD]第一期 门诊随访模板', 'https://example.com/assets/td/podcast-audio-3.mp3', 900, NULL, 1, 1, @admin_td_admin, @admin_td_admin, 0);
+(@podcast_01, '[TD]第一期 经络循行', 'https://samplefile.com/samples/download/audio/mp3/mp3_30s_sample_file_470KB.mp3/', 1800, @paper_01, 1, 1, @admin_td_admin, @admin_td_admin, 0),
+(@podcast_01, '[TD]第二期 脏腑表里', 'https://samplefile.com/samples/download/audio/mp3/mp3_60s_sample_file_939KB.mp3/', 2100, @paper_01, 2, 1, @admin_td_admin, @admin_td_admin, 0),
+(@podcast_02, '[TD]第一期 门诊随访模板', 'https://samplefile.com/samples/download/audio/mp3/mp3_voice_note_sample.mp3/', 900, NULL, 1, 1, @admin_td_admin, @admin_td_admin, 0);
 
 INSERT INTO topics (title, summary, learning_requirements, cover_url, review_status, publish_status, published_at, sort_order, view_count, created_by, updated_by, deleted)
 VALUES
-('[TD]针灸临床专题', '聚合课程、图书与播客，覆盖经络基础到临床配穴的完整入门路径。', '完成专题下 2 个视频和 1 本图书学习后可参加考核。', 'https://example.com/assets/td/topic-cover-1.jpg', 2, 1, NOW() - INTERVAL 4 DAY, 1, 268, @admin_td_admin, @admin_td_admin, 0),
-('[TD]门诊带教专题', '围绕门诊带教、病例复盘和知情沟通的专题聚合。', '建议先完成课程学习，再阅读病案手册与晨听播客。', 'https://example.com/assets/td/topic-cover-2.jpg', 2, 1, NOW() - INTERVAL 2 DAY, 2, 143, @admin_td_admin, @admin_td_admin, 0);
+('[TD]针灸临床专题', '聚合课程、图书与播客，覆盖经络基础到临床配穴的完整入门路径。', '完成专题下 2 个视频和 1 本图书学习后可参加考核。', 'https://samplefile.com/samples/download/image/jpeg/jpeg_2000x1200_sample_file_72KB.jpeg/', 2, 1, NOW() - INTERVAL 4 DAY, 1, 268, @admin_td_admin, @admin_td_admin, 0),
+('[TD]门诊带教专题', '围绕门诊带教、病例复盘和知情沟通的专题聚合。', '建议先完成课程学习，再阅读病案手册与晨听播客。', 'https://samplefile.com/samples/download/image/jpeg/jpeg_1000x600_sample_file_36KB.jpeg/', 2, 1, NOW() - INTERVAL 2 DAY, 2, 143, @admin_td_admin, @admin_td_admin, 0);
 
 SET @topic_01 = (SELECT id FROM topics WHERE title = '[TD]针灸临床专题' AND deleted = 0 LIMIT 1);
 SET @topic_02 = (SELECT id FROM topics WHERE title = '[TD]门诊带教专题' AND deleted = 0 LIMIT 1);
@@ -488,8 +488,8 @@ INSERT INTO experts (
     consult_enabled, consultation_notice, sort_order, created_by, updated_by, deleted
 )
 VALUES
-(@user_03, '[TD]陈景岐', 1, '1982-03-15', '13900000013', 'https://example.com/assets/td/expert-1.jpg', 'https://example.com/assets/td/expert-cover-1.jpg', '主任医师', '省中医院', @org_zj_hospital, '针灸与经络', @practice_acupuncture, '长期从事经络辨证、肩颈腰腿痛与亚健康调理的临床与教学工作。', 1, 1, '每周二、周四开放图文咨询。', 1, @admin_td_admin, @admin_td_admin, 0),
-(NULL, '[TD]宋本草', 2, '1979-08-22', '13900000023', 'https://example.com/assets/td/expert-2.jpg', 'https://example.com/assets/td/expert-cover-2.jpg', '教授', '中医药大学', @org_sc_university, '方剂配伍', @practice_teaching, '聚焦经典方剂教学与研究，适合验证专家详情、履历与咨询说明展示。', 1, 1, '方剂配伍咨询需先完成基础问卷。', 2, @admin_td_admin, @admin_td_admin, 0);
+(@user_03, '[TD]陈景岐', 1, '1982-03-15', '13900000013', 'https://samplefile.com/samples/download/image/jpeg/jpeg_100x100_sample_file_3KB.jpeg/', 'https://samplefile.com/samples/download/image/jpeg/jpeg_1000x600_sample_file_36KB.jpeg/', '主任医师', '省中医院', @org_zj_hospital, '针灸与经络', @practice_acupuncture, '长期从事经络辨证、肩颈腰腿痛与亚健康调理的临床与教学工作。', 1, 1, '每周二、周四开放图文咨询。', 1, @admin_td_admin, @admin_td_admin, 0),
+(NULL, '[TD]宋本草', 2, '1979-08-22', '13900000023', 'https://samplefile.com/samples/download/image/png/png_100x100_sample_file_5KB.png/', 'https://samplefile.com/samples/download/image/jpeg/jpeg_2000x1200_sample_file_72KB.jpeg/', '教授', '中医药大学', @org_sc_university, '方剂配伍', @practice_teaching, '聚焦经典方剂教学与研究，适合验证专家详情、履历与咨询说明展示。', 1, 1, '方剂配伍咨询需先完成基础问卷。', 2, @admin_td_admin, @admin_td_admin, 0);
 
 SET @expert_01 = (SELECT id FROM experts WHERE real_name = '[TD]陈景岐' AND deleted = 0 LIMIT 1);
 SET @expert_02 = (SELECT id FROM experts WHERE real_name = '[TD]宋本草' AND deleted = 0 LIMIT 1);
@@ -511,29 +511,29 @@ VALUES
 
 INSERT INTO live_sessions (title, cover_url, anchor_name, stream_name, speaker_name, live_url, playback_url, start_at, end_at, review_status, live_status, created_by, updated_by, deleted)
 VALUES
-('[TD]针灸实操直播', 'https://example.com/assets/td/live-cover-1.jpg', '陈景岐', 'td-live-1', '陈景岐', 'https://example.com/live/td-1', 'https://example.com/live/td-1/playback', NOW() + INTERVAL 2 DAY, NOW() + INTERVAL 2 DAY + INTERVAL 2 HOUR, 2, 0, @admin_td_admin, @admin_td_admin, 0),
-('[TD]方剂答疑直播', 'https://example.com/assets/td/live-cover-2.jpg', '宋本草', 'td-live-2', '宋本草', 'https://example.com/live/td-2', NULL, NOW() - INTERVAL 3 DAY, NOW() - INTERVAL 3 DAY + INTERVAL 1 HOUR, 2, 2, @admin_td_admin, @admin_td_admin, 0),
-('[TD]门诊病例晨会', 'https://example.com/assets/td/live-cover-3.jpg', '赵明岚', 'td-live-3', '赵明岚', 'https://example.com/live/td-3', 'https://example.com/live/td-3/playback', NOW() - INTERVAL 1 DAY, NOW() - INTERVAL 1 DAY + INTERVAL 45 MINUTE, 2, 1, @admin_td_admin, @admin_td_admin, 0),
-('[TD]耳穴压豆答疑场', 'https://example.com/assets/td/live-cover-4.jpg', '何循经', 'td-live-4', '何循经', 'https://example.com/live/td-4', NULL, NOW() + INTERVAL 5 DAY, NOW() + INTERVAL 5 DAY + INTERVAL 90 MINUTE, 2, 0, @admin_td_admin, @admin_td_admin, 0),
-('[TD]暑期带教预备会', 'https://example.com/assets/td/live-cover-5.jpg', '陈思远', 'td-live-5', '陈思远', 'https://example.com/live/td-5', NULL, NOW() + INTERVAL 7 DAY, NOW() + INTERVAL 7 DAY + INTERVAL 60 MINUTE, 1, 0, @admin_td_admin, @admin_td_admin, 0);
+('[TD]针灸实操直播', 'https://samplefile.com/samples/download/image/jpeg/jpeg_1000x600_sample_file_36KB.jpeg/', '陈景岐', 'td-live-1', '陈景岐', 'https://samplefile.com/samples/download/video/mp4/mp4_h264_aac_12s_sample.mp4/', 'https://samplefile.com/samples/download/video/mp4/mp4_15s_sample_file_868KB.mp4/', NOW() + INTERVAL 2 DAY, NOW() + INTERVAL 2 DAY + INTERVAL 2 HOUR, 2, 0, @admin_td_admin, @admin_td_admin, 0),
+('[TD]方剂答疑直播', 'https://samplefile.com/samples/download/image/jpeg/jpeg_500x300_sample_file_15KB.jpeg/', '宋本草', 'td-live-2', '宋本草', 'https://samplefile.com/samples/download/video/mp4/mp4_30s_sample_file_1.7MB.mp4/', NULL, NOW() - INTERVAL 3 DAY, NOW() - INTERVAL 3 DAY + INTERVAL 1 HOUR, 2, 2, @admin_td_admin, @admin_td_admin, 0),
+('[TD]门诊病例晨会', 'https://samplefile.com/samples/download/image/jpeg/jpeg_2000x1200_sample_file_72KB.jpeg/', '赵明岚', 'td-live-3', '赵明岚', 'https://samplefile.com/samples/download/video/mp4/mp4_h264_aac_720p_sample.mp4/', 'https://samplefile.com/samples/download/video/mp4/mp4_5s_sample_file_279KB.mp4/', NOW() - INTERVAL 1 DAY, NOW() - INTERVAL 1 DAY + INTERVAL 45 MINUTE, 2, 1, @admin_td_admin, @admin_td_admin, 0),
+('[TD]耳穴压豆答疑场', 'https://samplefile.com/samples/download/image/jpeg/jpeg_1000x600_sample_file_36KB.jpeg/', '何循经', 'td-live-4', '何循经', 'https://samplefile.com/samples/download/video/mp4/mp4_square_h264_aac_sample.mp4/', NULL, NOW() + INTERVAL 5 DAY, NOW() + INTERVAL 5 DAY + INTERVAL 90 MINUTE, 2, 0, @admin_td_admin, @admin_td_admin, 0),
+('[TD]暑期带教预备会', 'https://samplefile.com/samples/download/image/jpeg/jpeg_500x300_sample_file_15KB.jpeg/', '陈思远', 'td-live-5', '陈思远', 'https://samplefile.com/samples/download/video/mp4/mp4_60s_sample_file_3.4MB.mp4/', NULL, NOW() + INTERVAL 7 DAY, NOW() + INTERVAL 7 DAY + INTERVAL 60 MINUTE, 1, 0, @admin_td_admin, @admin_td_admin, 0);
 
 SET @live_01 = (SELECT id FROM live_sessions WHERE title = '[TD]针灸实操直播' AND deleted = 0 LIMIT 1);
 SET @live_02 = (SELECT id FROM live_sessions WHERE title = '[TD]方剂答疑直播' AND deleted = 0 LIMIT 1);
 
 INSERT INTO live_session_videos (live_session_id, title, video_url, duration_seconds, sort_order, status, created_by, updated_by, deleted)
 VALUES
-(@live_01, '[TD]肩颈常用取穴演示', 'https://example.com/live/td-1/clip-1.mp4', 1260, 1, 1, @admin_td_admin, @admin_td_admin, 0),
-(@live_01, '[TD]进针角度与补泻手法', 'https://example.com/live/td-1/clip-2.mp4', 1540, 2, 1, @admin_td_admin, @admin_td_admin, 0),
-(@live_02, '[TD]四物汤加减思路复盘', 'https://example.com/live/td-2/replay-1.mp4', 1980, 1, 1, @admin_td_admin, @admin_td_admin, 0),
-((SELECT id FROM live_sessions WHERE title = '[TD]门诊病例晨会' AND deleted = 0 LIMIT 1), '[TD]腰痛病例复盘', 'https://example.com/live/td-3/replay-1.mp4', 1680, 1, 1, @admin_td_admin, @admin_td_admin, 0);
+(@live_01, '[TD]肩颈常用取穴演示', 'https://samplefile.com/samples/download/video/mp4/mp4_15s_sample_file_868KB.mp4/', 1260, 1, 1, @admin_td_admin, @admin_td_admin, 0),
+(@live_01, '[TD]进针角度与补泻手法', 'https://samplefile.com/samples/download/video/mp4/mp4_30s_sample_file_1.7MB.mp4/', 1540, 2, 1, @admin_td_admin, @admin_td_admin, 0),
+(@live_02, '[TD]四物汤加减思路复盘', 'https://samplefile.com/samples/download/video/mp4/mp4_h264_aac_720p_sample.mp4/', 1980, 1, 1, @admin_td_admin, @admin_td_admin, 0),
+((SELECT id FROM live_sessions WHERE title = '[TD]门诊病例晨会' AND deleted = 0 LIMIT 1), '[TD]腰痛病例复盘', 'https://samplefile.com/samples/download/video/mp4/mp4_5s_sample_file_279KB.mp4/', 1680, 1, 1, @admin_td_admin, @admin_td_admin, 0);
 
 INSERT INTO home_contents (category_id, content_type, target_id, title, cover_url, link_url, sort_order, start_at, end_at, status, created_by, updated_by, deleted)
 VALUES
-(@home_category_01, 'course', @course_01, '[TD]首页课程推荐', 'https://example.com/assets/td/home-course.jpg', NULL, 1, NOW() - INTERVAL 1 DAY, NOW() + INTERVAL 30 DAY, 1, @admin_td_admin, @admin_td_admin, 0),
-(@home_category_01, 'book', @book_01, '[TD]首页图书推荐', 'https://example.com/assets/td/home-book.jpg', NULL, 2, NOW() - INTERVAL 1 DAY, NOW() + INTERVAL 30 DAY, 1, @admin_td_admin, @admin_td_admin, 0),
-(@home_category_01, 'live', @live_01, '[TD]首页直播预告', 'https://example.com/assets/td/home-live.jpg', NULL, 3, NOW() - INTERVAL 1 DAY, NOW() + INTERVAL 7 DAY, 1, @admin_td_admin, @admin_td_admin, 0),
-(@home_category_02, 'topic', @topic_01, '[TD]首页专题推荐', 'https://example.com/assets/td/home-topic.jpg', NULL, 1, NOW() - INTERVAL 1 DAY, NOW() + INTERVAL 30 DAY, 1, @admin_td_admin, @admin_td_admin, 0),
-(@home_category_02, 'topic', @topic_02, '[TD]首页带教专题', 'https://example.com/assets/td/home-topic-2.jpg', NULL, 2, NOW() - INTERVAL 1 DAY, NOW() + INTERVAL 20 DAY, 1, @admin_td_admin, @admin_td_admin, 0);
+(@home_category_01, 'course', @course_01, '[TD]首页课程推荐', 'https://samplefile.com/samples/download/image/jpeg/jpeg_1000x600_sample_file_36KB.jpeg/', NULL, 1, NOW() - INTERVAL 1 DAY, NOW() + INTERVAL 30 DAY, 1, @admin_td_admin, @admin_td_admin, 0),
+(@home_category_01, 'book', @book_01, '[TD]首页图书推荐', 'https://samplefile.com/samples/download/image/jpeg/jpeg_500x300_sample_file_15KB.jpeg/', NULL, 2, NOW() - INTERVAL 1 DAY, NOW() + INTERVAL 30 DAY, 1, @admin_td_admin, @admin_td_admin, 0),
+(@home_category_01, 'live', @live_01, '[TD]首页直播预告', 'https://samplefile.com/samples/download/image/jpeg/jpeg_2000x1200_sample_file_72KB.jpeg/', NULL, 3, NOW() - INTERVAL 1 DAY, NOW() + INTERVAL 7 DAY, 1, @admin_td_admin, @admin_td_admin, 0),
+(@home_category_02, 'topic', @topic_01, '[TD]首页专题推荐', 'https://samplefile.com/samples/download/image/jpeg/jpeg_1000x600_sample_file_36KB.jpeg/', NULL, 1, NOW() - INTERVAL 1 DAY, NOW() + INTERVAL 30 DAY, 1, @admin_td_admin, @admin_td_admin, 0),
+(@home_category_02, 'topic', @topic_02, '[TD]首页带教专题', 'https://samplefile.com/samples/download/image/jpeg/jpeg_500x300_sample_file_15KB.jpeg/', NULL, 2, NOW() - INTERVAL 1 DAY, NOW() + INTERVAL 20 DAY, 1, @admin_td_admin, @admin_td_admin, 0);
 
 INSERT INTO resource_tags (tag_id, resource_type, resource_id)
 VALUES
@@ -646,10 +646,10 @@ SET @knowledge_category_02 = (SELECT id FROM knowledge_categories WHERE category
 
 INSERT INTO knowledge_entries (category_id, title, summary, cover_url, content, keywords, source, review_status, publish_status, sort_order, published_at, view_count, created_by, updated_by, deleted)
 VALUES
-(@knowledge_category_01, '[TD]阴阳学说概览', '从临床常见寒热、虚实表现切入，快速回顾阴阳消长与转化。', 'https://example.com/assets/td/knowledge-cover-1.jpg', '<p>阴阳学说是理解脏腑、经络和病机变化的基础。</p><p>本条目用于联调知识库分类、详情与搜索高亮展示。</p>', '阴阳,基础理论', '测试资料库', 2, 1, 1, NOW() - INTERVAL 8 DAY, 156, @admin_td_admin, @admin_td_admin, 0),
-(@knowledge_category_02, '[TD]四物汤配伍要点', '梳理四物汤在补血、调经与临床加减中的核心使用场景。', 'https://example.com/assets/td/knowledge-cover-2.jpg', '<p>四物汤由熟地黄、当归、白芍、川芎组成，是补血调血常用基础方。</p><p>条目内容可用于联调知识库详情页、搜索页和收藏统计场景。</p>', '四物汤,方剂学', '测试资料库', 2, 1, 2, NOW() - INTERVAL 7 DAY, 132, @admin_td_admin, @admin_td_admin, 0),
-(@knowledge_category_01, '[TD]经络辨证速查表', '汇总头面、肩背、腰腿常见症状的经络归属与取穴思路。', 'https://example.com/assets/td/knowledge-cover-3.jpg', '<p>适合作为课程与直播后的速查资料，也可用于搜索联调。</p>', '经络,辨证', '门诊资料库', 2, 1, 3, NOW() - INTERVAL 5 DAY, 97, @admin_td_admin, @admin_td_admin, 0),
-(@knowledge_category_02, '[TD]参苓白术散应用场景', '整理脾虚夹湿、久泻纳差与体倦乏力的辨证要点。', 'https://example.com/assets/td/knowledge-cover-4.jpg', '<p>条目用于补充知识库列表、详情和排序数据量。</p>', '参苓白术散,脾虚湿盛', '门诊资料库', 2, 1, 4, NOW() - INTERVAL 4 DAY, 88, @admin_td_admin, @admin_td_admin, 0);
+(@knowledge_category_01, '[TD]阴阳学说概览', '从临床常见寒热、虚实表现切入，快速回顾阴阳消长与转化。', 'https://samplefile.com/samples/download/image/jpeg/jpeg_1000x600_sample_file_36KB.jpeg/', '<p>阴阳学说是理解脏腑、经络和病机变化的基础。</p><p>本条目用于联调知识库分类、详情与搜索高亮展示。</p>', '阴阳,基础理论', '测试资料库', 2, 1, 1, NOW() - INTERVAL 8 DAY, 156, @admin_td_admin, @admin_td_admin, 0),
+(@knowledge_category_02, '[TD]四物汤配伍要点', '梳理四物汤在补血、调经与临床加减中的核心使用场景。', 'https://samplefile.com/samples/download/image/jpeg/jpeg_500x300_sample_file_15KB.jpeg/', '<p>四物汤由熟地黄、当归、白芍、川芎组成，是补血调血常用基础方。</p><p>条目内容可用于联调知识库详情页、搜索页和收藏统计场景。</p>', '四物汤,方剂学', '测试资料库', 2, 1, 2, NOW() - INTERVAL 7 DAY, 132, @admin_td_admin, @admin_td_admin, 0),
+(@knowledge_category_01, '[TD]经络辨证速查表', '汇总头面、肩背、腰腿常见症状的经络归属与取穴思路。', 'https://samplefile.com/samples/download/image/jpeg/jpeg_2000x1200_sample_file_72KB.jpeg/', '<p>适合作为课程与直播后的速查资料，也可用于搜索联调。</p>', '经络,辨证', '门诊资料库', 2, 1, 3, NOW() - INTERVAL 5 DAY, 97, @admin_td_admin, @admin_td_admin, 0),
+(@knowledge_category_02, '[TD]参苓白术散应用场景', '整理脾虚夹湿、久泻纳差与体倦乏力的辨证要点。', 'https://samplefile.com/samples/download/image/jpeg/jpeg_1000x600_sample_file_36KB.jpeg/', '<p>条目用于补充知识库列表、详情和排序数据量。</p>', '参苓白术散,脾虚湿盛', '门诊资料库', 2, 1, 4, NOW() - INTERVAL 4 DAY, 88, @admin_td_admin, @admin_td_admin, 0);
 
 SET @knowledge_entry_01 = (SELECT id FROM knowledge_entries WHERE title = '[TD]阴阳学说概览' AND deleted = 0 LIMIT 1);
 SET @knowledge_entry_02 = (SELECT id FROM knowledge_entries WHERE title = '[TD]四物汤配伍要点' AND deleted = 0 LIMIT 1);

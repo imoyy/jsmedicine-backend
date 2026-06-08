@@ -173,7 +173,7 @@
 - `[x]` 基础数据补齐：执业类型、机构从“仅查询”补到“可管理”，支撑手册中的独立管理页面。
   2026-05-28：已补机构、执业类型的详情、新增、修改、删除接口，并增加删除前引用校验与 `sys:reference:create/update/delete` 权限种子。
 - `[x]` 首页与内容补齐：资讯补 `source`、`tags`；首页内容配置补齐与页面下拉、资源关联一致的字段和查询能力。
-  2026-06-08：已完成管理端首页内容第二轮契约收口，首页分类 `categoryCode` 现作为资源模块真相源；新增 `GET /api/v1/admin/content/home/candidates` 按分类分页拉取课程/图书/资讯/播客/专题/知识库/直播候选资源；首页内容保存改为按 `categoryId + targetId` 自动派生 `contentType/title/coverUrl`，并在响应中补齐 `categoryName`、`targetCoverUrl`、`createdAt`、`updatedAt` 等页面直出字段，同时拦截同分类重复绑定同一资源。
+  2026-06-08：已完成管理端首页内容第二轮契约收口，新增 `GET /api/v1/admin/content/home/candidates` 候选资源接口，支持按 `categoryId + contentType` 分页查询课程/图书/资讯/播客/专题/知识库/直播候选资源；首页分类继续保留 `TD_HOME_REC` 这类展示位业务编码，不再承担资源类型限定职责；首页内容保存改为按 `categoryId + contentType + targetId` 校验与去重，并继续由后端自动派生 `title/coverUrl`，响应补齐 `categoryName`、`targetCoverUrl`、`createdAt`、`updatedAt` 等页面直出字段。
 - `[x]` 学习资源补齐：课程视频、播客音频补 `paperId`；图书补 `totalPages`；章节补 `startPage`、`pageCount`。
   2026-06-08：已补管理端图书分类管理第二轮契约，新增 `GET /api/v1/admin/learning/book-categories/{id}`、`GET /api/v1/admin/learning/book-categories/{id}/books`、`POST /api/v1/admin/learning/book-categories/{id}/books`、`DELETE /api/v1/admin/learning/book-categories/{id}/books`；图书分类列表/详情补 `createdAt`、`updatedAt`，并明确图书继续保持单分类模型，分类移除时直接把 `books.categoryId` 置空。
 - `[x]` 专家与直播补齐：专家补 `gender`、`birthDate`、`mobile` 等展示字段；直播拆出视频子资源，支撑直播配置弹窗。
@@ -215,7 +215,7 @@
   7. 首页内容快捷配置：已明确继续沿用统一 `contentType + targetId` 模型，不新增平行快捷接口；当前服务层已把 `contentType` 收口为 `course/book/podcast/topic/live`，补齐目标资源存在性、`startAt/endAt` 时间范围和 `targetId` 必填校验，响应新增类型中文说明与目标资源可用性/标题字段。
   8. 用户反馈字段语义：已完成第一轮语义说明收口，当前继续保留 `feedbackType` 自由文本模型，不强行收成枚举；Swagger 已明确 `feedbackType` 为前端约定/用户自填分类，`contact` 为主联系方式字段，可填写手机号、微信号、邮箱等一种便于回访的信息。
   9. 答疑状态：已完成第一轮语义化输出收口，在保留现有 `status=0/1/2` 数值兼容的前提下，管理端和用户端问答响应已补 `statusCode`、`statusLabel`，前端无需再自行硬编码状态映射。
-  10. 公开资源图片地址：已完成当前阶段契约收口。现阶段仅用户头像稳定走 `/api/v1/files/{id}/content`；其余课程/图书/播客/专题/直播/专家/知识库/首页等资源地址仍是普通 URL 字段，dev 种子中的 `https://example.com/assets/...`、`https://example.com/live/...` 统一视为占位数据，不承诺真实可访问；共享联调与前端文档已明确真实资源应优先使用可访问公网地址或 `/api/v1/files/{id}/content`，且不得把对象存储临时签名 URL 当长期真相源。
+  10. 公开资源图片地址：已完成当前阶段契约收口。现阶段仅用户头像稳定走 `/api/v1/files/{id}/content`；其余课程/图书/播客/专题/直播/专家/知识库/首页等资源地址仍是普通 URL 字段。2026-06-08 已把 dev 种子中的主要媒体样例地址直接替换为已验证可访问的 samplefile.com 公网样例资源，便于本地前端联调；共享联调与前端文档已明确真实资源应优先使用可访问公网地址或 `/api/v1/files/{id}/content`，且不得把对象存储临时签名 URL 当长期真相源。
   11. 学员导出运行时 500：已完成修复。2026-06-04 复核前端联调反馈后，本地复现 `GET /api/v1/admin/students/export` 返回 `Internal server error`，根因是 Hutool ExcelWriter 运行时缺少 Apache POI，抛出 `ClassNotFoundException: org.apache.poi.ss.usermodel.Sheet`；已在 `pom.xml` 补充 `org.apache.poi:poi-ooxml:5.4.1`，并用打包产物实际验证导出接口可返回 `200` 和有效 `.xlsx` 文件。
 - `[ ]` 统计管理补齐：从汇总接口扩展到“卡片 + 明细表 + 图表 + 导出”的页面级契约，补学员成绩管理和平台数据统计缺口。
 - `[ ]` 工作台与附加内容补齐：确认首页工作台、附加内容管理是否进入当前范围；若保留，补对应接口和契约。
@@ -311,6 +311,7 @@
 - `[ ]` 确认共享联调环境禁止 dev profile。
 - `[ ]` 编写或更新共享联调部署步骤。
 - `[ ]` 明确共享联调资源地址策略：`example.com/assets/...` 这类 dev 占位资源是否需要在 test 环境替换为真实可访问地址，或统一走后端稳定文件读取路径。
+  2026-06-08：已先完成本地 dev 验收数据的最小治理。`seed_test_data.sql` 中课程/图书/资讯/播客/专题/直播/专家/知识库等主要媒体样例地址已直接替换为已验证可访问的 samplefile.com 公网样例资源；当前只解决本地联调可访问性，不改变 test 环境资源策略，后续仍需单独确认共享联调环境是保留公网样例地址还是统一切到 `file_assets` 稳定读取路径。
 - `[ ]` 在共享联调环境导入或刷新验收数据前形成影响说明。
 
 验收标准：
