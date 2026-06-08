@@ -173,6 +173,7 @@
 - `[x]` 基础数据补齐：执业类型、机构从“仅查询”补到“可管理”，支撑手册中的独立管理页面。
   2026-05-28：已补机构、执业类型的详情、新增、修改、删除接口，并增加删除前引用校验与 `sys:reference:create/update/delete` 权限种子。
 - `[x]` 首页与内容补齐：资讯补 `source`、`tags`；首页内容配置补齐与页面下拉、资源关联一致的字段和查询能力。
+  2026-06-08：已完成管理端首页内容第二轮契约收口，首页分类 `categoryCode` 现作为资源模块真相源；新增 `GET /api/v1/admin/content/home/candidates` 按分类分页拉取课程/图书/资讯/播客/专题/知识库/直播候选资源；首页内容保存改为按 `categoryId + targetId` 自动派生 `contentType/title/coverUrl`，并在响应中补齐 `categoryName`、`targetCoverUrl`、`createdAt`、`updatedAt` 等页面直出字段，同时拦截同分类重复绑定同一资源。
 - `[x]` 学习资源补齐：课程视频、播客音频补 `paperId`；图书补 `totalPages`；章节补 `startPage`、`pageCount`。
 - `[x]` 专家与直播补齐：专家补 `gender`、`birthDate`、`mobile` 等展示字段；直播拆出视频子资源，支撑直播配置弹窗。
 - `[~]` 图像上传存储治理：补齐对象存储签名上传、头像/管理端封面确认入库和稳定读取地址，逐步替换用户端直接写 `avatarUrl` 与管理端手填 `coverUrl` / 先外传再回填 URL 的模式。

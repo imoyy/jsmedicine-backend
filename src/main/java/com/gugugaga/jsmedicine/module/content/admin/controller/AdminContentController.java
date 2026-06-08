@@ -13,6 +13,7 @@ import com.gugugaga.jsmedicine.module.content.admin.dto.FileAssetRequest;
 import com.gugugaga.jsmedicine.module.content.admin.dto.FileAssetResponse;
 import com.gugugaga.jsmedicine.module.content.admin.dto.HomeCategoryRequest;
 import com.gugugaga.jsmedicine.module.content.admin.dto.HomeCategoryResponse;
+import com.gugugaga.jsmedicine.module.content.admin.dto.HomeContentCandidateResponse;
 import com.gugugaga.jsmedicine.module.content.admin.dto.HomeContentRequest;
 import com.gugugaga.jsmedicine.module.content.admin.dto.HomeContentResponse;
 import com.gugugaga.jsmedicine.module.content.admin.dto.PodcastAudioRequest;
@@ -106,7 +107,7 @@ public class AdminContentController {
     }
 
     @Operation(summary = "新增首页内容",
-            description = "首页快捷配置继续沿用统一 contentType + targetId 模型；当前仅支持 course、book、podcast、topic、live 五类资源，并在保存时校验目标资源存在。")
+            description = "首页内容已收口为“首页分类 + 业务资源引用配置”模型。前端以 categoryId 和 targetId 为主，contentType 会按首页分类 categoryCode 自动推导；title、coverUrl 为兼容字段，保存时以后端派生资源信息为准。")
     @PreAuthorize("hasAuthority('content:home:edit')")
     @PostMapping("/home/contents")
     public ApiResponse<HomeContentResponse> createHomeContent(@Valid @RequestBody HomeContentRequest request) {
@@ -114,7 +115,7 @@ public class AdminContentController {
     }
 
     @Operation(summary = "修改首页内容",
-            description = "修改时沿用新增接口相同规则：contentType 必须是受支持的资源类型，targetId 需指向真实资源，startAt 需早于 endAt。")
+            description = "修改时沿用新增接口相同规则：categoryId 必须指向启用中的首页分类，targetId 必须属于分类绑定模块，且同一分类下不允许重复配置同一个 targetId。")
     @PreAuthorize("hasAuthority('content:home:edit')")
     @PutMapping("/home/contents/{id}")
     public ApiResponse<HomeContentResponse> updateHomeContent(@PathVariable Long id, @Valid @RequestBody HomeContentRequest request) {
@@ -127,6 +128,19 @@ public class AdminContentController {
     public ApiResponse<Void> deleteHomeContent(@PathVariable Long id) {
         adminContentService.deleteHomeContent(id);
         return ApiResponse.ok();
+    }
+
+    @Operation(summary = "分页查询首页候选资源",
+            description = "根据首页分类返回可配置到首页的候选业务资源列表。categoryId 必填，后端会按首页分类的 categoryCode 自动路由到课程、专题、图书、资讯、播客、知识库或直播资源。")
+    @PreAuthorize("hasAuthority('content:home:view')")
+    @GetMapping("/home/candidates")
+    public ApiResponse<PageResponse<HomeContentCandidateResponse>> pageHomeCandidates(
+            @RequestParam Long categoryId,
+            @RequestParam(defaultValue = "1") long page,
+            @RequestParam(defaultValue = "20") long size,
+            @RequestParam(required = false) String keyword
+    ) {
+        return ApiResponse.ok(adminContentService.pageHomeContentCandidates(categoryId, keyword, page, size));
     }
 
     @Operation(summary = "分页查询资讯")

@@ -5,7 +5,7 @@
 ## 基础说明
 
 - 项目：`中医在线` 后端
-- 文档更新时间：`2026-06-02`
+- 文档更新时间：`2026-06-08`
 - 认证方式：`Authorization: Bearer <token>`
 - 统一返回：`ApiResponse<T>`
 - 分页参数：`page`、`size`、`sort`
@@ -29,8 +29,9 @@
 - 管理端专题分项 `PUT /api/v1/admin/content/topics/{id}/items` 只允许 `course`、`book`、`podcast` 三类资源，后端统一做资源存在性、去重和排序归一化校验。
 - 管理端专题分项响应新增 `itemTypeLabel`、`itemAvailable`、`itemTitle`、`itemSubtitle`、`itemCoverUrl`、`reviewStatus`、`publishStatus`。
 - 用户端专题页契约已收口：专题列表改为显式卡片 DTO，专题详情按 `学习 / 视频 / 音频` 分区返回，并新增专题分区分页接口，不再返回 `items[].resource` 裸 `Object`。
-- 首页内容快捷配置继续沿用统一 `contentType + targetId` 模型，`contentType` 当前收口为 `course`、`book`、`podcast`、`topic`、`live`，并要求 `startAt < endAt`。
-- 首页内容响应新增 `contentTypeLabel`、`targetAvailable`、`targetTitle`，便于管理端直接渲染类型中文名和资源可用性。
+- 首页内容契约已收口为“首页分类 + 业务资源引用配置”模型：前端以 `categoryId + targetId` 为主，`contentType` 改为兼容字段，由首页分类 `categoryCode` 自动推导；当前支持 `course`、`book`、`article`、`podcast`、`topic`、`knowledge`、`live` 七类资源。
+- 管理端新增 `GET /api/v1/admin/content/home/candidates`，用于按首页分类分页拉取候选课程、图书、资讯、播客、专题、知识库或直播资源。
+- 首页内容响应新增 `categoryName`、`contentTypeLabel`、`targetAvailable`、`targetTitle`、`targetCoverUrl`、`createdAt`、`updatedAt`，便于管理端直接渲染分类、资源封面和时间信息。
 - 专家分类继续复用同一套接口，按 `parentId` 表达两级结构，响应新增 `parentCategoryName`、`level`。
 - 管理端和用户端问答响应在保留原 `status` 的同时新增 `statusCode`、`statusLabel`。
 - 用户反馈继续保留 `feedbackType` 自由文本模型，`contact` 明确表示主联系方式字段。
@@ -227,6 +228,7 @@
 | PUT | `/api/v1/admin/content/home/categories/{id}` | 修改首页分类 |
 | DELETE | `/api/v1/admin/content/home/categories/{id}` | 删除首页分类 |
 | GET | `/api/v1/admin/content/home/contents` | 分页查询首页内容 |
+| GET | `/api/v1/admin/content/home/candidates` | 按首页分类分页查询候选资源 |
 | POST | `/api/v1/admin/content/home/contents` | 新增首页内容 |
 | PUT | `/api/v1/admin/content/home/contents/{id}` | 修改首页内容 |
 | DELETE | `/api/v1/admin/content/home/contents/{id}` | 删除首页内容 |
@@ -274,19 +276,47 @@
 
 #### 4.2 首页内容快捷配置规则
 
-`POST /api/v1/admin/content/home/contents`、`PUT /api/v1/admin/content/home/contents/{id}` 当前继续沿用统一 `contentType + targetId` 模型，规则如下：
+`POST /api/v1/admin/content/home/contents`、`PUT /api/v1/admin/content/home/contents/{id}` 当前按“首页分类 + 业务资源引用配置”模型工作，规则如下：
 
-- `contentType` 仅支持 `course`、`book`、`podcast`、`topic`、`live`
-- `targetId` 对资源型首页内容为必填，且必须指向真实存在的资源
+- `categoryId` 必填，且必须指向启用中的首页分类
+- 首页分类 `categoryCode` 是资源类型真相源，当前支持 `course`、`book`、`article`、`podcast`、`topic`、`knowledge`、`live`
+- `contentType` 改为兼容字段；通常不需要前端传值，若传值则必须与 `categoryCode` 推导出的资源类型一致
+- `targetId` 必填，且必须指向首页分类绑定模块下真实存在的资源
+- 同一首页分类下不允许重复绑定同一个 `targetId`
+- `title`、`coverUrl` 为兼容字段，保存时以后端按目标资源自动派生的标题和封面为准
 - `startAt` 和 `endAt` 可为空；同时传值时必须满足 `startAt < endAt`
 
 `GET /api/v1/admin/content/home/contents` 及详情型响应当前包含：
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
+| `categoryName` | `string` | 首页分类名称 |
 | `contentTypeLabel` | `string` | 首页内容类型中文名 |
 | `targetAvailable` | `boolean` | 目标资源当前是否可用 |
 | `targetTitle` | `string` | 目标资源标题 |
+| `targetCoverUrl` | `string` | 目标资源封面地址 |
+| `createdAt` | `string(date-time)` | 创建时间 |
+| `updatedAt` | `string(date-time)` | 更新时间 |
+
+`GET /api/v1/admin/content/home/candidates` 用于支撑首页内容配置弹窗中的资源下拉与搜索，请求参数如下：
+
+| 参数 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `categoryId` | `integer` | 是 | 首页分类 ID，后端会按该分类的 `categoryCode` 自动路由候选资源类型 |
+| `page` | `integer` | 否 | 页码，默认 `1` |
+| `size` | `integer` | 否 | 每页条数，默认 `20` |
+| `keyword` | `string` | 否 | 标题/作者/讲师/关键词等关键字搜索 |
+
+候选资源响应记录当前统一包含：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | `integer` | 候选资源 ID |
+| `title` | `string` | 候选资源标题 |
+| `coverUrl` | `string` | 候选资源封面 |
+| `subtitle` | `string` | 候选资源副标题，如作者、讲师、来源、摘要 |
+| `resourceStatus` | `string` | 候选资源当前状态，例如 `draft`、`pending`、`approved`、`published`、`live` |
+| `available` | `boolean` | 当前是否可用于首页绑定 |
 
 #### 4.3 专题分项配置规则
 

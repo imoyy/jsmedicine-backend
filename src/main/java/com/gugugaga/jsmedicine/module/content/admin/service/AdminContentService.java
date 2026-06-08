@@ -19,6 +19,7 @@ import com.gugugaga.jsmedicine.module.content.admin.dto.FileAssetRequest;
 import com.gugugaga.jsmedicine.module.content.admin.dto.FileAssetResponse;
 import com.gugugaga.jsmedicine.module.content.admin.dto.HomeCategoryRequest;
 import com.gugugaga.jsmedicine.module.content.admin.dto.HomeCategoryResponse;
+import com.gugugaga.jsmedicine.module.content.admin.dto.HomeContentCandidateResponse;
 import com.gugugaga.jsmedicine.module.content.admin.dto.HomeContentRequest;
 import com.gugugaga.jsmedicine.module.content.admin.dto.HomeContentResponse;
 import com.gugugaga.jsmedicine.module.content.admin.dto.PodcastAudioRequest;
@@ -50,6 +51,8 @@ import com.gugugaga.jsmedicine.module.learning.podcast.entity.Podcast;
 import com.gugugaga.jsmedicine.module.learning.podcast.entity.PodcastAudio;
 import com.gugugaga.jsmedicine.module.learning.podcast.mapper.PodcastAudioMapper;
 import com.gugugaga.jsmedicine.module.learning.podcast.mapper.PodcastMapper;
+import com.gugugaga.jsmedicine.module.knowledge.entity.KnowledgeEntry;
+import com.gugugaga.jsmedicine.module.knowledge.mapper.KnowledgeEntryMapper;
 import com.gugugaga.jsmedicine.module.system.entity.AuditRecord;
 import com.gugugaga.jsmedicine.module.system.service.AuditRecordService;
 import org.springframework.stereotype.Service;
@@ -76,6 +79,7 @@ public class AdminContentService {
     private static final String RESOURCE_TYPE_ARTICLE = "article";
     private static final String RESOURCE_TYPE_PODCAST = "podcast";
     private static final String RESOURCE_TYPE_TOPIC = "topic";
+    private static final String RESOURCE_TYPE_KNOWLEDGE = "knowledge";
     private static final String RESOURCE_TYPE_LIVE = "live";
     private static final Map<String, String> TOPIC_ITEM_TYPE_LABELS = Map.of(
             RESOURCE_TYPE_COURSE, "课程",
@@ -85,8 +89,10 @@ public class AdminContentService {
     private static final Map<String, String> HOME_CONTENT_TYPE_LABELS = Map.of(
             RESOURCE_TYPE_COURSE, "课程",
             RESOURCE_TYPE_BOOK, "图书",
+            RESOURCE_TYPE_ARTICLE, "资讯",
             RESOURCE_TYPE_PODCAST, "播客",
             RESOURCE_TYPE_TOPIC, "专题",
+            RESOURCE_TYPE_KNOWLEDGE, "知识库",
             RESOURCE_TYPE_LIVE, "直播"
     );
 
@@ -97,6 +103,7 @@ public class AdminContentService {
     private final BookMapper bookMapper;
     private final PodcastMapper podcastMapper;
     private final LiveSessionMapper liveSessionMapper;
+    private final KnowledgeEntryMapper knowledgeEntryMapper;
     private final PodcastAudioMapper podcastAudioMapper;
     private final TopicMapper topicMapper;
     private final TopicItemMapper topicItemMapper;
@@ -114,6 +121,7 @@ public class AdminContentService {
             BookMapper bookMapper,
             PodcastMapper podcastMapper,
             LiveSessionMapper liveSessionMapper,
+            KnowledgeEntryMapper knowledgeEntryMapper,
             PodcastAudioMapper podcastAudioMapper,
             TopicMapper topicMapper,
             TopicItemMapper topicItemMapper,
@@ -130,6 +138,7 @@ public class AdminContentService {
         this.bookMapper = bookMapper;
         this.podcastMapper = podcastMapper;
         this.liveSessionMapper = liveSessionMapper;
+        this.knowledgeEntryMapper = knowledgeEntryMapper;
         this.podcastAudioMapper = podcastAudioMapper;
         this.topicMapper = topicMapper;
         this.topicItemMapper = topicItemMapper;
@@ -190,8 +199,7 @@ public class AdminContentService {
 
     @Transactional(rollbackFor = Exception.class)
     public HomeContentResponse createHomeContent(HomeContentRequest request) {
-        requireHomeCategory(request.categoryId());
-        NormalizedHomeContentRequest normalizedRequest = normalizeHomeContentRequest(request);
+        NormalizedHomeContentRequest normalizedRequest = normalizeHomeContentRequest(request, null);
         HomeContent content = new HomeContent();
         fillHomeContent(content, normalizedRequest);
         content.setDeleted(0);
@@ -201,13 +209,98 @@ public class AdminContentService {
 
     @Transactional(rollbackFor = Exception.class)
     public HomeContentResponse updateHomeContent(Long id, HomeContentRequest request) {
-        requireHomeContent(id);
-        requireHomeCategory(request.categoryId());
-        NormalizedHomeContentRequest normalizedRequest = normalizeHomeContentRequest(request);
-        HomeContent content = homeContentMapper.selectById(id);
+        HomeContent content = requireHomeContent(id);
+        NormalizedHomeContentRequest normalizedRequest = normalizeHomeContentRequest(request, id);
         fillHomeContent(content, normalizedRequest);
         homeContentMapper.updateById(content);
         return toHomeContentResponse(content);
+    }
+
+    public PageResponse<HomeContentCandidateResponse> pageHomeContentCandidates(
+            Long categoryId,
+            String keyword,
+            long page,
+            long size
+    ) {
+        HomeCategory category = requireEnabledHomeCategory(categoryId);
+        String contentType = normalizeHomeCategoryCode(category.getCategoryCode());
+        return switch (contentType) {
+            case RESOURCE_TYPE_COURSE -> {
+                Page<Course> coursePage = courseMapper.selectPage(new Page<>(normalizePage(page), normalizeSize(size)),
+                        new LambdaQueryWrapper<Course>()
+                                .eq(Course::getDeleted, 0)
+                                .and(hasText(keyword), wrapper -> wrapper
+                                        .like(Course::getCourseName, keyword)
+                                        .or()
+                                        .like(Course::getLecturerName, keyword))
+                                .orderByDesc(Course::getCreatedAt));
+                yield pageResponse(coursePage, coursePage.getRecords().stream().map(this::toCourseHomeCandidate).toList());
+            }
+            case RESOURCE_TYPE_BOOK -> {
+                Page<Book> bookPage = bookMapper.selectPage(new Page<>(normalizePage(page), normalizeSize(size)),
+                        new LambdaQueryWrapper<Book>()
+                                .eq(Book::getDeleted, 0)
+                                .and(hasText(keyword), wrapper -> wrapper
+                                        .like(Book::getBookName, keyword)
+                                        .or()
+                                        .like(Book::getAuthor, keyword))
+                                .orderByDesc(Book::getCreatedAt));
+                yield pageResponse(bookPage, bookPage.getRecords().stream().map(this::toBookHomeCandidate).toList());
+            }
+            case RESOURCE_TYPE_ARTICLE -> {
+                Page<Article> articlePage = articleMapper.selectPage(new Page<>(normalizePage(page), normalizeSize(size)),
+                        new LambdaQueryWrapper<Article>()
+                                .eq(Article::getDeleted, 0)
+                                .and(hasText(keyword), wrapper -> wrapper
+                                        .like(Article::getTitle, keyword)
+                                        .or()
+                                        .like(Article::getSource, keyword))
+                                .orderByDesc(Article::getCreatedAt));
+                yield pageResponse(articlePage, articlePage.getRecords().stream().map(this::toArticleHomeCandidate).toList());
+            }
+            case RESOURCE_TYPE_PODCAST -> {
+                Page<Podcast> podcastPage = podcastMapper.selectPage(new Page<>(normalizePage(page), normalizeSize(size)),
+                        new LambdaQueryWrapper<Podcast>()
+                                .eq(Podcast::getDeleted, 0)
+                                .and(hasText(keyword), wrapper -> wrapper
+                                        .like(Podcast::getTitle, keyword)
+                                        .or()
+                                        .like(Podcast::getSpeakerName, keyword))
+                                .orderByDesc(Podcast::getCreatedAt));
+                yield pageResponse(podcastPage, podcastPage.getRecords().stream().map(this::toPodcastHomeCandidate).toList());
+            }
+            case RESOURCE_TYPE_TOPIC -> {
+                Page<Topic> topicPage = topicMapper.selectPage(new Page<>(normalizePage(page), normalizeSize(size)),
+                        new LambdaQueryWrapper<Topic>()
+                                .eq(Topic::getDeleted, 0)
+                                .and(hasText(keyword), wrapper -> wrapper.like(Topic::getTitle, keyword))
+                                .orderByDesc(Topic::getCreatedAt));
+                yield pageResponse(topicPage, topicPage.getRecords().stream().map(this::toTopicHomeCandidate).toList());
+            }
+            case RESOURCE_TYPE_KNOWLEDGE -> {
+                Page<KnowledgeEntry> knowledgePage = knowledgeEntryMapper.selectPage(new Page<>(normalizePage(page), normalizeSize(size)),
+                        new LambdaQueryWrapper<KnowledgeEntry>()
+                                .eq(KnowledgeEntry::getDeleted, 0)
+                                .and(hasText(keyword), wrapper -> wrapper
+                                        .like(KnowledgeEntry::getTitle, keyword)
+                                        .or()
+                                        .like(KnowledgeEntry::getKeywords, keyword))
+                                .orderByDesc(KnowledgeEntry::getCreatedAt));
+                yield pageResponse(knowledgePage, knowledgePage.getRecords().stream().map(this::toKnowledgeHomeCandidate).toList());
+            }
+            case RESOURCE_TYPE_LIVE -> {
+                Page<LiveSession> livePage = liveSessionMapper.selectPage(new Page<>(normalizePage(page), normalizeSize(size)),
+                        new LambdaQueryWrapper<LiveSession>()
+                                .eq(LiveSession::getDeleted, 0)
+                                .and(hasText(keyword), wrapper -> wrapper
+                                        .like(LiveSession::getTitle, keyword)
+                                        .or()
+                                        .like(LiveSession::getSpeakerName, keyword))
+                                .orderByDesc(LiveSession::getCreatedAt));
+                yield pageResponse(livePage, livePage.getRecords().stream().map(this::toLiveHomeCandidate).toList());
+            }
+            default -> throw new BusinessException(ErrorCode.BAD_REQUEST, "Unsupported home categoryCode: " + contentType);
+        };
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -466,9 +559,9 @@ public class AdminContentService {
     }
 
     private void fillHomeCategory(HomeCategory category, HomeCategoryRequest request) {
-        category.setParentId(request.parentId());
+        category.setParentId(null);
         category.setCategoryName(request.categoryName());
-        category.setCategoryCode(request.categoryCode());
+        category.setCategoryCode(normalizeHomeCategoryCode(request.categoryCode()));
         category.setIconUrl(request.iconUrl());
         category.setDescription(request.description());
         category.setSortOrder(request.sortOrder() == null ? 0 : request.sortOrder());
@@ -476,17 +569,12 @@ public class AdminContentService {
     }
 
     private void fillHomeContent(HomeContent content, NormalizedHomeContentRequest request) {
-        StableCoverUrlService.CoverBinding coverBinding = stableCoverUrlService.resolveCoverBinding(
-                request.coverUrl(),
-                content.getCoverUrl(),
-                content.getCoverFileAssetId()
-        );
         content.setCategoryId(request.categoryId());
         content.setContentType(request.contentType());
         content.setTargetId(request.targetId());
         content.setTitle(request.title());
-        content.setCoverUrl(coverBinding.coverUrl());
-        content.setCoverFileAssetId(coverBinding.fileAssetId());
+        content.setCoverUrl(request.coverUrl());
+        content.setCoverFileAssetId(null);
         content.setLinkUrl(request.linkUrl());
         content.setSortOrder(request.sortOrder());
         content.setStartAt(request.startAt());
@@ -636,18 +724,56 @@ public class AdminContentService {
     }
 
     private HomeCategoryResponse toHomeCategoryResponse(HomeCategory category) {
-        return new HomeCategoryResponse(category.getId(), category.getParentId(), category.getCategoryName(),
+        return new HomeCategoryResponse(category.getId(), null, category.getCategoryName(),
                 category.getCategoryCode(), category.getIconUrl(), category.getDescription(), category.getSortOrder(),
                 category.getStatus());
     }
 
     private HomeContentResponse toHomeContentResponse(HomeContent content) {
+        HomeCategory category = homeCategoryMapper.selectById(content.getCategoryId());
         HomeContentTargetSummary summary = loadHomeContentTargetSummarySafely(content.getContentType(), content.getTargetId());
-        return new HomeContentResponse(content.getId(), content.getCategoryId(), content.getContentType(),
+        return new HomeContentResponse(content.getId(), content.getCategoryId(),
+                category == null ? null : category.getCategoryName(), content.getContentType(),
                 HOME_CONTENT_TYPE_LABELS.getOrDefault(content.getContentType(), content.getContentType()),
                 content.getTargetId(), summary != null, summary == null ? null : summary.targetTitle(),
-                content.getTitle(), content.getCoverUrl(), content.getLinkUrl(),
-                content.getSortOrder(), content.getStartAt(), content.getEndAt(), content.getStatus());
+                summary == null ? null : summary.targetCoverUrl(), content.getTitle(), content.getCoverUrl(),
+                content.getLinkUrl(), content.getSortOrder(), content.getStartAt(), content.getEndAt(),
+                content.getStatus(), content.getCreatedAt(), content.getUpdatedAt());
+    }
+
+    private HomeContentCandidateResponse toCourseHomeCandidate(Course course) {
+        return new HomeContentCandidateResponse(course.getId(), course.getCourseName(), course.getCoverUrl(),
+                course.getLecturerName(), resolveReviewableResourceStatus(course.getReviewStatus(), course.getPublishStatus()), true);
+    }
+
+    private HomeContentCandidateResponse toBookHomeCandidate(Book book) {
+        return new HomeContentCandidateResponse(book.getId(), book.getBookName(), book.getCoverUrl(),
+                book.getAuthor(), resolveReviewableResourceStatus(book.getReviewStatus(), book.getPublishStatus()), true);
+    }
+
+    private HomeContentCandidateResponse toArticleHomeCandidate(Article article) {
+        return new HomeContentCandidateResponse(article.getId(), article.getTitle(), article.getCoverUrl(),
+                article.getSource(), resolveReviewableResourceStatus(article.getReviewStatus(), article.getPublishStatus()), true);
+    }
+
+    private HomeContentCandidateResponse toPodcastHomeCandidate(Podcast podcast) {
+        return new HomeContentCandidateResponse(podcast.getId(), podcast.getTitle(), podcast.getCoverUrl(),
+                podcast.getSpeakerName(), resolveReviewableResourceStatus(podcast.getReviewStatus(), podcast.getPublishStatus()), true);
+    }
+
+    private HomeContentCandidateResponse toTopicHomeCandidate(Topic topic) {
+        return new HomeContentCandidateResponse(topic.getId(), topic.getTitle(), topic.getCoverUrl(),
+                topic.getSummary(), resolveReviewableResourceStatus(topic.getReviewStatus(), topic.getPublishStatus()), true);
+    }
+
+    private HomeContentCandidateResponse toKnowledgeHomeCandidate(KnowledgeEntry entry) {
+        return new HomeContentCandidateResponse(entry.getId(), entry.getTitle(), entry.getCoverUrl(),
+                entry.getSummary(), resolveReviewableResourceStatus(entry.getReviewStatus(), entry.getPublishStatus()), true);
+    }
+
+    private HomeContentCandidateResponse toLiveHomeCandidate(LiveSession liveSession) {
+        return new HomeContentCandidateResponse(liveSession.getId(), liveSession.getTitle(), liveSession.getCoverUrl(),
+                liveSession.getSpeakerName(), resolveLiveResourceStatus(liveSession), true);
     }
 
     private ArticleResponse toArticleResponse(Article article) {
@@ -731,8 +857,13 @@ public class AdminContentService {
         return result;
     }
 
-    private NormalizedHomeContentRequest normalizeHomeContentRequest(HomeContentRequest request) {
-        String normalizedContentType = normalizeHomeContentType(request.contentType());
+    private NormalizedHomeContentRequest normalizeHomeContentRequest(HomeContentRequest request, Long currentContentId) {
+        HomeCategory category = requireEnabledHomeCategory(request.categoryId());
+        String normalizedContentType = normalizeHomeCategoryCode(category.getCategoryCode());
+        if (hasText(request.contentType())
+                && !Objects.equals(normalizedContentType, normalizeHomeContentType(request.contentType()))) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "contentType must match home categoryCode");
+        }
         if (request.startAt() != null && request.endAt() != null && request.startAt().isAfter(request.endAt())) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "startAt must be before endAt");
         }
@@ -742,19 +873,28 @@ public class AdminContentService {
         if (request.sortOrder() != null && request.sortOrder() < 0) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "sortOrder must not be less than 0");
         }
-        requireHomeContentTargetSummary(normalizedContentType, request.targetId());
+        HomeContentTargetSummary summary = requireHomeContentTargetSummary(normalizedContentType, request.targetId());
+        ensureHomeContentTargetNotDuplicated(request.categoryId(), request.targetId(), currentContentId);
         return new NormalizedHomeContentRequest(
                 request.categoryId(),
                 normalizedContentType,
                 request.targetId(),
-                request.title(),
-                request.coverUrl(),
+                summary.targetTitle(),
+                summary.targetCoverUrl(),
                 request.linkUrl(),
                 request.sortOrder() == null ? 0 : request.sortOrder(),
                 request.startAt(),
                 request.endAt(),
                 request.status()
         );
+    }
+
+    private String normalizeHomeCategoryCode(String categoryCode) {
+        String normalizedCode = categoryCode == null ? "" : categoryCode.trim().toLowerCase(Locale.ROOT);
+        if (!HOME_CONTENT_TYPE_LABELS.containsKey(normalizedCode)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Unsupported home categoryCode: " + categoryCode);
+        }
+        return normalizedCode;
     }
 
     private String normalizeHomeContentType(String contentType) {
@@ -786,11 +926,34 @@ public class AdminContentService {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "targetId must not be null");
         }
         return switch (contentType) {
-            case RESOURCE_TYPE_COURSE -> new HomeContentTargetSummary(requireTopicCourse(targetId).getCourseName());
-            case RESOURCE_TYPE_BOOK -> new HomeContentTargetSummary(requireTopicBook(targetId).getBookName());
-            case RESOURCE_TYPE_PODCAST -> new HomeContentTargetSummary(requireTopicPodcast(targetId).getTitle());
-            case RESOURCE_TYPE_TOPIC -> new HomeContentTargetSummary(requireTopic(targetId).getTitle());
-            case RESOURCE_TYPE_LIVE -> new HomeContentTargetSummary(requireLiveSession(targetId).getTitle());
+            case RESOURCE_TYPE_COURSE -> {
+                Course course = requireTopicCourse(targetId);
+                yield new HomeContentTargetSummary(course.getCourseName(), course.getCoverUrl());
+            }
+            case RESOURCE_TYPE_BOOK -> {
+                Book book = requireTopicBook(targetId);
+                yield new HomeContentTargetSummary(book.getBookName(), book.getCoverUrl());
+            }
+            case RESOURCE_TYPE_ARTICLE -> {
+                Article article = requireArticle(targetId);
+                yield new HomeContentTargetSummary(article.getTitle(), article.getCoverUrl());
+            }
+            case RESOURCE_TYPE_PODCAST -> {
+                Podcast podcast = requireTopicPodcast(targetId);
+                yield new HomeContentTargetSummary(podcast.getTitle(), podcast.getCoverUrl());
+            }
+            case RESOURCE_TYPE_TOPIC -> {
+                Topic topic = requireTopic(targetId);
+                yield new HomeContentTargetSummary(topic.getTitle(), topic.getCoverUrl());
+            }
+            case RESOURCE_TYPE_KNOWLEDGE -> {
+                KnowledgeEntry entry = requireKnowledgeEntry(targetId);
+                yield new HomeContentTargetSummary(entry.getTitle(), entry.getCoverUrl());
+            }
+            case RESOURCE_TYPE_LIVE -> {
+                LiveSession liveSession = requireLiveSession(targetId);
+                yield new HomeContentTargetSummary(liveSession.getTitle(), liveSession.getCoverUrl());
+            }
             default -> throw new BusinessException(ErrorCode.BAD_REQUEST, "Unsupported home contentType: " + contentType);
         };
     }
@@ -858,6 +1021,63 @@ public class AdminContentService {
         return liveSession;
     }
 
+    private KnowledgeEntry requireKnowledgeEntry(Long id) {
+        KnowledgeEntry entry = knowledgeEntryMapper.selectById(id);
+        if (entry == null || !Objects.equals(entry.getDeleted(), 0)) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Knowledge entry does not exist");
+        }
+        return entry;
+    }
+
+    private HomeCategory requireEnabledHomeCategory(Long id) {
+        HomeCategory category = requireHomeCategory(id);
+        if (category.getStatus() != com.gugugaga.jsmedicine.common.enums.EnabledStatus.ENABLED) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Home category must be enabled");
+        }
+        return category;
+    }
+
+    private void ensureHomeContentTargetNotDuplicated(Long categoryId, Long targetId, Long currentContentId) {
+        HomeContent existing = homeContentMapper.selectOne(new LambdaQueryWrapper<HomeContent>()
+                .eq(HomeContent::getDeleted, 0)
+                .eq(HomeContent::getCategoryId, categoryId)
+                .eq(HomeContent::getTargetId, targetId)
+                .last("limit 1"));
+        if (existing != null && !Objects.equals(existing.getId(), currentContentId)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Home content target already exists in category");
+        }
+    }
+
+    private String resolveReviewableResourceStatus(ReviewStatus reviewStatus, PublishStatus publishStatus) {
+        if (reviewStatus == null) {
+            return "unknown";
+        }
+        if (reviewStatus == ReviewStatus.APPROVED) {
+            return publishStatus == PublishStatus.PUBLISHED ? "published" : "approved";
+        }
+        return switch (reviewStatus) {
+            case DRAFT -> "draft";
+            case PENDING -> "pending";
+            case REJECTED -> "rejected";
+            case APPROVED -> "approved";
+        };
+    }
+
+    private String resolveLiveResourceStatus(LiveSession liveSession) {
+        if (liveSession.getReviewStatus() != ReviewStatus.APPROVED) {
+            return resolveReviewableResourceStatus(liveSession.getReviewStatus(), PublishStatus.UNPUBLISHED);
+        }
+        if (liveSession.getLiveStatus() == null) {
+            return "approved";
+        }
+        return switch (liveSession.getLiveStatus()) {
+            case NOT_STARTED -> "not_started";
+            case LIVE -> "live";
+            case ENDED -> "ended";
+            case CANCELED -> "canceled";
+        };
+    }
+
     private FileAssetResponse toFileAssetResponse(FileAsset fileAsset) {
         return new FileAssetResponse(fileAsset.getId(), fileAsset.getAssetType(), fileAsset.getStorageProvider(),
                 fileAsset.getBucketName(), fileAsset.getObjectKey(), fileAsset.getOriginalName(),
@@ -900,7 +1120,7 @@ public class AdminContentService {
     ) {
     }
 
-    private record HomeContentTargetSummary(String targetTitle) {
+    private record HomeContentTargetSummary(String targetTitle, String targetCoverUrl) {
     }
 
     private record TopicItemResourceSummary(
