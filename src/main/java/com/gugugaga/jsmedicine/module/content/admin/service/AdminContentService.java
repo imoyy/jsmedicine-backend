@@ -218,13 +218,14 @@ public class AdminContentService {
 
     public PageResponse<HomeContentCandidateResponse> pageHomeContentCandidates(
             Long categoryId,
+            String contentType,
             String keyword,
             long page,
             long size
     ) {
-        HomeCategory category = requireEnabledHomeCategory(categoryId);
-        String contentType = normalizeHomeCategoryCode(category.getCategoryCode());
-        return switch (contentType) {
+        requireEnabledHomeCategory(categoryId);
+        String normalizedContentType = normalizeHomeContentType(contentType);
+        return switch (normalizedContentType) {
             case RESOURCE_TYPE_COURSE -> {
                 Page<Course> coursePage = courseMapper.selectPage(new Page<>(normalizePage(page), normalizeSize(size)),
                         new LambdaQueryWrapper<Course>()
@@ -299,7 +300,7 @@ public class AdminContentService {
                                 .orderByDesc(LiveSession::getCreatedAt));
                 yield pageResponse(livePage, livePage.getRecords().stream().map(this::toLiveHomeCandidate).toList());
             }
-            default -> throw new BusinessException(ErrorCode.BAD_REQUEST, "Unsupported home categoryCode: " + contentType);
+            default -> throw new BusinessException(ErrorCode.BAD_REQUEST, "Unsupported home contentType: " + contentType);
         };
     }
 
@@ -858,12 +859,8 @@ public class AdminContentService {
     }
 
     private NormalizedHomeContentRequest normalizeHomeContentRequest(HomeContentRequest request, Long currentContentId) {
-        HomeCategory category = requireEnabledHomeCategory(request.categoryId());
-        String normalizedContentType = normalizeHomeCategoryCode(category.getCategoryCode());
-        if (hasText(request.contentType())
-                && !Objects.equals(normalizedContentType, normalizeHomeContentType(request.contentType()))) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST, "contentType must match home categoryCode");
-        }
+        requireEnabledHomeCategory(request.categoryId());
+        String normalizedContentType = normalizeHomeContentType(request.contentType());
         if (request.startAt() != null && request.endAt() != null && request.startAt().isAfter(request.endAt())) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "startAt must be before endAt");
         }
@@ -874,7 +871,7 @@ public class AdminContentService {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "sortOrder must not be less than 0");
         }
         HomeContentTargetSummary summary = requireHomeContentTargetSummary(normalizedContentType, request.targetId());
-        ensureHomeContentTargetNotDuplicated(request.categoryId(), request.targetId(), currentContentId);
+        ensureHomeContentTargetNotDuplicated(request.categoryId(), normalizedContentType, request.targetId(), currentContentId);
         return new NormalizedHomeContentRequest(
                 request.categoryId(),
                 normalizedContentType,
@@ -890,9 +887,9 @@ public class AdminContentService {
     }
 
     private String normalizeHomeCategoryCode(String categoryCode) {
-        String normalizedCode = categoryCode == null ? "" : categoryCode.trim().toLowerCase(Locale.ROOT);
-        if (!HOME_CONTENT_TYPE_LABELS.containsKey(normalizedCode)) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST, "Unsupported home categoryCode: " + categoryCode);
+        String normalizedCode = categoryCode == null ? "" : categoryCode.trim();
+        if (!hasText(normalizedCode)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "categoryCode must not be blank");
         }
         return normalizedCode;
     }
@@ -1037,10 +1034,11 @@ public class AdminContentService {
         return category;
     }
 
-    private void ensureHomeContentTargetNotDuplicated(Long categoryId, Long targetId, Long currentContentId) {
+    private void ensureHomeContentTargetNotDuplicated(Long categoryId, String contentType, Long targetId, Long currentContentId) {
         HomeContent existing = homeContentMapper.selectOne(new LambdaQueryWrapper<HomeContent>()
                 .eq(HomeContent::getDeleted, 0)
                 .eq(HomeContent::getCategoryId, categoryId)
+                .eq(HomeContent::getContentType, contentType)
                 .eq(HomeContent::getTargetId, targetId)
                 .last("limit 1"));
         if (existing != null && !Objects.equals(existing.getId(), currentContentId)) {

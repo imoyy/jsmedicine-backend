@@ -18,7 +18,7 @@
 - `GET /api/v1/files/{id}/content` 当前可用于读取公开 `file_assets` 资源。只要业务表中的 URL 字段显式保存了这个路径，前端就可以把它当成稳定真相源使用。
 - 课程、图书、资讯、播客、专题、直播、专家、知识库、首页分类、首页内容等模块里的 `coverUrl`，以及 `audioUrl`、`videoUrl`、`linkUrl`、`playbackUrl` 这类字段，当前仍是普通字符串 URL 字段；后端尚未统一强制它们都走 `file_assets` 稳定读取地址。
 - 学员认证材料 `student_certification_files.sourceUrl` 当前继续允许保存历史外链或外部地址，用于兼容存量数据和未迁移资源。
-- dev 种子里的 `https://example.com/assets/...`、`https://example.com/live/...` 仅用于页面占位和字段联调，不代表共享联调环境或后续环境中这些地址真实可访问。
+- 当前 dev 种子里的主要媒体样例地址已直接换成可访问的 samplefile.com 公网样例资源，用于本地联调验证媒体字段；这不代表共享联调环境或后续环境必须沿用同一地址策略。
 - 新接入真实资源时，如果已经有公开 `file_assets` 记录，优先把业务字段写成 `/api/v1/files/{id}/content`；不要把对象存储临时签名 URL 当作长期真相源。
 
 ## 近期契约变更
@@ -29,8 +29,8 @@
 - 管理端专题分项 `PUT /api/v1/admin/content/topics/{id}/items` 只允许 `course`、`book`、`podcast` 三类资源，后端统一做资源存在性、去重和排序归一化校验。
 - 管理端专题分项响应新增 `itemTypeLabel`、`itemAvailable`、`itemTitle`、`itemSubtitle`、`itemCoverUrl`、`reviewStatus`、`publishStatus`。
 - 用户端专题页契约已收口：专题列表改为显式卡片 DTO，专题详情按 `学习 / 视频 / 音频` 分区返回，并新增专题分区分页接口，不再返回 `items[].resource` 裸 `Object`。
-- 首页内容契约已收口为“首页分类 + 业务资源引用配置”模型：前端以 `categoryId + targetId` 为主，`contentType` 改为兼容字段，由首页分类 `categoryCode` 自动推导；当前支持 `course`、`book`、`article`、`podcast`、`topic`、`knowledge`、`live` 七类资源。
-- 管理端新增 `GET /api/v1/admin/content/home/candidates`，用于按首页分类分页拉取候选课程、图书、资讯、播客、专题、知识库或直播资源。
+- 首页内容契约已收口为“首页分类 + 业务资源引用配置”模型：首页分类只承载展示位语义，资源类型以 `contentType` 为准；前端以 `categoryId + contentType + targetId` 为主，当前支持 `course`、`book`、`article`、`podcast`、`topic`、`knowledge`、`live` 七类资源。
+- 管理端新增 `GET /api/v1/admin/content/home/candidates`，用于按首页分类和来源模块分页拉取候选课程、图书、资讯、播客、专题、知识库或直播资源。
 - 首页内容响应新增 `categoryName`、`contentTypeLabel`、`targetAvailable`、`targetTitle`、`targetCoverUrl`、`createdAt`、`updatedAt`，便于管理端直接渲染分类、资源封面和时间信息。
 - 专家分类继续复用同一套接口，按 `parentId` 表达两级结构，响应新增 `parentCategoryName`、`level`。
 - 管理端和用户端问答响应在保留原 `status` 的同时新增 `statusCode`、`statusLabel`。
@@ -228,7 +228,7 @@
 | PUT | `/api/v1/admin/content/home/categories/{id}` | 修改首页分类 |
 | DELETE | `/api/v1/admin/content/home/categories/{id}` | 删除首页分类 |
 | GET | `/api/v1/admin/content/home/contents` | 分页查询首页内容 |
-| GET | `/api/v1/admin/content/home/candidates` | 按首页分类分页查询候选资源 |
+| GET | `/api/v1/admin/content/home/candidates` | 按首页分类和来源模块分页查询候选资源 |
 | POST | `/api/v1/admin/content/home/contents` | 新增首页内容 |
 | PUT | `/api/v1/admin/content/home/contents/{id}` | 修改首页内容 |
 | DELETE | `/api/v1/admin/content/home/contents/{id}` | 删除首页内容 |
@@ -279,10 +279,10 @@
 `POST /api/v1/admin/content/home/contents`、`PUT /api/v1/admin/content/home/contents/{id}` 当前按“首页分类 + 业务资源引用配置”模型工作，规则如下：
 
 - `categoryId` 必填，且必须指向启用中的首页分类
-- 首页分类 `categoryCode` 是资源类型真相源，当前支持 `course`、`book`、`article`、`podcast`、`topic`、`knowledge`、`live`
-- `contentType` 改为兼容字段；通常不需要前端传值，若传值则必须与 `categoryCode` 推导出的资源类型一致
-- `targetId` 必填，且必须指向首页分类绑定模块下真实存在的资源
-- 同一首页分类下不允许重复绑定同一个 `targetId`
+- 首页分类 `categoryCode` 继续保留展示位业务编码语义，例如 `TD_HOME_REC`、`TD_BANNER`、`TD_HOT_TOPIC`，不再承担资源类型限定职责
+- `contentType` 必填，当前支持 `course`、`book`、`article`、`podcast`、`topic`、`knowledge`、`live`
+- `targetId` 必填，且必须指向 `contentType` 对应模块下真实存在的资源
+- 同一首页分类下不允许重复绑定同一个 `contentType + targetId` 组合
 - `title`、`coverUrl` 为兼容字段，保存时以后端按目标资源自动派生的标题和封面为准
 - `startAt` 和 `endAt` 可为空；同时传值时必须满足 `startAt < endAt`
 
@@ -302,7 +302,8 @@
 
 | 参数 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
-| `categoryId` | `integer` | 是 | 首页分类 ID，后端会按该分类的 `categoryCode` 自动路由候选资源类型 |
+| `categoryId` | `integer` | 是 | 首页分类 ID，仅用于校验分类存在且启用 |
+| `contentType` | `string` | 是 | 候选资源来源模块，支持 `course`、`book`、`article`、`podcast`、`topic`、`knowledge`、`live` |
 | `page` | `integer` | 否 | 页码，默认 `1` |
 | `size` | `integer` | 否 | 每页条数，默认 `20` |
 | `keyword` | `string` | 否 | 标题/作者/讲师/关键词等关键字搜索 |

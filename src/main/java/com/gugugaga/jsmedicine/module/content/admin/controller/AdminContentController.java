@@ -107,7 +107,7 @@ public class AdminContentController {
     }
 
     @Operation(summary = "新增首页内容",
-            description = "首页内容已收口为“首页分类 + 业务资源引用配置”模型。前端以 categoryId 和 targetId 为主，contentType 会按首页分类 categoryCode 自动推导；title、coverUrl 为兼容字段，保存时以后端派生资源信息为准。")
+            description = "首页内容已收口为“首页分类 + 业务资源引用配置”模型。首页分类只承载展示位语义，资源类型以 contentType 为准；前端以 categoryId、contentType 和 targetId 为主，title、coverUrl 为兼容字段，保存时以后端派生资源信息为准。")
     @PreAuthorize("hasAuthority('content:home:edit')")
     @PostMapping("/home/contents")
     public ApiResponse<HomeContentResponse> createHomeContent(@Valid @RequestBody HomeContentRequest request) {
@@ -115,7 +115,7 @@ public class AdminContentController {
     }
 
     @Operation(summary = "修改首页内容",
-            description = "修改时沿用新增接口相同规则：categoryId 必须指向启用中的首页分类，targetId 必须属于分类绑定模块，且同一分类下不允许重复配置同一个 targetId。")
+            description = "修改时沿用新增接口相同规则：categoryId 必须指向启用中的首页分类，资源类型以 contentType 为准，且同一分类下不允许重复配置同一个 contentType + targetId 组合。")
     @PreAuthorize("hasAuthority('content:home:edit')")
     @PutMapping("/home/contents/{id}")
     public ApiResponse<HomeContentResponse> updateHomeContent(@PathVariable Long id, @Valid @RequestBody HomeContentRequest request) {
@@ -131,16 +131,17 @@ public class AdminContentController {
     }
 
     @Operation(summary = "分页查询首页候选资源",
-            description = "根据首页分类返回可配置到首页的候选业务资源列表。categoryId 必填，后端会按首页分类的 categoryCode 自动路由到课程、专题、图书、资讯、播客、知识库或直播资源。")
+            description = "根据首页分类和来源模块返回可配置到首页的候选业务资源列表。首页分类只承载展示位语义，候选资源路由以 contentType 为准。")
     @PreAuthorize("hasAuthority('content:home:view')")
     @GetMapping("/home/candidates")
     public ApiResponse<PageResponse<HomeContentCandidateResponse>> pageHomeCandidates(
             @RequestParam Long categoryId,
+            @RequestParam String contentType,
             @RequestParam(defaultValue = "1") long page,
             @RequestParam(defaultValue = "20") long size,
             @RequestParam(required = false) String keyword
     ) {
-        return ApiResponse.ok(adminContentService.pageHomeContentCandidates(categoryId, keyword, page, size));
+        return ApiResponse.ok(adminContentService.pageHomeContentCandidates(categoryId, contentType, keyword, page, size));
     }
 
     @Operation(summary = "分页查询资讯")

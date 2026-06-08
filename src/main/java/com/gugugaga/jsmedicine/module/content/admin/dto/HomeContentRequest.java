@@ -2,6 +2,7 @@ package com.gugugaga.jsmedicine.module.content.admin.dto;
 
 import com.gugugaga.jsmedicine.common.enums.EnabledStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
@@ -13,8 +14,9 @@ public record HomeContentRequest(
         @Schema(description = "首页分类 ID", example = "1")
         Long categoryId,
 
+        @NotBlank(message = "contentType must not be blank")
         @Schema(
-                description = "兼容字段。通常不需要前端传值，后端会按首页分类的 categoryCode 自动推导；若传值，必须与分类绑定模块一致。支持 course/book/article/podcast/topic/knowledge/live",
+                description = "首页内容来源模块。首页分类只承担展示位语义，资源类型以 contentType 为准。支持 course/book/article/podcast/topic/knowledge/live",
                 allowableValues = {"course", "book", "article", "podcast", "topic", "knowledge", "live"},
                 example = "course"
         )
