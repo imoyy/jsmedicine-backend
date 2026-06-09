@@ -76,13 +76,13 @@ public class AdminStatisticsService {
     }
 
     public StudentSummaryResponse studentSummary(StatisticsQuery query) {
-        StatisticsQuery normalized = normalize(query);
+        StatisticsQuery normalized = normalizeStudentPopulationQuery(query);
         return statisticsMapper.selectStudentSummary(
                 normalized.startAt(), normalized.endAt(), normalized.province(), normalized.city(), normalized.district());
     }
 
     public List<RegionStatisticsResponse> regionStatistics(StatisticsQuery query) {
-        StatisticsQuery normalized = normalize(query);
+        StatisticsQuery normalized = normalizeStudentPopulationQuery(query);
         return statisticsMapper.selectRegionStatistics(
                 normalized.startAt(), normalized.endAt(), normalized.province(), normalized.city(), normalized.district());
     }
@@ -172,6 +172,25 @@ public class AdminStatisticsService {
         LocalDateTime endAt = query.endAt() == null ? LocalDateTime.now() : query.endAt();
         LocalDateTime startAt = query.startAt() == null ? endAt.minusDays(30) : query.startAt();
         if (!startAt.isBefore(endAt)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "startAt must be before endAt");
+        }
+        return new StatisticsQuery(
+                startAt,
+                endAt,
+                blankToNull(query.resourceType()),
+                query.resourceId(),
+                query.studentId(),
+                blankToNull(query.province()),
+                blankToNull(query.city()),
+                blankToNull(query.district()),
+                normalizeDimension(query.dimension())
+        );
+    }
+
+    private StatisticsQuery normalizeStudentPopulationQuery(StatisticsQuery query) {
+        LocalDateTime startAt = query.startAt();
+        LocalDateTime endAt = query.endAt();
+        if (startAt != null && endAt != null && !startAt.isBefore(endAt)) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "startAt must be before endAt");
         }
         return new StatisticsQuery(

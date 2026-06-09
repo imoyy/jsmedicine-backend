@@ -143,8 +143,8 @@ public interface AdminStatisticsMapper {
                 COALESCE(SUM(CASE WHEN s.user_id IS NOT NULL THEN 1 ELSE 0 END), 0) AS linkedUsers
             FROM students s
             WHERE s.deleted = 0
-              AND s.created_at >= #{startAt}
-              AND s.created_at < #{endAt}
+              AND (#{startAt} IS NULL OR s.created_at >= #{startAt})
+              AND (#{endAt} IS NULL OR s.created_at < #{endAt})
               AND (#{province} IS NULL OR s.province = #{province})
               AND (#{city} IS NULL OR s.city = #{city})
               AND (#{district} IS NULL OR s.district = #{district})
@@ -183,8 +183,8 @@ public interface AdminStatisticsMapper {
                     COALESCE(SUM(CASE WHEN lr.completed = 1 THEN 1 ELSE 0 END), 0) AS completed_count
                 FROM learning_records lr
                 JOIN students st ON st.id = lr.student_id AND st.deleted = 0
-                WHERE lr.last_studied_at >= #{startAt}
-                  AND lr.last_studied_at < #{endAt}
+                WHERE (#{startAt} IS NULL OR lr.last_studied_at >= #{startAt})
+                  AND (#{endAt} IS NULL OR lr.last_studied_at < #{endAt})
                   AND (#{province} IS NULL OR st.province = #{province})
                   AND (#{city} IS NULL OR st.city = #{city})
                   AND (#{district} IS NULL OR st.district = #{district})
@@ -194,8 +194,8 @@ public interface AdminStatisticsMapper {
                AND region_hours.city = COALESCE(s.city, '')
                AND region_hours.district = COALESCE(s.district, '')
             WHERE s.deleted = 0
-              AND s.created_at >= #{startAt}
-              AND s.created_at < #{endAt}
+              AND (#{startAt} IS NULL OR s.created_at >= #{startAt})
+              AND (#{endAt} IS NULL OR s.created_at < #{endAt})
               AND (#{province} IS NULL OR s.province = #{province})
               AND (#{city} IS NULL OR s.city = #{city})
               AND (#{district} IS NULL OR s.district = #{district})

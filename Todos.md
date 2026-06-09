@@ -338,6 +338,7 @@
 - `[ ]` 考试判分验收：单选、多选、判断、得分、通过状态、答案记录。
 - `[ ]` 统计验收：学时、成绩、地区、互动数据聚合。
   2026-06-09：已补 `GET /api/v1/admin/statistics/study-hours/regions`、`GET /api/v1/admin/statistics/topics/{topicId}/students`、`GET/PATCH /api/v1/admin/statistics/student-scores`，并为 `GET /api/v1/admin/statistics/regions` 补学时字段；本地已通过 `compile`、`test`、`clean package -DskipTests` 和 Swagger 导出验证，后续仍需用 dev 验收账号补人工接口验收记录。
+  2026-06-09：继续修正学员存量统计口径。`GET /api/v1/admin/statistics/students/summary` 与 `GET /api/v1/admin/statistics/regions` 现已改为默认按全量学员统计，仅当前端显式传 `startAt/endAt` 时才按学员创建时间过滤；本地最新实例实测默认返回已恢复为全量地区分布，不再只剩最近 30 天新建学员。
 - `[ ]` 异常响应验收：参数校验、资源不存在、非法状态流转。
 - `[ ]` 复用 dev 验收数据和现有测试命令，不创建 `src/test` 新文件。
 

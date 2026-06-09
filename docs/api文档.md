@@ -616,8 +616,8 @@
 | GET | `/api/v1/admin/statistics/study-hours/summary` | 查询学时统计汇总 |
 | GET | `/api/v1/admin/statistics/study-hours/resources` | 按资源类型查询学时统计 |
 | GET | `/api/v1/admin/statistics/study-hours/regions` | 按地区维度查询学时统计 |
-| GET | `/api/v1/admin/statistics/students/summary` | 查询学员统计汇总 |
-| GET | `/api/v1/admin/statistics/regions` | 查询地区学员统计 |
+| GET | `/api/v1/admin/statistics/students/summary` | 查询学员统计汇总，默认按全量学员统计 |
+| GET | `/api/v1/admin/statistics/regions` | 查询地区学员统计，默认按全量学员统计 |
 | GET | `/api/v1/admin/statistics/topics/{topicId}/students` | 查询专题维度学员统计明细 |
 | GET | `/api/v1/admin/statistics/exam-scores/summary` | 查询成绩统计汇总 |
 | GET | `/api/v1/admin/statistics/exam-scores/papers` | 按试卷查询成绩统计 |
@@ -666,6 +666,12 @@
 | `totalStudySeconds` | `integer` | 地区内总学习秒数 |
 | `totalStudyHours` | `number` | 地区内总学习小时数 |
 | `averageStudyHours` | `number` | 按地区学员数计算的人均学习小时数 |
+
+`GET /api/v1/admin/statistics/students/summary` 和 `GET /api/v1/admin/statistics/regions` 的时间口径约定：
+
+- 默认不按学员创建时间过滤，直接统计当前存量学员。
+- 只有前端显式传入 `startAt`、`endAt` 时，后端才按 `students.createdAt` 做时间范围过滤。
+- 这两个接口的默认口径与 `GET /api/v1/admin/students` 保持一致，避免出现“学员列表有数据，但地区统计只剩最近新建学员”的偏差。
 
 #### 10.3 专题维度学员统计
 
