@@ -5,7 +5,7 @@
 ## 基础说明
 
 - 项目：`中医在线` 后端
-- 文档更新时间：`2026-06-08`
+- 文档更新时间：`2026-06-09`
 - 认证方式：`Authorization: Bearer <token>`
 - 统一返回：`ApiResponse<T>`
 - 分页参数：`page`、`size`、`sort`
@@ -30,6 +30,7 @@
 - 管理端专题分项响应新增 `itemTypeLabel`、`itemAvailable`、`itemTitle`、`itemSubtitle`、`itemCoverUrl`、`reviewStatus`、`publishStatus`。
 - 用户端专题页契约已收口：专题列表改为显式卡片 DTO，专题详情按 `学习 / 视频 / 音频` 分区返回，并新增专题分区分页接口，不再返回 `items[].resource` 裸 `Object`。
 - 首页内容契约已收口为“首页分类 + 业务资源引用配置”模型：首页分类只承载展示位语义，资源类型以 `contentType` 为准；前端以 `categoryId + contentType + targetId` 为主，当前支持 `course`、`book`、`article`、`podcast`、`topic`、`knowledge`、`live` 七类资源。
+- 用户端新增 `GET /api/v1/app/home`，直接复用管理端首页分类和首页内容配置返回首页分区与卡片列表，不再要求前端自行并发拼装课程、图书、专题、直播等首页模块。
 - 管理端新增 `GET /api/v1/admin/content/home/candidates`，用于按首页分类和来源模块分页拉取候选课程、图书、资讯、播客、专题、知识库或直播资源。
 - 首页内容响应新增 `categoryName`、`contentTypeLabel`、`targetAvailable`、`targetTitle`、`targetCoverUrl`、`createdAt`、`updatedAt`，便于管理端直接渲染分类、资源封面和时间信息。
 - 专家分类继续复用同一套接口，按 `parentId` 表达两级结构，响应新增 `parentCategoryName`、`level`。
@@ -647,7 +648,57 @@
 | GET | `/api/v1/app/auth/me` | 获取当前登录用户 |
 | GET | `/api/v1/app/auth/status` | 校验用户端登录状态 |
 
-#### 1.2 个人中心
+#### 1.2 首页
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/api/v1/app/home` | 查询用户端首页聚合数据 |
+
+##### 1.2.1 首页聚合接口说明
+
+`GET /api/v1/app/home` 当前直接联动管理端首页配置：
+
+- 数据来源是管理端 `home_categories` 和 `home_contents`，也就是后台“首页分类 / 首页内容管理”维护的同一套配置
+- 只返回启用中的首页分类
+- 只返回启用且命中投放时间窗的首页内容
+- 只返回当前在用户端可见的目标资源；未审核、未发布、已取消直播等不可见资源会被后端自动过滤
+- 当前支持的首页资源类型为 `course`、`book`、`article`、`podcast`、`topic`、`knowledge`、`live`
+- 当前接口沿用用户端登录态保护，调用时仍需携带 `Authorization: Bearer <token>`
+
+响应结构要点：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `sections` | `array` | 首页分区列表，对应管理端首页分类 |
+| `sections[].id` | `integer` | 首页分类 ID |
+| `sections[].categoryName` | `string` | 首页分类名称 |
+| `sections[].categoryCode` | `string` | 首页分类业务编码，如 `TD_HOME_REC` |
+| `sections[].iconUrl` | `string` | 首页分类图标 |
+| `sections[].description` | `string` | 首页分类说明 |
+| `sections[].sortOrder` | `integer` | 首页分类排序 |
+| `sections[].items` | `array` | 当前分类下可展示的首页卡片 |
+| `sections[].items[].id` | `integer` | 首页内容配置 ID |
+| `sections[].items[].contentType` | `string` | 资源类型 |
+| `sections[].items[].contentTypeLabel` | `string` | 资源类型中文名 |
+| `sections[].items[].targetId` | `integer` | 目标资源 ID，前端据此跳转详情页 |
+| `sections[].items[].title` | `string` | 首页主标题，取目标资源真实标题 |
+| `sections[].items[].subtitle` | `string` | 首页副标题，如讲师、作者、来源、主讲人 |
+| `sections[].items[].summary` | `string` | 首页摘要，按资源类型映射对应简介字段 |
+| `sections[].items[].coverUrl` | `string` | 首页封面，取目标资源真实封面 |
+| `sections[].items[].linkUrl` | `string` | 兼容跳转字段；当前资源型首页内容通常为空 |
+| `sections[].items[].sortOrder` | `integer` | 首页内容排序 |
+
+建议前端跳转规则：
+
+- `course` -> `/api/v1/app/learning/courses/{targetId}`
+- `book` -> `/api/v1/app/learning/books/{targetId}`
+- `article` -> `/api/v1/app/content/articles/{targetId}`
+- `podcast` -> `/api/v1/app/learning/podcasts/{targetId}`
+- `topic` -> `/api/v1/app/learning/topics/{targetId}`
+- `knowledge` -> `/api/v1/app/knowledge/entries/{targetId}`
+- `live` -> `/api/v1/app/live-sessions/{targetId}`
+
+#### 1.3 个人中心
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
@@ -661,7 +712,7 @@
 | GET | `/api/v1/app/profile/favorites` | 查询我的收藏 |
 | GET | `/api/v1/app/profile/summary` | 查询个人中心聚合信息 |
 
-##### 1.2.1 头像上传链路
+##### 1.3.1 头像上传链路
 
 用户端自定义头像不再通过 `PUT /api/v1/app/profile` 直接写 `avatarUrl`，而是走对象存储签名上传链路：
 
@@ -698,7 +749,7 @@
 
 确认成功后返回最新 `AppProfileResponse`，其中 `avatarUrl` 为后端稳定读取地址，如 `/api/v1/files/123/content`。
 
-##### 1.2.2 个人资料字段补充
+##### 1.3.2 个人资料字段补充
 
 `PUT /api/v1/app/profile` 请求支持以下补充字段，`GET /api/v1/app/profile` 响应同步返回：
 
@@ -711,7 +762,7 @@
 - `avatarUrl` 仍会在个人资料响应中返回，但该字段现在由头像确认接口驱动更新。
 - 如果继续在 `PUT /api/v1/app/profile` 中直接传入与当前值不同的 `avatarUrl`，后端会返回业务错误。
 
-##### 1.2.3 学员认证字段补充
+##### 1.3.3 学员认证字段补充
 
 `POST /api/v1/app/profile/certification` 请求支持地区编码、基础数据关联和结构化认证材料：
 
@@ -730,7 +781,7 @@
 
 `GET /api/v1/app/profile/certification` 响应会返回 `certificationFiles`，字段结构与管理端学员响应一致。`certificationMaterials` 仍保留，但只作为旧版兼容字段。
 
-#### 1.3 学习资源
+#### 1.4 学习资源
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
@@ -753,7 +804,7 @@
 | GET | `/api/v1/app/learning/topics/{id}` | 专题详情 |
 | GET | `/api/v1/app/learning/topics/{id}/sections/{sectionType}` | 分页查询专题分区内容 |
 
-##### 1.3.1 用户端学习资源返回字段补充
+##### 1.4.1 用户端学习资源返回字段补充
 
 用户端学习资源相关响应同步补齐以下字段：
 
@@ -765,7 +816,7 @@
 | 播客 | `speakerName` / `tags` | 主讲人和标签列表 |
 | 播客音频 | `paperId` | 音频关联考卷 ID |
 
-##### 1.3.2 专题页页面化契约
+##### 1.4.2 专题页页面化契约
 
 当前用户端专题接口已按官网页面结构收口：
 
@@ -779,7 +830,7 @@
 - 分区分页和首屏预览统一返回 `AppTopicResourceCardResponse`，字段固定为 `resourceType`、`resourceTypeLabel`、`resourceId`、`title`、`subtitle`、`coverUrl`、`tags`、`browseCount`、`favoriteCount`、`favorited`、`progressPercent`、`studySeconds`。
 - 后端查询时会过滤无法展示的专题关联项，联调时不需要再兼容 `resource = null` 或未知结构的裸对象分支。
 
-#### 1.4 专家
+#### 1.5 专家
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
@@ -789,7 +840,7 @@
 
 用户端专家响应同步返回 `gender`、`birthDate`、`mobile`、`coverUrl`，便于详情页展示专家基础画像。
 
-#### 1.5 互动
+#### 1.6 互动
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
@@ -798,7 +849,7 @@
 | POST | `/api/v1/app/interaction/qa/questions` | 发起咨询 |
 | GET | `/api/v1/app/interaction/qa/questions/{id}` | 我的咨询详情 |
 
-#### 1.6 知识库
+#### 1.7 知识库
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
@@ -806,7 +857,7 @@
 | GET | `/api/v1/app/knowledge/entries` | 搜索知识库条目 |
 | GET | `/api/v1/app/knowledge/entries/{id}` | 知识库条目详情 |
 
-#### 1.7 公共文件读取
+#### 1.8 公共文件读取
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
@@ -817,7 +868,7 @@
 - 该接口当前用于读取用户端已确认上传的公开头像图片。
 - `avatarUrl` 等对外图片字段应优先返回这个稳定路径，而不是对象存储临时签名 URL。
 
-#### 1.8 直播
+#### 1.9 直播
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |

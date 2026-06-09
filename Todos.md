@@ -149,6 +149,7 @@
 
 - `[x]` 官网专题页页面化契约已完成：用户端专题列表改为显式卡片 DTO，专题详情按 `learning/book`、`video/course`、`audio/podcast` 固定映射输出分区结构，并补齐专题分区分页接口与稳定 OpenAPI schema。
 - `[x]` 管理端联调第二批反馈第一轮收口已完成：学员导入/导出、审核日志、图书考卷配置、专题分项规则、专家分类层级、首页内容 `contentType/targetId` 规则、反馈字段语义、答疑状态输出形式、测试资源地址策略均已完成当前阶段契约收口并同步到 Swagger/联调文档。
+- `[x]` 用户端首页已接通管理端首页配置联动：新增 `GET /api/v1/app/home`，直接复用 `home_categories + home_contents` 返回首页分区与卡片列表，只输出启用中的分类、启用且在投放时间窗内的首页内容，并按用户端现有可见性规则过滤未审核/未发布/已取消资源。
 
 ## 阶段 Q3：核心业务流程联调补强
 
@@ -382,6 +383,7 @@
 - 2026-06-05：补齐默认头像接口层兜底缺口。`SystemAdminService`、管理端专家返回和用户端专家返回现统一复用头像解析器：当 `avatarUrl` 为空时返回 `/images/default-avatar.svg`，避免管理员/专家资料继续向前端透传空头像；本次未做数据库字段批量回填，`sys_admins`、`experts` 等历史空值仍保持原样。已通过 `.\mvnw.cmd "-Dmaven.repo.local=.m2/repository" test` 与 `.\mvnw.cmd "-Dmaven.repo.local=.m2/repository" clean package -DskipTests`。
 - 2026-06-05：为测试环境补齐直播基础设施部署配置。`compose.test.yml` 新增 `srs` service，按 SRS 官方 getting-started 直播方案暴露 `1935/1985/8080` 端口，并新增 `docker/srs/srs.template.conf`、`docker/srs/start-srs.sh` 承接 `on_publish` / `on_unpublish` 到 `/api/v1/integrations/srs/live-hooks`；同时补充 `.env.test.example` 和《直播功能接入说明》中的 SRS 部署变量说明，便于测试环境直接拉起 RTMP 推流、HTTP-FLV/HLS 播放和直播状态回调。
 - 2026-06-09：修复管理端专家列表联调异常映射与权限回填。共享联调环境中 `superadmin` 登录返回权限集缺少 `expert:view`，访问 `GET /api/v1/admin/experts` 时 `@PreAuthorize` 安全异常被全局 `Exception` 处理器误映射成 `500`；已在 `GlobalExceptionHandler` 显式处理 Spring Security 鉴权/鉴权不足异常，保证缺权限稳定返回 `403/401`，并新增 `V26__backfill_expert_view_permission.sql` 幂等回填 `expert:view` 权限和 `SUPER_ADMIN` 绑定。
+- 2026-06-09：补齐用户端首页聚合接口 `GET /api/v1/app/home`，与管理端首页内容管理直接联动，返回首页分类分组下的课程/图书/资讯/播客/专题/知识库/直播卡片摘要；接口复用现有资源发布可见性规则，不额外新增平行首页配置表或用户端专用配置模型。
 - 2026-06-02：收口公开资源地址策略：明确当前仅用户头像稳定走 `/api/v1/files/{id}/content`，课程/图书/播客/专题/直播/专家/知识库/首页等封面与音视频地址仍是普通 URL 字段；dev 种子中的 `example.com/assets/...`、`example.com/live/...` 统一作为占位数据处理，并同步更新 API 文档、前端测试数据文档和共享联调环境约定。
 - 2026-06-02：完成官网专题页页面化契约收口：用户端专题列表改为显式卡片 DTO，专题详情改为 `学习 / 视频 / 音频` 分区结构，并新增专题分区分页接口；固定映射 `learning=book`、`video=course`、`audio=podcast`，同步更新文档与 OpenAPI 契约。
 - 2026-06-02：收口反馈字段语义与答疑状态输出契约：反馈继续保留 `feedbackType` 自由文本模型，并在 Swagger 明确 `contact` 为主联系方式字段；问答响应在兼容原 `status=0/1/2` 的前提下新增 `statusCode`、`statusLabel` 语义字段，同时更新 Swagger 契约。
