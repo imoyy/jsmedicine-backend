@@ -1,15 +1,14 @@
 package com.gugugaga.jsmedicine.module.statistics.dto;
 
-public record RegionStatisticsResponse(
+public record StudyHoursRegionResponse(
         String province,
         String city,
         String district,
         Long studentCount,
-        Long approvedStudentCount,
-        Long enabledStudentCount,
         Long completedCount,
         Long totalStudySeconds,
         Double totalStudyHours,
-        Double averageStudyHours
+        Double averageStudyHours,
+        Double averageProgressPercent
 ) {
 }

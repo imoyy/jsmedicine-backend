@@ -9,6 +9,8 @@ public record StatisticsQuery(
         Long resourceId,
         Long studentId,
         String province,
-        String city
+        String city,
+        String district,
+        String dimension
 ) {
 }

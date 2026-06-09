@@ -1,19 +1,28 @@
 package com.gugugaga.jsmedicine.module.statistics.controller;
 
 import com.gugugaga.jsmedicine.common.response.ApiResponse;
+import com.gugugaga.jsmedicine.common.response.PageResponse;
 import com.gugugaga.jsmedicine.module.statistics.dto.ContentInteractionStatisticsResponse;
 import com.gugugaga.jsmedicine.module.statistics.dto.ExamPaperScoreResponse;
 import com.gugugaga.jsmedicine.module.statistics.dto.ExamScoreSummaryResponse;
 import com.gugugaga.jsmedicine.module.statistics.dto.RegionStatisticsResponse;
 import com.gugugaga.jsmedicine.module.statistics.dto.StatisticsQuery;
+import com.gugugaga.jsmedicine.module.statistics.dto.StudentScoreResponse;
+import com.gugugaga.jsmedicine.module.statistics.dto.StudentScoreUpdateRequest;
 import com.gugugaga.jsmedicine.module.statistics.dto.StudentSummaryResponse;
+import com.gugugaga.jsmedicine.module.statistics.dto.StudyHoursRegionResponse;
 import com.gugugaga.jsmedicine.module.statistics.dto.StudyHoursResourceResponse;
 import com.gugugaga.jsmedicine.module.statistics.dto.StudyHoursSummaryResponse;
+import com.gugugaga.jsmedicine.module.statistics.dto.TopicStudentStatisticsPageResponse;
 import com.gugugaga.jsmedicine.module.statistics.service.AdminStatisticsService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -43,10 +52,11 @@ public class AdminStatisticsController {
             @RequestParam(required = false) Long resourceId,
             @RequestParam(required = false) Long studentId,
             @RequestParam(required = false) String province,
-            @RequestParam(required = false) String city
+            @RequestParam(required = false) String city,
+            @RequestParam(required = false) String district
     ) {
         return ApiResponse.ok(statisticsService.studyHoursSummary(
-                query(startAt, endAt, resourceType, resourceId, studentId, province, city)));
+                query(startAt, endAt, resourceType, resourceId, studentId, province, city, district, null)));
     }
 
     @Operation(summary = "按资源类型查询学时统计")
@@ -58,10 +68,29 @@ public class AdminStatisticsController {
             @RequestParam(required = false) String resourceType,
             @RequestParam(required = false) Long studentId,
             @RequestParam(required = false) String province,
-            @RequestParam(required = false) String city
+            @RequestParam(required = false) String city,
+            @RequestParam(required = false) String district
     ) {
         return ApiResponse.ok(statisticsService.studyHoursByResource(
-                query(startAt, endAt, resourceType, null, studentId, province, city)));
+                query(startAt, endAt, resourceType, null, studentId, province, city, district, null)));
+    }
+
+    @Operation(summary = "按地区维度查询学时统计")
+    @PreAuthorize("hasAuthority('statistics:view')")
+    @GetMapping("/study-hours/regions")
+    public ApiResponse<List<StudyHoursRegionResponse>> studyHoursByRegion(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startAt,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endAt,
+            @RequestParam(required = false) String resourceType,
+            @RequestParam(required = false) Long resourceId,
+            @RequestParam(required = false) Long studentId,
+            @RequestParam(required = false) String province,
+            @RequestParam(required = false) String city,
+            @RequestParam(required = false) String district,
+            @RequestParam(defaultValue = "city") String dimension
+    ) {
+        return ApiResponse.ok(statisticsService.studyHoursByRegion(
+                query(startAt, endAt, resourceType, resourceId, studentId, province, city, district, dimension)));
     }
 
     @Operation(summary = "查询学员统计汇总")
@@ -71,10 +100,11 @@ public class AdminStatisticsController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startAt,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endAt,
             @RequestParam(required = false) String province,
-            @RequestParam(required = false) String city
+            @RequestParam(required = false) String city,
+            @RequestParam(required = false) String district
     ) {
         return ApiResponse.ok(statisticsService.studentSummary(
-                query(startAt, endAt, null, null, null, province, city)));
+                query(startAt, endAt, null, null, null, province, city, district, null)));
     }
 
     @Operation(summary = "查询地区学员统计")
@@ -84,10 +114,31 @@ public class AdminStatisticsController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startAt,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endAt,
             @RequestParam(required = false) String province,
-            @RequestParam(required = false) String city
+            @RequestParam(required = false) String city,
+            @RequestParam(required = false) String district
     ) {
         return ApiResponse.ok(statisticsService.regionStatistics(
-                query(startAt, endAt, null, null, null, province, city)));
+                query(startAt, endAt, null, null, null, province, city, district, null)));
+    }
+
+    @Operation(summary = "查询专题维度学员统计明细")
+    @PreAuthorize("hasAuthority('statistics:view')")
+    @GetMapping("/topics/{topicId}/students")
+    public ApiResponse<TopicStudentStatisticsPageResponse> topicStudentStatistics(
+            @PathVariable Long topicId,
+            @RequestParam(defaultValue = "1") long page,
+            @RequestParam(defaultValue = "20") long size,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startAt,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endAt,
+            @RequestParam(required = false) String province,
+            @RequestParam(required = false) String city,
+            @RequestParam(required = false) String district,
+            @RequestParam(required = false) String learningStatus
+    ) {
+        return ApiResponse.ok(statisticsService.topicStudentStatistics(
+                topicId, page, size, keyword, learningStatus,
+                query(startAt, endAt, "topic", topicId, null, province, city, district, null)));
     }
 
     @Operation(summary = "查询成绩统计汇总")
@@ -100,10 +151,11 @@ public class AdminStatisticsController {
             @RequestParam(required = false) Long resourceId,
             @RequestParam(required = false) Long studentId,
             @RequestParam(required = false) String province,
-            @RequestParam(required = false) String city
+            @RequestParam(required = false) String city,
+            @RequestParam(required = false) String district
     ) {
         return ApiResponse.ok(statisticsService.examScoreSummary(
-                query(startAt, endAt, resourceType, resourceId, studentId, province, city)));
+                query(startAt, endAt, resourceType, resourceId, studentId, province, city, district, null)));
     }
 
     @Operation(summary = "按试卷查询成绩统计")
@@ -116,10 +168,32 @@ public class AdminStatisticsController {
             @RequestParam(required = false) Long resourceId,
             @RequestParam(required = false) Long studentId,
             @RequestParam(required = false) String province,
-            @RequestParam(required = false) String city
+            @RequestParam(required = false) String city,
+            @RequestParam(required = false) String district
     ) {
         return ApiResponse.ok(statisticsService.examScoresByPaper(
-                query(startAt, endAt, resourceType, resourceId, studentId, province, city)));
+                query(startAt, endAt, resourceType, resourceId, studentId, province, city, district, null)));
+    }
+
+    @Operation(summary = "分页查询学员成绩状态明细")
+    @PreAuthorize("hasAuthority('statistics:view')")
+    @GetMapping("/student-scores")
+    public ApiResponse<PageResponse<StudentScoreResponse>> pageStudentScores(
+            @RequestParam(defaultValue = "1") long page,
+            @RequestParam(defaultValue = "20") long size,
+            @RequestParam(required = false) String keyword
+    ) {
+        return ApiResponse.ok(statisticsService.pageStudentScores(page, size, keyword));
+    }
+
+    @Operation(summary = "更新学员成绩状态")
+    @PreAuthorize("hasAuthority('statistics:score:edit')")
+    @PatchMapping("/student-scores/{studentId}")
+    public ApiResponse<StudentScoreResponse> updateStudentScore(
+            @PathVariable Long studentId,
+            @Valid @RequestBody StudentScoreUpdateRequest request
+    ) {
+        return ApiResponse.ok(statisticsService.updateStudentScore(studentId, request));
     }
 
     @Operation(summary = "查询内容浏览收藏分享统计")
@@ -132,7 +206,7 @@ public class AdminStatisticsController {
             @RequestParam(required = false) Long resourceId
     ) {
         return ApiResponse.ok(statisticsService.contentInteractions(
-                query(startAt, endAt, resourceType, resourceId, null, null, null)));
+                query(startAt, endAt, resourceType, resourceId, null, null, null, null, null)));
     }
 
     private StatisticsQuery query(
@@ -142,8 +216,10 @@ public class AdminStatisticsController {
             Long resourceId,
             Long studentId,
             String province,
-            String city
+            String city,
+            String district,
+            String dimension
     ) {
-        return new StatisticsQuery(startAt, endAt, resourceType, resourceId, studentId, province, city);
+        return new StatisticsQuery(startAt, endAt, resourceType, resourceId, studentId, province, city, district, dimension);
     }
 }

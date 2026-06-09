@@ -48,6 +48,10 @@
 - 学习资源新增课程视频 `paperId`、图书 `totalPages`、图书章节 `startPage` / `pageCount`。
 - 专家新增 `gender`、`birthDate`、`mobile`、`coverUrl` 展示字段。
 - 直播新增 `speakerName`、`tags` 和直播视频子资源接口，用于支撑管理端直播配置弹窗和用户端回放列表展示。
+- 统计管理新增 `GET /api/v1/admin/statistics/study-hours/regions`，支持按 `province/city/district` 维度聚合学时。
+- 统计管理新增 `GET /api/v1/admin/statistics/topics/{topicId}/students`，返回专题学员统计汇总和分页明细。
+- 统计管理新增 `GET /api/v1/admin/statistics/student-scores` 与 `PATCH /api/v1/admin/statistics/student-scores/{studentId}`，用于查询和维护学员成绩状态。
+- 地区统计 `GET /api/v1/admin/statistics/regions` 已补充学时字段：`completedCount`、`totalStudySeconds`、`totalStudyHours`、`averageStudyHours`。
 
 ## 端侧划分
 
@@ -611,11 +615,153 @@
 | --- | --- | --- |
 | GET | `/api/v1/admin/statistics/study-hours/summary` | 查询学时统计汇总 |
 | GET | `/api/v1/admin/statistics/study-hours/resources` | 按资源类型查询学时统计 |
+| GET | `/api/v1/admin/statistics/study-hours/regions` | 按地区维度查询学时统计 |
 | GET | `/api/v1/admin/statistics/students/summary` | 查询学员统计汇总 |
 | GET | `/api/v1/admin/statistics/regions` | 查询地区学员统计 |
+| GET | `/api/v1/admin/statistics/topics/{topicId}/students` | 查询专题维度学员统计明细 |
 | GET | `/api/v1/admin/statistics/exam-scores/summary` | 查询成绩统计汇总 |
 | GET | `/api/v1/admin/statistics/exam-scores/papers` | 按试卷查询成绩统计 |
+| GET | `/api/v1/admin/statistics/student-scores` | 分页查询学员成绩状态明细 |
+| PATCH | `/api/v1/admin/statistics/student-scores/{studentId}` | 更新学员成绩状态 |
 | GET | `/api/v1/admin/statistics/content-interactions` | 查询内容浏览收藏分享统计 |
+
+#### 10.1 学时按地区聚合
+
+`GET /api/v1/admin/statistics/study-hours/regions` 请求参数：
+
+| 参数 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `startAt` | `string(date-time)` | 否 | 起始时间，默认最近 30 天 |
+| `endAt` | `string(date-time)` | 否 | 截止时间，默认当前时间 |
+| `resourceType` | `string` | 否 | 学习资源类型过滤 |
+| `resourceId` | `integer` | 否 | 学习资源 ID 过滤 |
+| `studentId` | `integer` | 否 | 学员 ID 过滤 |
+| `province` | `string` | 否 | 省份过滤 |
+| `city` | `string` | 否 | 城市过滤 |
+| `district` | `string` | 否 | 区县过滤 |
+| `dimension` | `string` | 否 | 聚合维度，支持 `province`、`city`、`district`，默认 `city` |
+
+响应记录字段：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `province` | `string` | 省份 |
+| `city` | `string` | 城市；当 `dimension=province` 时为空字符串 |
+| `district` | `string` | 区县；仅 `dimension=district` 时有值 |
+| `studentCount` | `integer` | 有学习记录的学员数 |
+| `completedCount` | `integer` | 已完成学习记录数 |
+| `totalStudySeconds` | `integer` | 总学习秒数 |
+| `totalStudyHours` | `number` | 总学习小时数 |
+| `averageStudyHours` | `number` | 人均学习小时数 |
+| `averageProgressPercent` | `number` | 平均学习进度百分比 |
+
+#### 10.2 地区统计补充
+
+`GET /api/v1/admin/statistics/regions` 在原有学员数量字段外，当前额外返回：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `district` | `string` | 区县 |
+| `completedCount` | `integer` | 地区内已完成学习记录数 |
+| `totalStudySeconds` | `integer` | 地区内总学习秒数 |
+| `totalStudyHours` | `number` | 地区内总学习小时数 |
+| `averageStudyHours` | `number` | 按地区学员数计算的人均学习小时数 |
+
+#### 10.3 专题维度学员统计
+
+`GET /api/v1/admin/statistics/topics/{topicId}/students` 当前返回：
+
+- `summary`：专题学员汇总
+- `records`：专题学员分页明细
+- `total/page/size`：分页信息
+
+请求参数：
+
+| 参数 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `page` | `integer` | 否 | 页码，默认 `1` |
+| `size` | `integer` | 否 | 每页条数，默认 `20`，最大 `100` |
+| `keyword` | `string` | 否 | 按姓名、手机号、学号模糊搜索 |
+| `learningStatus` | `string` | 否 | 学习状态过滤，支持 `not_started`、`learning`、`completed` |
+| `startAt` | `string(date-time)` | 否 | 起始时间，默认最近 30 天 |
+| `endAt` | `string(date-time)` | 否 | 截止时间，默认当前时间 |
+| `province` | `string` | 否 | 省份过滤 |
+| `city` | `string` | 否 | 城市过滤 |
+| `district` | `string` | 否 | 区县过滤 |
+
+`summary` 字段：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `totalStudents` | `integer` | 命中过滤条件的学员总数 |
+| `topicStudents` | `integer` | 在当前时间窗内对专题有学习记录的学员数 |
+| `learningStudents` | `integer` | 有学习记录但未完成的学员数 |
+| `completedStudents` | `integer` | 已完成的学员数 |
+| `notStartedStudents` | `integer` | 未开始学习的学员数 |
+
+`records` 字段：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `studentId` | `integer` | 学员 ID |
+| `studentNo` | `string` | 学号 |
+| `realName` | `string` | 姓名 |
+| `gender` | `integer` | 性别枚举 |
+| `mobile` | `string` | 手机号 |
+| `age` | `integer` | 年龄 |
+| `educationLevel` | `string` | 学历/文化程度 |
+| `organization` | `string` | 单位 |
+| `practiceTypeName` | `string` | 执业类型名称 |
+| `studyHours` | `number` | 当前专题累计学习小时数 |
+| `topicLearningStatus` | `string` | 学习状态编码：`not_started`、`learning`、`completed` |
+| `topicLearningStatusLabel` | `string` | 学习状态中文名 |
+| `isLearningCurrentTopic` | `boolean` | 是否已进入当前专题学习 |
+
+当前专题学习统计口径：
+
+- 直接统计 `resource_type=topic` 的学习记录。
+- 同时汇总专题下绑定的 `course/book/podcast` 主资源及其 `course_video/book_chapter/podcast_audio` 子资源学习记录。
+
+#### 10.4 学员成绩状态管理
+
+`GET /api/v1/admin/statistics/student-scores` 支持按 `page`、`size`、`keyword` 分页查询学员成绩状态，`keyword` 匹配姓名、手机号、学号。
+
+响应记录字段：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `studentId` | `integer` | 学员 ID |
+| `studentNo` | `string` | 学号 |
+| `realName` | `string` | 姓名 |
+| `gender` | `integer` | 性别枚举 |
+| `mobile` | `string` | 手机号 |
+| `age` | `integer` | 年龄 |
+| `educationLevel` | `string` | 学历/文化程度 |
+| `organization` | `string` | 单位 |
+| `practiceTypeName` | `string` | 执业类型名称 |
+| `theoryTrainingStatus` | `string` | 理论培训状态 |
+| `clinicalPracticeStatus` | `string` | 临床实践状态 |
+| `practicalAssessmentStatus` | `string` | 实操考核状态 |
+| `theoryAssessmentStatus` | `string` | 理论考核状态 |
+| `onlineTrainingStatus` | `string` | 在线培训状态 |
+
+状态枚举统一为：
+
+- `pass`
+- `fail`
+- `none`
+
+`PATCH /api/v1/admin/statistics/student-scores/{studentId}` 请求体：
+
+```json
+{
+  "theoryTrainingStatus": "pass",
+  "clinicalPracticeStatus": "none",
+  "practicalAssessmentStatus": "fail",
+  "theoryAssessmentStatus": "pass",
+  "onlineTrainingStatus": "pass"
+}
+```
 
 ### 11. 基础数据
 
@@ -1037,8 +1183,11 @@
 | --- | --- |
 | 学习时长 | `TD-STU-001` 有课程和直播完成记录 |
 | 学习进度 | `TD-STU-002` 有课程和图书未完成记录 |
+| 专题学员统计 | `[TD]针灸临床专题` 已绑定课程、图书、播客，可用于验证专题学员明细 |
+| 地区学时 | 可用 `浙江省 / 杭州市 / 西湖区` 等地区过滤验证城市、区县聚合 |
 | 考试结果 | `TD-STU-001` 通过 `[TD]针灸基础试卷` |
 | 考试结果 | `TD-STU-002` 未通过 `[TD]针灸基础试卷` |
+| 学员成绩状态 | 可通过 `PATCH /api/v1/admin/statistics/student-scores/{studentId}` 维护 5 个状态位 |
 
 ## 登录示例
 

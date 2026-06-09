@@ -222,7 +222,7 @@
   9. 答疑状态：已完成第一轮语义化输出收口，在保留现有 `status=0/1/2` 数值兼容的前提下，管理端和用户端问答响应已补 `statusCode`、`statusLabel`，前端无需再自行硬编码状态映射。
   10. 公开资源图片地址：已完成当前阶段契约收口。现阶段仅用户头像稳定走 `/api/v1/files/{id}/content`；其余课程/图书/播客/专题/直播/专家/知识库/首页等资源地址仍是普通 URL 字段。2026-06-08 已把 dev 种子中的主要媒体样例地址直接替换为已验证可访问的 samplefile.com 公网样例资源，便于本地前端联调；共享联调与前端文档已明确真实资源应优先使用可访问公网地址或 `/api/v1/files/{id}/content`，且不得把对象存储临时签名 URL 当长期真相源。
   11. 学员导出运行时 500：已完成修复。2026-06-04 复核前端联调反馈后，本地复现 `GET /api/v1/admin/students/export` 返回 `Internal server error`，根因是 Hutool ExcelWriter 运行时缺少 Apache POI，抛出 `ClassNotFoundException: org.apache.poi.ss.usermodel.Sheet`；已在 `pom.xml` 补充 `org.apache.poi:poi-ooxml:5.4.1`，并用打包产物实际验证导出接口可返回 `200` 和有效 `.xlsx` 文件。
-- `[ ]` 统计管理补齐：从汇总接口扩展到“卡片 + 明细表 + 图表 + 导出”的页面级契约，补学员成绩管理和平台数据统计缺口。
+- `[~]` 统计管理补齐：已补学时按地区聚合、专题学员统计明细、地区学时字段和学员成绩状态管理；剩余“卡片/图表/导出”页面级验收待继续收口。
 - `[ ]` 工作台与附加内容补齐：确认首页工作台、附加内容管理是否进入当前范围；若保留，补对应接口和契约。
 
 验收标准：
@@ -336,6 +336,7 @@
 - `[ ]` 用户端数据隔离验收：个人资料、收藏、浏览、学习记录、咨询、反馈。
 - `[ ]` 考试判分验收：单选、多选、判断、得分、通过状态、答案记录。
 - `[ ]` 统计验收：学时、成绩、地区、互动数据聚合。
+  2026-06-09：已补 `GET /api/v1/admin/statistics/study-hours/regions`、`GET /api/v1/admin/statistics/topics/{topicId}/students`、`GET/PATCH /api/v1/admin/statistics/student-scores`，并为 `GET /api/v1/admin/statistics/regions` 补学时字段；本地已通过 `compile`、`test`、`clean package -DskipTests` 和 Swagger 导出验证，后续仍需用 dev 验收账号补人工接口验收记录。
 - `[ ]` 异常响应验收：参数校验、资源不存在、非法状态流转。
 - `[ ]` 复用 dev 验收数据和现有测试命令，不创建 `src/test` 新文件。
 
@@ -384,6 +385,7 @@
 - 2026-06-05：为测试环境补齐直播基础设施部署配置。`compose.test.yml` 新增 `srs` service，按 SRS 官方 getting-started 直播方案暴露 `1935/1985/8080` 端口，并新增 `docker/srs/srs.template.conf`、`docker/srs/start-srs.sh` 承接 `on_publish` / `on_unpublish` 到 `/api/v1/integrations/srs/live-hooks`；同时补充 `.env.test.example` 和《直播功能接入说明》中的 SRS 部署变量说明，便于测试环境直接拉起 RTMP 推流、HTTP-FLV/HLS 播放和直播状态回调。
 - 2026-06-09：修复管理端专家列表联调异常映射与权限回填。共享联调环境中 `superadmin` 登录返回权限集缺少 `expert:view`，访问 `GET /api/v1/admin/experts` 时 `@PreAuthorize` 安全异常被全局 `Exception` 处理器误映射成 `500`；已在 `GlobalExceptionHandler` 显式处理 Spring Security 鉴权/鉴权不足异常，保证缺权限稳定返回 `403/401`，并新增 `V26__backfill_expert_view_permission.sql` 幂等回填 `expert:view` 权限和 `SUPER_ADMIN` 绑定。
 - 2026-06-09：补齐用户端首页聚合接口 `GET /api/v1/app/home`，与管理端首页内容管理直接联动，返回首页分类分组下的课程/图书/资讯/播客/专题/知识库/直播卡片摘要；接口复用现有资源发布可见性规则，不额外新增平行首页配置表或用户端专用配置模型。
+- 2026-06-09：补齐统计管理手册缺口，新增学时按地区聚合、专题学员统计明细、学员成绩状态查询与更新接口，并为地区统计补充学时字段；新增 `V27__complete_statistics_management_gap.sql` 创建 `student_score_records` 表和 `statistics:score:edit` 权限，已重新导出 `api/api.json`。
 - 2026-06-02：收口公开资源地址策略：明确当前仅用户头像稳定走 `/api/v1/files/{id}/content`，课程/图书/播客/专题/直播/专家/知识库/首页等封面与音视频地址仍是普通 URL 字段；dev 种子中的 `example.com/assets/...`、`example.com/live/...` 统一作为占位数据处理，并同步更新 API 文档、前端测试数据文档和共享联调环境约定。
 - 2026-06-02：完成官网专题页页面化契约收口：用户端专题列表改为显式卡片 DTO，专题详情改为 `学习 / 视频 / 音频` 分区结构，并新增专题分区分页接口；固定映射 `learning=book`、`video=course`、`audio=podcast`，同步更新文档与 OpenAPI 契约。
 - 2026-06-02：收口反馈字段语义与答疑状态输出契约：反馈继续保留 `feedbackType` 自由文本模型，并在 Swagger 明确 `contact` 为主联系方式字段；问答响应在兼容原 `status=0/1/2` 的前提下新增 `statusCode`、`statusLabel` 语义字段，同时更新 Swagger 契约。
