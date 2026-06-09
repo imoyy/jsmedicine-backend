@@ -494,6 +494,10 @@ public class AdminContentService {
         return pageResponse(page, page.getRecords().stream().map(topic -> toTopicResponse(topic, false)).toList());
     }
 
+    public TopicResponse topicDetail(Long id) {
+        return toTopicResponse(requireTopic(id), true);
+    }
+
     @Transactional(rollbackFor = Exception.class)
     public TopicResponse createTopic(TopicRequest request) {
         Topic topic = new Topic();

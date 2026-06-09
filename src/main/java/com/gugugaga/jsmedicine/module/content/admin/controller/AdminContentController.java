@@ -271,6 +271,14 @@ public class AdminContentController {
         return ApiResponse.ok(adminContentService.pageTopics(new AdminContentPageQuery(page, size, sort, keyword, null, null)));
     }
 
+    @Operation(summary = "专题详情",
+            description = "返回专题基础信息和当前已绑定的全部分项，items 会稳定回显 itemType、itemTypeLabel、itemId、sortOrder、itemAvailable、itemTitle、itemSubtitle、itemCoverUrl、reviewStatus、publishStatus。")
+    @PreAuthorize("hasAuthority('content:topic:view')")
+    @GetMapping("/topics/{id}")
+    public ApiResponse<TopicResponse> topicDetail(@PathVariable Long id) {
+        return ApiResponse.ok(adminContentService.topicDetail(id));
+    }
+
     @Operation(summary = "新增专题")
     @PreAuthorize("hasAuthority('content:topic:edit')")
     @PostMapping("/topics")

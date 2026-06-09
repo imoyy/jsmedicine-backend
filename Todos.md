@@ -96,7 +96,7 @@
 
 目标：保证管理端和用户端身份边界稳定，避免越权、误鉴权和会话恢复失败。
 
-- `[ ]` 验证管理端登录、退出、`/api/v1/auth/me`、`/api/v1/auth/status`。
+- `[x]` 验证管理端登录、退出、`/api/v1/auth/me`、`/api/v1/auth/status`。
 - `[ ]` 验证用户端账号密码登录、短信登录、微信登录、退出、`/api/v1/app/auth/me`、`/api/v1/app/auth/status`。
 - `[x]` 调整用户端微信登录首登链路：新用户先绑定手机号再入库，老用户按 `wechat_open_id` 直接恢复登录态。
 - `[x]` 新增官网微信扫码登录链路：提供二维码配置与 `state` 校验，扫码后按 `wechat_union_id` / `wechat_web_open_id` 恢复登录态，未注册用户继续走手机号绑定。
@@ -112,6 +112,9 @@
 - `2026-06-02`：已在 `SecurityConfig` 增加 `/api/v1/app/** -> ROLE_APP_USER` 路径级约束，避免管理端 token 继续误打用户端接口并得到 `200/401` 混杂结果；后续仍需通过实际请求补齐 admin/app 跨端 token 验证验收。
 - `2026-06-02`：已按 `/api/v1/admin/**` controller 方法做静态扫描，当前管理端敏感接口均已显式标注 `@PreAuthorize`；未发现新的漏鉴权入口。
 - `2026-06-02`：静态对账 `@PreAuthorize` 权限码与 Flyway 权限种子后，补充 `V23__seed_system_admin_permissions.sql`，正式纳入 `sys:admin:view/create/update/disable/reset-password` 并绑定 `SUPER_ADMIN`；同时修正 dev 验收种子里这组权限的旧后台路径。
+- `2026-06-09`：根据联调复核修复管理端专家列表异常映射。共享联调环境中 `superadmin` 登录后缺少 `expert:view`，访问 `GET /api/v1/admin/experts` 时方法级鉴权异常被 `GlobalExceptionHandler` 兜底吞成 `500`；已补安全异常到 `403/401` 的显式映射，并新增 `V26__backfill_expert_view_permission.sql` 幂等回填 `expert:view -> SUPER_ADMIN` 绑定。
+- `2026-06-09`：本地 `dev` 环境已通过实际请求完成管理端账号密码登录、退出、`/api/v1/auth/me`、`/api/v1/auth/status` 以及 admin/app 双向跨端 token 验证；其中本地 `app token -> /api/v1/auth/me` 已稳定返回 `403 FORBIDDEN`，未再出现 `500 INTERNAL_ERROR`。
+- `2026-06-09`：共享联调环境按同组认证请求复核时，`app token -> /api/v1/auth/me` 仍返回 `500 INTERNAL_ERROR`，与本地最新代码结果不一致；当前判断为测试环境尚未部署最新安全异常映射修复，而不是仓库当前代码仍存在回归。
 
 验收标准：
 
@@ -204,6 +207,7 @@
   2026-06-02：根据官网专题页效果图完成第一轮缺口审计，确认当前后端已有专题列表/详情与专题关联资源能力，但仍缺少专题主标签、详情分区结构、显式卡片 DTO 和“更多”分页接口，暂不建议继续沿用平铺 `items + Object resource` 作为最终契约。
   2026-06-02：已先完成专题关联资源第一轮稳定性收口，`AppLearningService` 不再向用户端返回 `resource = null` 的静默分项；但专题详情仍未拆出页面分区和显式卡片 DTO，后续继续在该任务下推进。
   2026-06-02：已完成页面化契约落地。`GET /api/v1/app/learning/topics` 改为专题卡片 DTO，`GET /api/v1/app/learning/topics/{id}` 改为分区详情 DTO，并新增 `GET /api/v1/app/learning/topics/{id}/sections/{sectionType}` 分页接口；固定映射为 `learning=book`、`video=course`、`audio=podcast`。
+- `2026-06-09`：补齐管理端专题详情回显接口 `GET /api/v1/admin/content/topics/{id}`，用于专题配置弹窗稳定回显当前已绑定 `items`。现有 `PUT /api/v1/admin/content/topics/{id}/items` 代码侧已支持 `course/book/podcast/student/article/question/examPaper` 七种 `itemType`，本次不重复扩容保存链路，只补详情读取契约并同步更新 Swagger。
 - `[x]` 管理端联调第二批差距补齐：
   2026-06-02：已完成代码侧第一轮核对，当前研判如下：
   1. 学员导入接口：已完成，新增正式业务入口，限定 Excel 文件上传，返回成功数、失败数与失败行明细。
@@ -377,6 +381,7 @@
 - 2026-06-04：在本地 `dev` 库通过 `spring-boot:run` 实际执行 `V24` 并核验回填结果，Flyway 已从 `v23` 升到 `v24`；由于当前 dev 验收数据里的课程、图书、资讯、专题、专家等历史封面仍是 `example.com/assets/...` 占位 URL，且 `file_assets` 中暂无 `admin/covers/` 记录，历史数据回填数为 `0`，后续需用真实管理端封面上传链路新增或编辑资源，才能看到 `cover_file_asset_id` 实际落库。
 - 2026-06-05：补齐默认头像接口层兜底缺口。`SystemAdminService`、管理端专家返回和用户端专家返回现统一复用头像解析器：当 `avatarUrl` 为空时返回 `/images/default-avatar.svg`，避免管理员/专家资料继续向前端透传空头像；本次未做数据库字段批量回填，`sys_admins`、`experts` 等历史空值仍保持原样。已通过 `.\mvnw.cmd "-Dmaven.repo.local=.m2/repository" test` 与 `.\mvnw.cmd "-Dmaven.repo.local=.m2/repository" clean package -DskipTests`。
 - 2026-06-05：为测试环境补齐直播基础设施部署配置。`compose.test.yml` 新增 `srs` service，按 SRS 官方 getting-started 直播方案暴露 `1935/1985/8080` 端口，并新增 `docker/srs/srs.template.conf`、`docker/srs/start-srs.sh` 承接 `on_publish` / `on_unpublish` 到 `/api/v1/integrations/srs/live-hooks`；同时补充 `.env.test.example` 和《直播功能接入说明》中的 SRS 部署变量说明，便于测试环境直接拉起 RTMP 推流、HTTP-FLV/HLS 播放和直播状态回调。
+- 2026-06-09：修复管理端专家列表联调异常映射与权限回填。共享联调环境中 `superadmin` 登录返回权限集缺少 `expert:view`，访问 `GET /api/v1/admin/experts` 时 `@PreAuthorize` 安全异常被全局 `Exception` 处理器误映射成 `500`；已在 `GlobalExceptionHandler` 显式处理 Spring Security 鉴权/鉴权不足异常，保证缺权限稳定返回 `403/401`，并新增 `V26__backfill_expert_view_permission.sql` 幂等回填 `expert:view` 权限和 `SUPER_ADMIN` 绑定。
 - 2026-06-02：收口公开资源地址策略：明确当前仅用户头像稳定走 `/api/v1/files/{id}/content`，课程/图书/播客/专题/直播/专家/知识库/首页等封面与音视频地址仍是普通 URL 字段；dev 种子中的 `example.com/assets/...`、`example.com/live/...` 统一作为占位数据处理，并同步更新 API 文档、前端测试数据文档和共享联调环境约定。
 - 2026-06-02：完成官网专题页页面化契约收口：用户端专题列表改为显式卡片 DTO，专题详情改为 `学习 / 视频 / 音频` 分区结构，并新增专题分区分页接口；固定映射 `learning=book`、`video=course`、`audio=podcast`，同步更新文档与 OpenAPI 契约。
 - 2026-06-02：收口反馈字段语义与答疑状态输出契约：反馈继续保留 `feedbackType` 自由文本模型，并在 Swagger 明确 `contact` 为主联系方式字段；问答响应在兼容原 `status=0/1/2` 的前提下新增 `statusCode`、`statusLabel` 语义字段，同时更新 Swagger 契约。
