@@ -1,0 +1,52 @@
+@startuml
+!theme plain
+skinparam linetype ortho
+hide circle
+skinparam defaultFontName sans-serif
+skinparam defaultFontSize 12
+
+title 知识库 ER 图 (Knowledge)
+
+entity knowledge_categories {
+  * id: Long <<generated>>
+  --
+  parent_id: Long
+  category_name: String
+  category_code: String
+  description: String
+  sort_order: Integer
+  status: EnabledStatus
+  --
+  created_at: DateTime
+  created_by: Long
+  updated_by: Long
+  updated_at: DateTime
+  deleted: Boolean
+}
+
+entity knowledge_entries {
+  * id: Long <<generated>>
+  --
+  category_id: Long
+  title: String
+  summary: String
+  cover_url: String
+  cover_file_asset_id: Long
+  content: Text
+  keywords: String
+  source: String
+  sort_order: Integer
+  view_count: Long
+  review_status: ReviewStatus
+  publish_status: PublishStatus
+  published_at: DateTime
+  --
+  created_at: DateTime
+  created_by: Long
+  updated_by: Long
+  updated_at: DateTime
+  deleted: Boolean
+}
+
+knowledge_categories ||--o{ knowledge_entries : "category_id"
+@enduml

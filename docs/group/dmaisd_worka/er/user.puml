@@ -1,0 +1,150 @@
+@startuml
+!theme plain
+skinparam linetype ortho
+hide circle
+skinparam defaultFontName sans-serif
+skinparam defaultFontSize 12
+
+title 用户与学员 ER 图 (User)
+
+entity app_users {
+  * id: Long <<generated>>
+  --
+  username: String <<unique>>
+  password_hash: String
+  mobile: String
+  email: String
+  nickname: String
+  profile_signature: String
+  avatar_url: String
+  auth_provider: UserAuthProvider
+  wechat_open_id: String
+  wechat_web_open_id: String
+  wechat_union_id: String
+  gender: Gender
+  status: EnabledStatus
+  registered_at: DateTime
+  last_login_at: DateTime
+  last_login_ip: String
+  profile_completed: Boolean
+  password_updated_at: DateTime
+  --
+  created_at: DateTime
+  created_by: Long
+  updated_by: Long
+  updated_at: DateTime
+  deleted: Boolean
+}
+
+entity app_user_identities {
+  * id: Long <<generated>>
+  --
+  user_id: Long
+  identity_type: AppUserIdentityType
+  identity_status: AppUserIdentityStatus
+  is_primary: Boolean
+  activated_at: DateTime
+  deactivated_at: DateTime
+  --
+  created_at: DateTime
+  created_by: Long
+  updated_by: Long
+  updated_at: DateTime
+  deleted: Boolean
+}
+
+entity students {
+  * id: Long <<generated>>
+  --
+  user_id: Long
+  student_no: String
+  real_name: String
+  gender: Gender
+  age: Integer
+  education_level: String
+  mobile: String
+  id_card_no: String
+  province: String
+  province_code: String
+  city: String
+  city_code: String
+  district: String
+  district_code: String
+  organization: String
+  organization_id: Long
+  position_title: String
+  practice_type_id: Long
+  status: EnabledStatus
+  certification_status: StudentCertificationStatus
+  certification_submitted_at: DateTime
+  certification_reviewed_at: DateTime
+  certification_reviewed_by: Long
+  reject_reason: String
+  certification_materials: String
+  enrolled_at: DateTime
+  --
+  created_at: DateTime
+  created_by: Long
+  updated_by: Long
+  updated_at: DateTime
+  deleted: Boolean
+}
+
+entity student_certification_files {
+  * id: Long <<generated>>
+  --
+  student_id: Long
+  file_asset_id: Long
+  source_url: String
+  material_type: String
+  sort_order: Integer
+  --
+  created_at: DateTime
+  created_by: Long
+  updated_by: Long
+  updated_at: DateTime
+  deleted: Boolean
+}
+
+entity organizations {
+  * id: Long <<generated>>
+  --
+  org_code: String
+  org_name: String
+  org_type: String
+  province_code: String
+  city_code: String
+  district_code: String
+  address: String
+  status: EnabledStatus
+  sort_order: Integer
+  --
+  created_at: DateTime
+  created_by: Long
+  updated_by: Long
+  updated_at: DateTime
+  deleted: Boolean
+}
+
+entity practice_types {
+  * id: Long <<generated>>
+  --
+  parent_id: Long
+  type_code: String
+  type_name: String
+  status: EnabledStatus
+  sort_order: Integer
+  --
+  created_at: DateTime
+  created_by: Long
+  updated_by: Long
+  updated_at: DateTime
+  deleted: Boolean
+}
+
+app_users ||--o{ app_user_identities : "user_id"
+app_users ||--o{ students : "user_id"
+students ||--o{ student_certification_files : "student_id"
+students }o--|| organizations : "organization_id"
+students }o--|| practice_types : "practice_type_id"
+@enduml

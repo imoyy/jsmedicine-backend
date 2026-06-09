@@ -1,0 +1,106 @@
+@startuml
+!theme plain
+skinparam linetype ortho
+hide circle
+skinparam defaultFontName sans-serif
+skinparam defaultFontSize 12
+
+title 内容管理 ER 图 (Content)
+
+entity articles {
+  * id: Long <<generated>>
+  --
+  title: String
+  summary: String
+  cover_url: String
+  cover_file_asset_id: Long
+  content: Text
+  author_name: String
+  source: String
+  view_count: Long
+  review_status: ReviewStatus
+  publish_status: PublishStatus
+  published_at: DateTime
+  --
+  created_at: DateTime
+  created_by: Long
+  updated_by: Long
+  updated_at: DateTime
+  deleted: Boolean
+}
+
+entity home_categories {
+  * id: Long <<generated>>
+  --
+  parent_id: Long
+  category_name: String
+  category_code: String
+  icon_url: String
+  description: String
+  sort_order: Integer
+  status: EnabledStatus
+  --
+  created_at: DateTime
+  created_by: Long
+  updated_by: Long
+  updated_at: DateTime
+  deleted: Boolean
+}
+
+entity home_contents {
+  * id: Long <<generated>>
+  --
+  category_id: Long
+  content_type: String
+  target_id: Long
+  title: String
+  cover_url: String
+  cover_file_asset_id: Long
+  link_url: String
+  sort_order: Integer
+  start_at: DateTime
+  end_at: DateTime
+  status: EnabledStatus
+  --
+  created_at: DateTime
+  created_by: Long
+  updated_by: Long
+  updated_at: DateTime
+  deleted: Boolean
+}
+
+entity topics {
+  * id: Long <<generated>>
+  --
+  title: String
+  summary: String
+  learning_requirements: String
+  cover_url: String
+  cover_file_asset_id: Long
+  sort_order: Integer
+  view_count: Long
+  review_status: ReviewStatus
+  publish_status: PublishStatus
+  published_at: DateTime
+  --
+  created_at: DateTime
+  created_by: Long
+  updated_by: Long
+  updated_at: DateTime
+  deleted: Boolean
+}
+
+entity topic_items {
+  * id: Long <<generated>>
+  --
+  topic_id: Long
+  item_type: String
+  item_id: Long
+  sort_order: Integer
+  --
+  created_at: DateTime
+}
+
+home_categories ||--o{ home_contents : "category_id"
+topics ||--o{ topic_items : "topic_id"
+@enduml

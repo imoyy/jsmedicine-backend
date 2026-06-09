@@ -1,0 +1,104 @@
+@startuml
+!theme plain
+skinparam linetype ortho
+hide circle
+skinparam defaultFontName sans-serif
+skinparam defaultFontSize 12
+
+title 系统与权限 ER 图 (System / RBAC)
+
+entity sys_admins {
+  * id: Long <<generated>>
+  --
+  username: String <<unique>>
+  password_hash: String
+  real_name: String
+  mobile: String
+  email: String
+  avatar_url: String
+  status: EnabledStatus
+  last_login_at: DateTime
+  last_login_ip: String
+  --
+  created_at: DateTime
+  created_by: Long
+  updated_by: Long
+  updated_at: DateTime
+  deleted: Boolean
+}
+
+entity sys_roles {
+  * id: Long <<generated>>
+  --
+  role_code: String <<unique>>
+  role_name: String
+  description: String
+  status: EnabledStatus
+  sort_order: Integer
+  --
+  created_at: DateTime
+  created_by: Long
+  updated_by: Long
+  updated_at: DateTime
+  deleted: Boolean
+}
+
+entity sys_permissions {
+  * id: Long <<generated>>
+  --
+  parent_id: Long
+  permission_code: String <<unique>>
+  permission_name: String
+  permission_type: PermissionType
+  route_path: String
+  api_method: String
+  api_path: String
+  icon: String
+  sort_order: Integer
+  status: EnabledStatus
+  --
+  created_at: DateTime
+  created_by: Long
+  updated_by: Long
+  updated_at: DateTime
+  deleted: Boolean
+}
+
+entity sys_admin_roles {
+  * id: Long <<generated>>
+  --
+  admin_id: Long
+  role_id: Long
+  --
+  created_at: DateTime
+}
+
+entity sys_role_permissions {
+  * id: Long <<generated>>
+  --
+  role_id: Long
+  permission_id: Long
+  --
+  created_at: DateTime
+}
+
+entity audit_records {
+  * id: Long <<generated>>
+  --
+  target_type: String
+  target_id: Long
+  before_status: String
+  after_status: String
+  audit_comment: String
+  auditor_id: Long
+  audited_at: DateTime
+  --
+  created_at: DateTime
+}
+
+sys_admins ||--o{ sys_admin_roles : "admin_id"
+sys_roles ||--o{ sys_admin_roles : "role_id"
+sys_roles ||--o{ sys_role_permissions : "role_id"
+sys_permissions ||--o{ sys_role_permissions : "permission_id"
+sys_permissions ||--o{ sys_permissions : "parent_id"
+@enduml

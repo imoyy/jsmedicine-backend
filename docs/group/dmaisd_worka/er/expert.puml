@@ -1,0 +1,84 @@
+@startuml
+!theme plain
+skinparam linetype ortho
+hide circle
+skinparam defaultFontName sans-serif
+skinparam defaultFontSize 12
+
+title 专家 ER 图 (Expert)
+
+entity experts {
+  * id: Long <<generated>>
+  --
+  user_id: Long
+  real_name: String
+  gender: Gender
+  birth_date: Date
+  mobile: String
+  avatar_url: String
+  cover_url: String
+  cover_file_asset_id: Long
+  title: String
+  organization: String
+  organization_id: Long
+  specialty: String
+  practice_type_id: Long
+  introduction: String
+  status: EnabledStatus
+  consult_enabled: Boolean
+  consultation_notice: String
+  sort_order: Integer
+  --
+  created_at: DateTime
+  created_by: Long
+  updated_by: Long
+  updated_at: DateTime
+  deleted: Boolean
+}
+
+entity expert_categories {
+  * id: Long <<generated>>
+  --
+  parent_id: Long
+  category_name: String
+  sort_order: Integer
+  status: EnabledStatus
+  --
+  created_at: DateTime
+  created_by: Long
+  updated_by: Long
+  updated_at: DateTime
+  deleted: Boolean
+}
+
+entity expert_category_relations {
+  * id: Long <<generated>>
+  --
+  expert_id: Long
+  category_id: Long
+  --
+  created_at: DateTime
+}
+
+entity expert_experiences {
+  * id: Long <<generated>>
+  --
+  expert_id: Long
+  experience_type: ExperienceType
+  title: String
+  description: String
+  start_date: Date
+  end_date: Date
+  sort_order: Integer
+  --
+  created_at: DateTime
+  created_by: Long
+  updated_by: Long
+  updated_at: DateTime
+  deleted: Boolean
+}
+
+experts ||--o{ expert_category_relations : "expert_id"
+expert_categories ||--o{ expert_category_relations : "category_id"
+experts ||--o{ expert_experiences : "expert_id"
+@enduml

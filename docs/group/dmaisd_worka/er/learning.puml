@@ -1,0 +1,192 @@
+@startuml
+!theme plain
+skinparam linetype ortho
+hide circle
+skinparam defaultFontName sans-serif
+skinparam defaultFontSize 12
+
+title 学习资源 ER 图 (Learning)
+
+entity courses {
+  * id: Long <<generated>>
+  --
+  course_name: String
+  subtitle: String
+  cover_url: String
+  cover_file_asset_id: Long
+  lecturer_name: String
+  introduction: String
+  paper_id: Long
+  sort_order: Integer
+  review_status: ReviewStatus
+  publish_status: PublishStatus
+  published_at: DateTime
+  --
+  created_at: DateTime
+  created_by: Long
+  updated_by: Long
+  updated_at: DateTime
+  deleted: Boolean
+}
+
+entity course_videos {
+  * id: Long <<generated>>
+  --
+  course_id: Long
+  title: String
+  video_url: String
+  duration_seconds: Integer
+  paper_id: Long
+  sort_order: Integer
+  status: EnabledStatus
+  --
+  created_at: DateTime
+  created_by: Long
+  updated_by: Long
+  updated_at: DateTime
+  deleted: Boolean
+}
+
+entity books {
+  * id: Long <<generated>>
+  --
+  category_id: Long
+  book_name: String
+  author: String
+  publisher: String
+  cover_url: String
+  cover_file_asset_id: Long
+  introduction: String
+  total_pages: Integer
+  paper_id: Long
+  sort_order: Integer
+  review_status: ReviewStatus
+  publish_status: PublishStatus
+  published_at: DateTime
+  --
+  created_at: DateTime
+  created_by: Long
+  updated_by: Long
+  updated_at: DateTime
+  deleted: Boolean
+}
+
+entity book_categories {
+  * id: Long <<generated>>
+  --
+  parent_id: Long
+  category_name: String
+  sort_order: Integer
+  status: EnabledStatus
+  --
+  created_at: DateTime
+  created_by: Long
+  updated_by: Long
+  updated_at: DateTime
+  deleted: Boolean
+}
+
+entity book_chapters {
+  * id: Long <<generated>>
+  --
+  book_id: Long
+  parent_id: Long
+  chapter_title: String
+  content: Text
+  start_page: Integer
+  page_count: Integer
+  paper_id: Long
+  sort_order: Integer
+  status: EnabledStatus
+  --
+  created_at: DateTime
+  created_by: Long
+  updated_by: Long
+  updated_at: DateTime
+  deleted: Boolean
+}
+
+entity podcasts {
+  * id: Long <<generated>>
+  --
+  title: String
+  summary: String
+  cover_url: String
+  cover_file_asset_id: Long
+  speaker_name: String
+  sort_order: Integer
+  review_status: ReviewStatus
+  publish_status: PublishStatus
+  published_at: DateTime
+  --
+  created_at: DateTime
+  created_by: Long
+  updated_by: Long
+  updated_at: DateTime
+  deleted: Boolean
+}
+
+entity podcast_audios {
+  * id: Long <<generated>>
+  --
+  podcast_id: Long
+  title: String
+  audio_url: String
+  duration_seconds: Integer
+  paper_id: Long
+  sort_order: Integer
+  status: EnabledStatus
+  --
+  created_at: DateTime
+  created_by: Long
+  updated_by: Long
+  updated_at: DateTime
+  deleted: Boolean
+}
+
+entity live_sessions {
+  * id: Long <<generated>>
+  --
+  title: String
+  cover_url: String
+  cover_file_asset_id: Long
+  anchor_name: String
+  stream_name: String
+  speaker_name: String
+  live_url: String
+  playback_url: String
+  start_at: DateTime
+  end_at: DateTime
+  review_status: ReviewStatus
+  live_status: LiveStatus
+  --
+  created_at: DateTime
+  created_by: Long
+  updated_by: Long
+  updated_at: DateTime
+  deleted: Boolean
+}
+
+entity live_session_videos {
+  * id: Long <<generated>>
+  --
+  live_session_id: Long
+  title: String
+  video_url: String
+  duration_seconds: Integer
+  sort_order: Integer
+  status: EnabledStatus
+  --
+  created_at: DateTime
+  created_by: Long
+  updated_by: Long
+  updated_at: DateTime
+  deleted: Boolean
+}
+
+courses ||--o{ course_videos : "course_id"
+book_categories ||--o{ books : "category_id"
+books ||--o{ book_chapters : "book_id"
+podcasts ||--o{ podcast_audios : "podcast_id"
+live_sessions ||--o{ live_session_videos : "live_session_id"
+@enduml

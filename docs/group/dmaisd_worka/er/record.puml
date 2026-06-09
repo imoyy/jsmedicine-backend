@@ -1,0 +1,54 @@
+@startuml
+!theme plain
+skinparam linetype ortho
+hide circle
+skinparam defaultFontName sans-serif
+skinparam defaultFontSize 12
+
+title 学习记录 ER 图 (Record)
+
+entity learning_records {
+  * id: Long <<generated>>
+  --
+  student_id: Long
+  resource_type: String
+  resource_id: Long
+  study_seconds: Integer
+  progress_percent: Integer
+  completed: Boolean
+  completed_at: DateTime
+  last_studied_at: DateTime
+  updated_at: DateTime
+  --
+  created_at: DateTime
+}
+
+entity exam_records {
+  * id: Long <<generated>>
+  --
+  student_id: Long
+  paper_id: Long
+  source_type: String
+  source_id: Long
+  score: BigDecimal
+  passed: Boolean
+  started_at: DateTime
+  submitted_at: DateTime
+  --
+  created_at: DateTime
+}
+
+entity exam_record_answers {
+  * id: Long <<generated>>
+  --
+  exam_record_id: Long
+  question_id: Long
+  answer_content: String
+  score: BigDecimal
+  correct: Boolean
+  --
+  created_at: DateTime
+}
+
+exam_records ||--o{ exam_record_answers : "exam_record_id"
+@enduml

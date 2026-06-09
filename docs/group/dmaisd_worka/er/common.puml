@@ -1,0 +1,67 @@
+@startuml
+!theme plain
+skinparam linetype ortho
+hide circle
+skinparam defaultFontName sans-serif
+skinparam defaultFontSize 12
+
+title 通用扩展 ER 图 (Common)
+
+entity file_assets {
+  * id: Long <<generated>>
+  --
+  asset_type: String
+  storage_provider: String
+  bucket_name: String
+  object_key: String
+  original_name: String
+  content_type: String
+  file_size: Long
+  url: String
+  --
+  created_at: DateTime
+  created_by: Long
+  updated_by: Long
+  updated_at: DateTime
+  deleted: Boolean
+}
+
+entity tags {
+  * id: Long <<generated>>
+  --
+  tag_name: String
+  tag_type: String
+  color: String
+  status: EnabledStatus
+  --
+  created_at: DateTime
+  created_by: Long
+  updated_by: Long
+  updated_at: DateTime
+  deleted: Boolean
+}
+
+entity resource_tags {
+  * id: Long <<generated>>
+  --
+  tag_id: Long
+  resource_type: String
+  resource_id: Long
+  --
+  created_at: DateTime
+}
+
+entity entity_extensions {
+  * id: Long <<generated>>
+  --
+  owner_type: String
+  owner_id: Long
+  field_key: String
+  field_value: String
+  value_type: ValueType
+  --
+  created_at: DateTime
+}
+
+tags ||--o{ resource_tags : "tag_id"
+@enduml

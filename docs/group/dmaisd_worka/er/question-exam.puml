@@ -1,0 +1,87 @@
+@startuml
+!theme plain
+skinparam linetype ortho
+hide circle
+skinparam defaultFontName sans-serif
+skinparam defaultFontSize 12
+
+title 题库与考试 ER 图 (Question / Exam)
+
+entity question_categories {
+  * id: Long <<generated>>
+  --
+  parent_id: Long
+  category_name: String
+  sort_order: Integer
+  status: EnabledStatus
+  --
+  created_at: DateTime
+  created_by: Long
+  updated_by: Long
+  updated_at: DateTime
+  deleted: Boolean
+}
+
+entity questions {
+  * id: Long <<generated>>
+  --
+  category_id: Long
+  question_type: QuestionType
+  title: String
+  analysis: String
+  difficulty: Difficulty
+  score: BigDecimal
+  status: EnabledStatus
+  --
+  created_at: DateTime
+  created_by: Long
+  updated_by: Long
+  updated_at: DateTime
+  deleted: Boolean
+}
+
+entity question_options {
+  * id: Long <<generated>>
+  --
+  question_id: Long
+  option_key: String
+  option_content: String
+  correct: Boolean
+  sort_order: Integer
+  --
+  created_at: DateTime
+}
+
+entity exam_papers {
+  * id: Long <<generated>>
+  --
+  paper_name: String
+  description: String
+  total_score: BigDecimal
+  pass_score: BigDecimal
+  duration_minutes: Integer
+  status: EnabledStatus
+  --
+  created_at: DateTime
+  created_by: Long
+  updated_by: Long
+  updated_at: DateTime
+  deleted: Boolean
+}
+
+entity exam_paper_questions {
+  * id: Long <<generated>>
+  --
+  paper_id: Long
+  question_id: Long
+  score: BigDecimal
+  sort_order: Integer
+  --
+  created_at: DateTime
+}
+
+question_categories ||--o{ questions : "category_id"
+questions ||--o{ question_options : "question_id"
+exam_papers ||--o{ exam_paper_questions : "paper_id"
+questions ||--o{ exam_paper_questions : "question_id"
+@enduml

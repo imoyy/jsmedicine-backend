@@ -1,0 +1,97 @@
+@startuml
+!theme plain
+skinparam linetype ortho
+hide circle
+skinparam defaultFontName sans-serif
+skinparam defaultFontSize 12
+
+title 互动 ER 图 (Interaction)
+
+entity qa_questions {
+  * id: Long <<generated>>
+  --
+  student_id: Long
+  user_id: Long
+  expert_category_id: Long
+  expert_id: Long
+  title: String
+  content: Text
+  status: QaStatus
+  --
+  created_at: DateTime
+  created_by: Long
+  updated_by: Long
+  updated_at: DateTime
+  deleted: Boolean
+}
+
+entity qa_answers {
+  * id: Long <<generated>>
+  --
+  question_id: Long
+  admin_id: Long
+  expert_id: Long
+  content: Text
+  answered_at: DateTime
+  deleted: Boolean
+  --
+  created_at: DateTime
+}
+
+entity feedbacks {
+  * id: Long <<generated>>
+  --
+  user_id: Long
+  student_id: Long
+  feedback_type: String
+  content: Text
+  contact: String
+  status: FeedbackStatus
+  processed_by: Long
+  processed_at: DateTime
+  process_note: String
+  --
+  created_at: DateTime
+  created_by: Long
+  updated_by: Long
+  updated_at: DateTime
+  deleted: Boolean
+}
+
+entity user_favorites {
+  * id: Long <<generated>>
+  --
+  user_id: Long
+  resource_type: String
+  resource_id: Long
+  --
+  created_at: DateTime
+}
+
+entity user_browse_histories {
+  * id: Long <<generated>>
+  --
+  user_id: Long
+  resource_type: String
+  resource_id: Long
+  source: String
+  view_count: Integer
+  viewed_at: DateTime
+  updated_at: DateTime
+  --
+  created_at: DateTime
+}
+
+entity user_share_records {
+  * id: Long <<generated>>
+  --
+  user_id: Long
+  resource_type: String
+  resource_id: Long
+  share_channel: String
+  --
+  created_at: DateTime
+}
+
+qa_questions ||--o{ qa_answers : "question_id"
+@enduml
