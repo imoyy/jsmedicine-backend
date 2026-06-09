@@ -8,6 +8,9 @@ import jakarta.validation.constraints.Size;
 import java.util.List;
 
 public record AppExamSubmitRequest(
+        @Size(max = 64, message = "requestId length must be less than 64")
+        String requestId,
+
         String sourceType,
         Long sourceId,
 

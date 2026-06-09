@@ -3,6 +3,8 @@ package com.gugugaga.jsmedicine.module.learning.app.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.gugugaga.jsmedicine.common.enums.EnabledStatus;
+import com.gugugaga.jsmedicine.common.enums.ExamRecordStatus;
+import com.gugugaga.jsmedicine.common.enums.ExamSubmitType;
 import com.gugugaga.jsmedicine.common.enums.PublishStatus;
 import com.gugugaga.jsmedicine.common.enums.QuestionType;
 import com.gugugaga.jsmedicine.common.enums.ReviewStatus;
@@ -311,12 +313,17 @@ public class AppLearningService {
         ExamRecord record = new ExamRecord();
         record.setStudentId(student.getId());
         record.setPaperId(paperId);
+        record.setAssessmentId(null);
         record.setSourceType(request.sourceType());
         record.setSourceId(request.sourceId());
         record.setScore(BigDecimal.ZERO.setScale(2));
         record.setPassed(0);
+        record.setStatus(ExamRecordStatus.SUBMITTED);
+        record.setSubmitType(ExamSubmitType.NORMAL);
         record.setStartedAt(now);
         record.setSubmittedAt(now);
+        record.setLastActiveAt(now);
+        record.setLastSubmitRequestId(request.requestId());
         examRecordMapper.insert(record);
 
         BigDecimal totalScore = BigDecimal.ZERO.setScale(2);
@@ -662,9 +669,10 @@ public class AppLearningService {
 
     private AppExamRecordResponse toExamRecordResponse(ExamRecord record, boolean includeAnswers) {
         ExamPaper paper = examPaperMapper.selectById(record.getPaperId());
-        return new AppExamRecordResponse(record.getId(), record.getStudentId(), record.getPaperId(),
+        return new AppExamRecordResponse(record.getId(), record.getStudentId(), record.getPaperId(), record.getAssessmentId(),
                 paper == null ? null : paper.getPaperName(), record.getSourceType(), record.getSourceId(),
-                record.getScore(), record.getPassed(), record.getStartedAt(), record.getSubmittedAt(),
+                record.getScore(), record.getPassed(), record.getStatus(), record.getSubmitType(),
+                record.getStartedAt(), record.getSubmittedAt(), record.getLastActiveAt(),
                 includeAnswers ? loadExamAnswerResults(record.getId()) : List.of());
     }
 
