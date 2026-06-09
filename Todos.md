@@ -210,7 +210,7 @@
   2. 学员导出接口：已完成，新增与列表页同查询条件的 Excel 导出能力，并通过下载响应返回文件。
   3. 审核日志：已完成第一轮契约补强，统一接口 `GET /api/v1/admin/system/audit-records` 已补 `targetTypeLabel`、`statusType`、`beforeStatusLabel`、`afterStatusLabel`、`auditorName`、`auditorUsername` 等字段，前端可直接渲染资源类型、审核人和状态语义。
   4. 图书考卷配置：已完成契约收口，明确采用“图书级单考卷”模型，复用图书新增/修改接口的 `paperId` 维护考卷绑定；图书详情/列表响应补 `paperTitle`，并在保存时校验 `paperId` 必须指向真实考卷。
-  5. 专题分项配置：已完成第一轮规则收口，`PUT /api/v1/admin/content/topics/{id}/items` 现仅允许 `course/book/podcast` 三类资源，服务层补齐资源存在性校验、同专题内去重、按 `sortOrder` 与请求顺序统一归一化排序；读取响应补 `itemTypeLabel`、`itemAvailable`、标题/副标题/封面与审核/发布状态字段，便于前端直接渲染和识别遗留失效分项。
+  5. 专题分项配置：已完成第二轮规则收口，`PUT /api/v1/admin/content/topics/{id}/items` 现支持 `course/book/podcast/student/article/question/examPaper` 七类资源，服务层补齐资源存在性校验、同专题内去重、按 `sortOrder` 与请求顺序统一归一化排序；读取响应补 `itemTypeLabel`、`itemAvailable`、标题/副标题/封面与审核/发布状态字段，便于前端直接渲染和识别遗留失效分项。
   6. 专家分类二级科室：已完成第一轮层级契约收口，继续复用同一套分类接口；Swagger 已补“一级科室 / 二级科室 / `parentId` 分组”语义，响应新增 `parentCategoryName`、`level` 字段，并在服务层限制父分类必须是一级科室、禁止形成三级分类，同时拦截“删除仍有子分类/专家绑定的分类”脏数据场景。
   7. 首页内容快捷配置：已明确继续沿用统一 `contentType + targetId` 模型，不新增平行快捷接口；当前服务层已把 `contentType` 收口为 `course/book/podcast/topic/live`，补齐目标资源存在性、`startAt/endAt` 时间范围和 `targetId` 必填校验，响应新增类型中文说明与目标资源可用性/标题字段。
   8. 用户反馈字段语义：已完成第一轮语义说明收口，当前继续保留 `feedbackType` 自由文本模型，不强行收成枚举；Swagger 已明确 `feedbackType` 为前端约定/用户自填分类，`contact` 为主联系方式字段，可填写手机号、微信号、邮箱等一种便于回访的信息。

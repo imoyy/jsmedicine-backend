@@ -26,7 +26,7 @@
 - 管理端学员新增 `POST /api/v1/admin/students/import` 和 `GET /api/v1/admin/students/export`，用于 Excel 导入导出。
 - `GET /api/v1/admin/system/audit-records` 补充 `targetTypeLabel`、`statusType`、`beforeStatusLabel`、`afterStatusLabel`、`auditorName`、`auditorUsername`，前端无需再自行硬编码审核资源类型和状态语义。
 - 图书继续沿用“图书级单考卷”模型，图书请求体使用 `paperId` 维护绑定关系，图书响应新增 `paperTitle`。
-- 管理端专题分项 `PUT /api/v1/admin/content/topics/{id}/items` 只允许 `course`、`book`、`podcast` 三类资源，后端统一做资源存在性、去重和排序归一化校验。
+- 管理端专题分项 `PUT /api/v1/admin/content/topics/{id}/items` 支持 `course`、`book`、`podcast`、`student`、`article`、`question`、`examPaper` 七类资源，后端统一做资源存在性、去重和排序归一化校验。
 - 管理端专题分项响应新增 `itemTypeLabel`、`itemAvailable`、`itemTitle`、`itemSubtitle`、`itemCoverUrl`、`reviewStatus`、`publishStatus`。
 - 用户端专题页契约已收口：专题列表改为显式卡片 DTO，专题详情按 `学习 / 视频 / 音频` 分区返回，并新增专题分区分页接口，不再返回 `items[].resource` 裸 `Object`。
 - 首页内容契约已收口为“首页分类 + 业务资源引用配置”模型：首页分类只承载展示位语义，资源类型以 `contentType` 为准；前端以 `categoryId + contentType + targetId` 为主，当前支持 `course`、`book`、`article`、`podcast`、`topic`、`knowledge`、`live` 七类资源。
@@ -323,7 +323,7 @@
 
 `PUT /api/v1/admin/content/topics/{id}/items` 当前是专题分项唯一正式入口，规则如下：
 
-- `itemType` 仅支持 `course`、`book`、`podcast`
+- `itemType` 仅支持 `course`、`book`、`podcast`、`student`、`article`、`question`、`examPaper`
 - `itemId` 必须指向真实存在的对应资源
 - 同一专题内禁止重复绑定“同类型 + 同资源”组合
 - `sortOrder` 可为空；为空时后端按请求顺序自动归一化排序

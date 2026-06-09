@@ -7,7 +7,9 @@ import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
 public record TopicItemRequest(
-        @Schema(description = "专题分项类型，仅支持 course/book/podcast", allowableValues = {"course", "book", "podcast"},
+        @Schema(
+                description = "专题分项类型，支持 course/book/podcast/student/article/question/examPaper",
+                allowableValues = {"course", "book", "podcast", "student", "article", "question", "examPaper"},
                 example = "course")
         @NotBlank(message = "itemType must not be blank")
         @Size(max = 32, message = "itemType length must be less than 32")
