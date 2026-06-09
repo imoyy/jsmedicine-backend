@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.gugugaga.jsmedicine.common.enums.PublishStatus;
 import com.gugugaga.jsmedicine.common.enums.ReviewStatus;
+import com.gugugaga.jsmedicine.common.enums.EnabledStatus;
 import com.gugugaga.jsmedicine.common.exception.BusinessException;
 import com.gugugaga.jsmedicine.common.exception.ErrorCode;
 import com.gugugaga.jsmedicine.common.response.PageResponse;
@@ -51,10 +52,16 @@ import com.gugugaga.jsmedicine.module.learning.podcast.entity.Podcast;
 import com.gugugaga.jsmedicine.module.learning.podcast.entity.PodcastAudio;
 import com.gugugaga.jsmedicine.module.learning.podcast.mapper.PodcastAudioMapper;
 import com.gugugaga.jsmedicine.module.learning.podcast.mapper.PodcastMapper;
+import com.gugugaga.jsmedicine.module.learning.question.entity.ExamPaper;
+import com.gugugaga.jsmedicine.module.learning.question.entity.Question;
+import com.gugugaga.jsmedicine.module.learning.question.mapper.ExamPaperMapper;
+import com.gugugaga.jsmedicine.module.learning.question.mapper.QuestionMapper;
 import com.gugugaga.jsmedicine.module.knowledge.entity.KnowledgeEntry;
 import com.gugugaga.jsmedicine.module.knowledge.mapper.KnowledgeEntryMapper;
 import com.gugugaga.jsmedicine.module.system.entity.AuditRecord;
 import com.gugugaga.jsmedicine.module.system.service.AuditRecordService;
+import com.gugugaga.jsmedicine.module.user.entity.Student;
+import com.gugugaga.jsmedicine.module.user.mapper.StudentMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -81,10 +88,17 @@ public class AdminContentService {
     private static final String RESOURCE_TYPE_TOPIC = "topic";
     private static final String RESOURCE_TYPE_KNOWLEDGE = "knowledge";
     private static final String RESOURCE_TYPE_LIVE = "live";
+    private static final String RESOURCE_TYPE_STUDENT = "student";
+    private static final String RESOURCE_TYPE_QUESTION = "question";
+    private static final String RESOURCE_TYPE_EXAM_PAPER = "examPaper";
     private static final Map<String, String> TOPIC_ITEM_TYPE_LABELS = Map.of(
             RESOURCE_TYPE_COURSE, "课程",
             RESOURCE_TYPE_BOOK, "图书",
-            RESOURCE_TYPE_PODCAST, "播客"
+            RESOURCE_TYPE_PODCAST, "播客",
+            RESOURCE_TYPE_STUDENT, "学员",
+            RESOURCE_TYPE_ARTICLE, "资讯",
+            RESOURCE_TYPE_QUESTION, "题目",
+            RESOURCE_TYPE_EXAM_PAPER, "考卷"
     );
     private static final Map<String, String> HOME_CONTENT_TYPE_LABELS = Map.of(
             RESOURCE_TYPE_COURSE, "课程",
@@ -105,6 +119,9 @@ public class AdminContentService {
     private final LiveSessionMapper liveSessionMapper;
     private final KnowledgeEntryMapper knowledgeEntryMapper;
     private final PodcastAudioMapper podcastAudioMapper;
+    private final StudentMapper studentMapper;
+    private final QuestionMapper questionMapper;
+    private final ExamPaperMapper examPaperMapper;
     private final TopicMapper topicMapper;
     private final TopicItemMapper topicItemMapper;
     private final FileAssetMapper fileAssetMapper;
@@ -123,6 +140,9 @@ public class AdminContentService {
             LiveSessionMapper liveSessionMapper,
             KnowledgeEntryMapper knowledgeEntryMapper,
             PodcastAudioMapper podcastAudioMapper,
+            StudentMapper studentMapper,
+            QuestionMapper questionMapper,
+            ExamPaperMapper examPaperMapper,
             TopicMapper topicMapper,
             TopicItemMapper topicItemMapper,
             FileAssetMapper fileAssetMapper,
@@ -140,6 +160,9 @@ public class AdminContentService {
         this.liveSessionMapper = liveSessionMapper;
         this.knowledgeEntryMapper = knowledgeEntryMapper;
         this.podcastAudioMapper = podcastAudioMapper;
+        this.studentMapper = studentMapper;
+        this.questionMapper = questionMapper;
+        this.examPaperMapper = examPaperMapper;
         this.topicMapper = topicMapper;
         this.topicItemMapper = topicItemMapper;
         this.fileAssetMapper = fileAssetMapper;
@@ -904,6 +927,9 @@ public class AdminContentService {
 
     private String normalizeTopicItemType(String itemType) {
         String normalizedType = itemType == null ? "" : itemType.trim().toLowerCase(Locale.ROOT);
+        if ("exampaper".equals(normalizedType)) {
+            return RESOURCE_TYPE_EXAM_PAPER;
+        }
         if (!TOPIC_ITEM_TYPE_LABELS.containsKey(normalizedType)) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "Unsupported topic itemType: " + itemType);
         }
@@ -982,6 +1008,27 @@ public class AdminContentService {
                         podcast.getCoverUrl(), podcast.getReviewStatus(),
                         podcast.getPublishStatus());
             }
+            case RESOURCE_TYPE_STUDENT -> {
+                Student student = requireTopicStudent(itemId);
+                yield new TopicItemResourceSummary(student.getRealName(),
+                        buildStudentTopicSubtitle(student), null, null, null);
+            }
+            case RESOURCE_TYPE_ARTICLE -> {
+                Article article = requireArticle(itemId);
+                yield new TopicItemResourceSummary(article.getTitle(), article.getSource(),
+                        article.getCoverUrl(), article.getReviewStatus(),
+                        article.getPublishStatus());
+            }
+            case RESOURCE_TYPE_QUESTION -> {
+                Question question = requireTopicQuestion(itemId);
+                yield new TopicItemResourceSummary(question.getTitle(),
+                        buildQuestionTopicSubtitle(question), null, null, null);
+            }
+            case RESOURCE_TYPE_EXAM_PAPER -> {
+                ExamPaper paper = requireTopicExamPaper(itemId);
+                yield new TopicItemResourceSummary(paper.getPaperName(),
+                        buildExamPaperTopicSubtitle(paper), null, null, null);
+            }
             default -> throw new BusinessException(ErrorCode.BAD_REQUEST, "Unsupported topic itemType: " + itemType);
         };
     }
@@ -1008,6 +1055,73 @@ public class AdminContentService {
             throw new BusinessException(ErrorCode.NOT_FOUND, "Podcast does not exist");
         }
         return podcast;
+    }
+
+    private Student requireTopicStudent(Long id) {
+        Student student = studentMapper.selectById(id);
+        if (student == null || !Objects.equals(student.getDeleted(), 0)) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Student does not exist");
+        }
+        return student;
+    }
+
+    private Question requireTopicQuestion(Long id) {
+        Question question = questionMapper.selectById(id);
+        if (question == null || !Objects.equals(question.getDeleted(), 0)) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Question does not exist");
+        }
+        return question;
+    }
+
+    private ExamPaper requireTopicExamPaper(Long id) {
+        ExamPaper paper = examPaperMapper.selectById(id);
+        if (paper == null || !Objects.equals(paper.getDeleted(), 0)) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Exam paper does not exist");
+        }
+        return paper;
+    }
+
+    private String buildStudentTopicSubtitle(Student student) {
+        List<String> parts = new ArrayList<>();
+        if (hasText(student.getStudentNo())) {
+            parts.add(student.getStudentNo());
+        }
+        if (hasText(student.getMobile())) {
+            parts.add(student.getMobile());
+        }
+        return String.join(" / ", parts);
+    }
+
+    private String buildQuestionTopicSubtitle(Question question) {
+        List<String> parts = new ArrayList<>();
+        if (question.getQuestionType() != null) {
+            parts.add(question.getQuestionType().name());
+        }
+        if (question.getDifficulty() != null) {
+            parts.add(question.getDifficulty().name());
+        }
+        if (question.getStatus() != null) {
+            parts.add(toEnabledStatusLabel(question.getStatus()));
+        }
+        return String.join(" / ", parts);
+    }
+
+    private String buildExamPaperTopicSubtitle(ExamPaper paper) {
+        List<String> parts = new ArrayList<>();
+        if (paper.getDurationMinutes() != null) {
+            parts.add(paper.getDurationMinutes() + " 分钟");
+        }
+        if (paper.getPassScore() != null) {
+            parts.add("及格 " + paper.getPassScore());
+        }
+        if (paper.getStatus() != null) {
+            parts.add(toEnabledStatusLabel(paper.getStatus()));
+        }
+        return String.join(" / ", parts);
+    }
+
+    private String toEnabledStatusLabel(EnabledStatus status) {
+        return status == EnabledStatus.ENABLED ? "启用" : "禁用";
     }
 
     private LiveSession requireLiveSession(Long id) {
