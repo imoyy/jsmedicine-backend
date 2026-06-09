@@ -546,7 +546,8 @@ public class AppLearningService {
                                                ResourceInteractionSnapshot snapshot) {
         LearningRecord record = findLearningRecord(studentId, RESOURCE_TYPE_COURSE, course.getId()).orElse(null);
         return new AppCourseResponse(course.getId(), course.getCourseName(), course.getSubtitle(), course.getCoverUrl(),
-                course.getLecturerName(), course.getIntroduction(), course.getPaperId(), course.getPublishedAt(),
+                course.getLecturerName(), course.getLecturerAvatarUrl(), course.getIntroduction(),
+                course.getPaperId(), course.getPublishedAt(),
                 snapshot.browseCount(), snapshot.favoriteCount(), snapshot.favorited(),
                 progress(record), studySeconds(record), includeVideos ? loadCourseVideos(course.getId()) : List.of());
     }

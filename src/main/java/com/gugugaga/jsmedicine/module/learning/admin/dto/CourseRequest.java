@@ -24,6 +24,10 @@ public record CourseRequest(
         @Size(max = 64, message = "lecturerName length must be less than 64")
         String lecturerName,
 
+        @Size(max = 512, message = "lecturerAvatarUrl length must be less than 512")
+        @Schema(description = "讲师头像稳定读取地址，只能填写管理端封面上传接口返回的 /api/v1/files/{id}/content", example = "/api/v1/files/205/content")
+        String lecturerAvatarUrl,
+
         String introduction,
         Long paperId,
         Integer sortOrder,

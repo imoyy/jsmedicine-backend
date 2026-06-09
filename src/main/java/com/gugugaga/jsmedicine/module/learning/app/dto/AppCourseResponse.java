@@ -10,6 +10,7 @@ public record AppCourseResponse(
         String subtitle,
         String coverUrl,
         String lecturerName,
+        String lecturerAvatarUrl,
         String introduction,
         Long paperId,
         LocalDateTime publishedAt,

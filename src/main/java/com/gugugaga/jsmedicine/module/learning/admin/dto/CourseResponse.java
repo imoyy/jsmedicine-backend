@@ -11,6 +11,7 @@ public record CourseResponse(
         String subtitle,
         String coverUrl,
         String lecturerName,
+        String lecturerAvatarUrl,
         String introduction,
         Long paperId,
         Integer sortOrder,

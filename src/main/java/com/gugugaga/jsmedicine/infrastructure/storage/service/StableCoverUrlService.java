@@ -31,41 +31,55 @@ public class StableCoverUrlService {
         return resolveCoverBinding(requestedCoverUrl, currentCoverUrl, null).coverUrl();
     }
 
+    public CoverBinding resolvePublicImageBinding(
+            String requestedUrl,
+            String currentUrl,
+            Long currentFileAssetId,
+            String fieldName
+    ) {
+        String normalizedRequestedUrl = normalizeNullable(requestedUrl);
+        String normalizedCurrentUrl = normalizeNullable(currentUrl);
+        if (normalizedRequestedUrl.equals(normalizedCurrentUrl)) {
+            return new CoverBinding(currentFileAssetId, requestedUrl);
+        }
+        if (!hasText(requestedUrl)) {
+            return new CoverBinding(null, requestedUrl);
+        }
+        return requireStableImageUrlChange(requestedUrl, fieldName);
+    }
+
     public CoverBinding resolveCoverBinding(
             String requestedCoverUrl,
             String currentCoverUrl,
             Long currentCoverFileAssetId
     ) {
-        String normalizedRequestedCoverUrl = normalizeNullable(requestedCoverUrl);
-        String normalizedCurrentCoverUrl = normalizeNullable(currentCoverUrl);
-        if (normalizedRequestedCoverUrl.equals(normalizedCurrentCoverUrl)) {
-            return new CoverBinding(currentCoverFileAssetId, requestedCoverUrl);
-        }
-        if (!hasText(requestedCoverUrl)) {
-            return new CoverBinding(null, requestedCoverUrl);
-        }
-        return requireStableCoverUrlChange(requestedCoverUrl);
+        return resolvePublicImageBinding(
+                requestedCoverUrl,
+                currentCoverUrl,
+                currentCoverFileAssetId,
+                "coverUrl"
+        );
     }
 
-    private CoverBinding requireStableCoverUrlChange(String coverUrl) {
-        if (!hasText(coverUrl)) {
-            return new CoverBinding(null, coverUrl);
+    private CoverBinding requireStableImageUrlChange(String imageUrl, String fieldName) {
+        if (!hasText(imageUrl)) {
+            return new CoverBinding(null, imageUrl);
         }
-        String normalizedCoverUrl = coverUrl.trim();
-        Long fileAssetId = extractFileAssetId(normalizedCoverUrl);
+        String normalizedImageUrl = imageUrl.trim();
+        Long fileAssetId = extractFileAssetId(normalizedImageUrl);
         if (fileAssetId == null) {
-            throw invalidCoverUrl();
+            throw invalidImageUrl(fieldName);
         }
         FileAsset fileAsset = fileAssetMapper.selectById(fileAssetId);
         if (!isStableCoverAsset(fileAsset)) {
-            throw invalidCoverUrl();
+            throw invalidImageUrl(fieldName);
         }
         String relativeUrl = buildRelativeFileUrl(fileAssetId);
         String absoluteUrl = buildAbsoluteFileUrl(relativeUrl);
-        if (!normalizedCoverUrl.equals(relativeUrl)
-                && !normalizedCoverUrl.equals(absoluteUrl)
-                && !normalizedCoverUrl.equals(normalizeNullable(fileAsset.getUrl()))) {
-            throw invalidCoverUrl();
+        if (!normalizedImageUrl.equals(relativeUrl)
+                && !normalizedImageUrl.equals(absoluteUrl)
+                && !normalizedImageUrl.equals(normalizeNullable(fileAsset.getUrl()))) {
+            throw invalidImageUrl(fieldName);
         }
         return new CoverBinding(fileAssetId, hasText(fileAsset.getUrl()) ? fileAsset.getUrl().trim() : relativeUrl);
     }
@@ -117,7 +131,11 @@ public class StableCoverUrlService {
     }
 
     private BusinessException invalidCoverUrl() {
-        return new BusinessException(ErrorCode.BAD_REQUEST, "coverUrl must be generated through cover upload APIs");
+        return invalidImageUrl("coverUrl");
+    }
+
+    private BusinessException invalidImageUrl(String fieldName) {
+        return new BusinessException(ErrorCode.BAD_REQUEST, fieldName + " must be generated through cover upload APIs");
     }
 
     private boolean hasText(String value) {

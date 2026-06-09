@@ -217,6 +217,7 @@ public class AdminCoverUploadService {
         Map<String, String> usages = new LinkedHashMap<>();
         usages.put("article-cover", "article");
         usages.put("course-cover", "course");
+        usages.put("course-lecturer-avatar", "course-lecturer-avatar");
         usages.put("book-cover", "book");
         usages.put("podcast-cover", "podcast");
         usages.put("topic-cover", "topic");

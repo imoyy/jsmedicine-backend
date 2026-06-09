@@ -558,11 +558,19 @@ public class AdminLearningService {
                 course.getCoverUrl(),
                 course.getCoverFileAssetId()
         );
+        StableCoverUrlService.CoverBinding lecturerAvatarBinding = stableCoverUrlService.resolvePublicImageBinding(
+                request.lecturerAvatarUrl(),
+                course.getLecturerAvatarUrl(),
+                course.getLecturerAvatarFileAssetId(),
+                "lecturerAvatarUrl"
+        );
         course.setCourseName(request.courseName());
         course.setSubtitle(request.subtitle());
         course.setCoverUrl(coverBinding.coverUrl());
         course.setCoverFileAssetId(coverBinding.fileAssetId());
         course.setLecturerName(request.lecturerName());
+        course.setLecturerAvatarUrl(lecturerAvatarBinding.coverUrl());
+        course.setLecturerAvatarFileAssetId(lecturerAvatarBinding.fileAssetId());
         course.setIntroduction(request.introduction());
         course.setPaperId(request.paperId());
         course.setSortOrder(request.sortOrder() == null ? 0 : request.sortOrder());
@@ -754,7 +762,8 @@ public class AdminLearningService {
 
     private CourseResponse toCourseResponse(Course course) {
         return new CourseResponse(course.getId(), course.getCourseName(), course.getSubtitle(), course.getCoverUrl(),
-                course.getLecturerName(), course.getIntroduction(), course.getPaperId(), course.getSortOrder(),
+                course.getLecturerName(), course.getLecturerAvatarUrl(), course.getIntroduction(),
+                course.getPaperId(), course.getSortOrder(),
                 course.getReviewStatus(), course.getPublishStatus(), course.getPublishedAt());
     }
 
