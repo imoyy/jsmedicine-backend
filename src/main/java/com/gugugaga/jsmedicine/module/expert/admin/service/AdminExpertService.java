@@ -336,7 +336,8 @@ public class AdminExpertService {
         return new ExpertCategoryResponse(category.getId(), category.getParentId(),
                 parentCategory == null ? null : parentCategory.getCategoryName(),
                 category.getParentId() == null ? 1 : 2,
-                category.getCategoryName(), category.getSortOrder(), category.getStatus());
+                category.getCategoryName(), category.getSortOrder(), category.getStatus(),
+                category.getCreatedAt(), category.getUpdatedAt());
     }
 
     private ExpertResponse toExpertResponse(Expert expert, boolean includeDetails) {

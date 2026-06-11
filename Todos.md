@@ -182,6 +182,7 @@
   2026-06-08：已补管理端图书分类管理第二轮契约，新增 `GET /api/v1/admin/learning/book-categories/{id}`、`GET /api/v1/admin/learning/book-categories/{id}/books`、`POST /api/v1/admin/learning/book-categories/{id}/books`、`DELETE /api/v1/admin/learning/book-categories/{id}/books`；图书分类列表/详情补 `createdAt`、`updatedAt`，并明确图书继续保持单分类模型，分类移除时直接把 `books.categoryId` 置空。
   2026-06-09：已补课程讲师头像字段。`courses` 新增 `lecturer_avatar_url`、`lecturer_avatar_file_asset_id`，管理端课程新增/修改/列表/详情及用户端课程列表/详情现统一返回 `lecturerAvatarUrl`；讲师头像与课程封面一样只接受管理端上传接口返回的稳定文件地址 `/api/v1/files/{id}/content`，不接受外链或临时签名 URL。
 - `[x]` 专家与直播补齐：专家补 `gender`、`birthDate`、`mobile` 等展示字段；直播拆出视频子资源，支撑直播配置弹窗。
+- `2026-06-11`：已修复管理端专家分类时间字段联调缺口。`expert_categories` 表中的 `created_at`、`updated_at` 实际已有值，问题在于 `ExpertCategoryResponse` 未返回这两个字段；现已补齐管理端专家分类列表/详情响应时间字段，并需同步更新 `api/api.json`。
 - `[~]` 图像上传存储治理：补齐对象存储签名上传、头像/管理端封面确认入库和稳定读取地址，逐步替换用户端直接写 `avatarUrl` 与管理端手填 `coverUrl` / 先外传再回填 URL 的模式。
 - `2026-06-05`：已补头像读取兜底收口。`AppUserAvatarUrlResolver` 现在只会在头像 `file_assets` 元数据和对象存储对象都真实存在时返回 `/api/v1/files/{id}/content`；若头像对象缺失，则统一回退 `/images/default-avatar.svg`，同时在 `SecurityConfig` 放开 `/images/**`，避免管理端用户列表继续出现头像破图。
 - `[x]` 学习页契约补齐：补充课程、图书、播客、专题接口的浏览/收藏统计与当前用户收藏态，并新增用户端收藏切换、浏览记录上报接口，支撑小程序学习页联调。
