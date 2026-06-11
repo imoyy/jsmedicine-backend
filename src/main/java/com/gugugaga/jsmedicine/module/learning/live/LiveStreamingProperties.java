@@ -10,6 +10,7 @@ public class LiveStreamingProperties {
     private String mediaHost = "127.0.0.1";
     private String publishHost;
     private String playbackHost;
+    private String playbackBaseUrl;
     private String playbackScheme = "http";
     private int rtmpPort = 1935;
     private int httpPort = 8080;
@@ -48,6 +49,14 @@ public class LiveStreamingProperties {
 
     public void setPlaybackHost(String playbackHost) {
         this.playbackHost = playbackHost;
+    }
+
+    public String getPlaybackBaseUrl() {
+        return playbackBaseUrl;
+    }
+
+    public void setPlaybackBaseUrl(String playbackBaseUrl) {
+        this.playbackBaseUrl = playbackBaseUrl;
     }
 
     public String getPlaybackScheme() {
@@ -111,10 +120,16 @@ public class LiveStreamingProperties {
     }
 
     public String buildHttpFlvUrl(String streamName) {
+        if (hasText(playbackBaseUrl)) {
+            return buildPlaybackUrlFromBase(streamName, "flv");
+        }
         return String.format("%s://%s:%d/%s/%s.flv", resolvedPlaybackScheme(), resolvedPlaybackHost(), httpPort, appName, streamName);
     }
 
     public String buildHlsUrl(String streamName) {
+        if (hasText(playbackBaseUrl)) {
+            return buildPlaybackUrlFromBase(streamName, "m3u8");
+        }
         return String.format("%s://%s:%d/%s/%s.m3u8", resolvedPlaybackScheme(), resolvedPlaybackHost(), httpPort, appName, streamName);
     }
 
@@ -136,6 +151,28 @@ public class LiveStreamingProperties {
 
     private String resolvedPlaybackScheme() {
         return hasText(playbackScheme) ? playbackScheme.trim() : "http";
+    }
+
+    private String buildPlaybackUrlFromBase(String streamName, String extension) {
+        UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(playbackBaseUrl.trim());
+        if (!playbackBaseUrlContainsAppName()) {
+            builder.pathSegment(appName);
+        }
+        return builder
+                .pathSegment(streamName + "." + extension)
+                .build()
+                .toUriString();
+    }
+
+    private boolean playbackBaseUrlContainsAppName() {
+        String path = UriComponentsBuilder.fromUriString(playbackBaseUrl.trim()).build().getPath();
+        if (!hasText(path)) {
+            return false;
+        }
+        String normalizedPath = path.endsWith("/") && path.length() > 1
+                ? path.substring(0, path.length() - 1)
+                : path;
+        return normalizedPath.equals("/" + appName) || normalizedPath.endsWith("/" + appName);
     }
 
     private boolean hasText(String value) {
