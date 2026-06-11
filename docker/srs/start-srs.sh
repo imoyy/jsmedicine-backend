@@ -10,9 +10,12 @@ if [ -n "${APP_LIVE_CALLBACK_TOKEN:-}" ]; then
   callback_url="${callback_url}${separator}token=${APP_LIVE_CALLBACK_TOKEN}"
 fi
 
+http_port="${SRS_HTTP_PORT:-8080}"
+
 escaped_callback_url=$(printf '%s' "$callback_url" | sed 's/[|&\\]/\\&/g')
 
-sed "s|__CALLBACK_URL__|${escaped_callback_url}|g" \
+sed -e "s|__CALLBACK_URL__|${escaped_callback_url}|g" \
+    -e "s|__HTTP_PORT__|${http_port}|g" \
   /usr/local/srs/conf/docker-live.template.conf \
   > /usr/local/srs/conf/docker-live.conf
 

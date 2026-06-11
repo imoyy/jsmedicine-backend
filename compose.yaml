@@ -84,7 +84,29 @@ services:
     volumes:
       - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
 
+  srs:
+    image: ossrs/srs:6
+    container_name: jsmedicine-srs
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+      SRS_HTTP_PORT: 8088
+      SRS_CALLBACK_BASE_URL: http://127.0.0.1:8080/api/v1/integrations/srs/live-hooks
+    command: ["sh", "/usr/local/srs/conf/start-srs.sh"]
+    volumes:
+      - ./docker/srs/srs.template.conf:/usr/local/srs/conf/docker-live.template.conf:ro
+      - ./docker/srs/start-srs.sh:/usr/local/srs/conf/start-srs.sh:ro
+      - srs_data:/usr/local/srs/objs/nginx/html
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:1985/api/v1/versions || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
 volumes:
   mysql_data:
   redis_data:
   minio_data:
+  srs_data:
