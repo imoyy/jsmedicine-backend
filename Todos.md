@@ -166,6 +166,7 @@
 - `[~]` 用户端学习闭环：课程、图书、播客、专题、学习记录。
 - `[ ]` 用户端考试闭环：考卷列表、详情、提交、判分、结果、错题解析。
 - `[ ]` 用户端互动闭环：专家咨询、答疑回复、直播观看、反馈提交、知识库检索。
+- `2026-06-11`：已补用户端专家模式第一轮后端接口。新增 `/api/v1/app/interaction/expert/qa/questions`、`/api/v1/app/interaction/expert/qa/questions/{id}`、`/api/v1/app/interaction/expert/qa/questions/{id}/answers`，同一 app 登录用户在具备激活中的专家身份且专家档案启用可接诊时，可直接查看分配给自己的咨询，或按专家分类接收待回复咨询并首条回复时自动认领；同时 `/api/v1/app/auth/me` 补充 `identities` 与 `expertMode` 字段，便于前端按登录态切换专家工作台入口。用户端发起咨询现同步校验 `expertCategoryId/expertId` 路由目标，避免再写入无法被专家侧消费的悬空问题。
 
 当前根据《管理端使用手册》新增的差距清单：
 
@@ -380,6 +381,7 @@
 
 ## 变更记录
 
+- 2026-06-11：修复管理端专家分类列表联调异常。根因是 `GET /api/v1/admin/experts/categories` 在组装 `parentCategoryName` 时对历史孤儿二级分类继续调用 `requireCategory(parentId)`，只要分页结果里存在父分类已被删除或缺失的数据就会整页返回 `NOT_FOUND`；现已改为列表回显时对缺失父分类做容错返回并记录告警日志，避免单条脏数据阻断整个分类管理页。
 - 2026-06-04：修复管理端学员导出运行时 500。根因是 `AdminUserService.exportStudents` 调用 Hutool ExcelWriter 时运行时缺少 Apache POI，导致 `GET /api/v1/admin/students/export` 抛出 `ClassNotFoundException: org.apache.poi.ss.usermodel.Sheet`；已在 `pom.xml` 补充 `poi-ooxml` 依赖，并用打包产物实测导出接口返回 `200` 和有效 `.xlsx` 文件。
 - 2026-06-04：启动管理端统一封面上传治理，复用现有对象存储预签名上传与 `file_assets` 入库链路，新增 `POST /api/v1/admin/content/files/covers/upload-url`、`POST /api/v1/admin/content/files/covers/confirm`；封面确认成功后直接返回稳定读取地址 `/api/v1/files/{id}/content`，并扩展公开文件读取白名单以支持管理端封面对象前缀。
 - 2026-06-04：继续收口管理端封面契约，新增 `StableCoverUrlService`，统一校验内容、学习、直播、专家、知识库等管理端保存接口中的 `coverUrl`；现仅接受管理端封面上传接口返回的稳定文件地址，拒绝手填外链和对象存储临时 URL，并同步更新 Swagger 字段说明。

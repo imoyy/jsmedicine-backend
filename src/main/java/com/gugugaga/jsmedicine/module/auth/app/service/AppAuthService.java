@@ -2,6 +2,7 @@ package com.gugugaga.jsmedicine.module.auth.app.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.gugugaga.jsmedicine.common.enums.AppUserIdentityStatus;
 import com.gugugaga.jsmedicine.common.enums.EnabledStatus;
 import com.gugugaga.jsmedicine.common.enums.Gender;
 import com.gugugaga.jsmedicine.common.enums.UserAuthProvider;
@@ -17,9 +18,14 @@ import com.gugugaga.jsmedicine.module.auth.app.dto.AppWechatLoginResponse;
 import com.gugugaga.jsmedicine.module.auth.app.dto.AppWechatWebLoginRequest;
 import com.gugugaga.jsmedicine.module.auth.app.dto.AppWechatWebQrConfigResponse;
 import com.gugugaga.jsmedicine.module.auth.app.dto.CurrentAppUserResponse;
+import com.gugugaga.jsmedicine.module.expert.app.dto.AppCurrentExpertResponse;
+import com.gugugaga.jsmedicine.module.expert.app.entity.AppExpertSession;
+import com.gugugaga.jsmedicine.module.expert.app.service.CurrentAppExpertResolver;
 import com.gugugaga.jsmedicine.module.auth.app.entity.AppUserSession;
+import com.gugugaga.jsmedicine.module.user.entity.AppUserIdentity;
 import com.gugugaga.jsmedicine.module.user.entity.AppUser;
 import com.gugugaga.jsmedicine.module.user.entity.Student;
+import com.gugugaga.jsmedicine.module.user.mapper.AppUserIdentityMapper;
 import com.gugugaga.jsmedicine.module.user.mapper.AppUserMapper;
 import com.gugugaga.jsmedicine.module.user.mapper.StudentMapper;
 import jakarta.servlet.http.HttpServletRequest;
@@ -38,6 +44,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -54,7 +61,9 @@ public class AppAuthService {
     private final AppUserMapper appUserMapper;
     private final AppUserTokenService appUserTokenService;
     private final CurrentAppUserResolver currentAppUserResolver;
+    private final CurrentAppExpertResolver currentAppExpertResolver;
     private final StudentMapper studentMapper;
+    private final AppUserIdentityMapper appUserIdentityMapper;
     private final AppAuthProperties appAuthProperties;
     private final RedisTemplate<String, Object> redisTemplate;
     private final AliyunSmsCodeSender aliyunSmsCodeSender;
@@ -71,7 +80,9 @@ public class AppAuthService {
             AppUserMapper appUserMapper,
             AppUserTokenService appUserTokenService,
             CurrentAppUserResolver currentAppUserResolver,
+            CurrentAppExpertResolver currentAppExpertResolver,
             StudentMapper studentMapper,
+            AppUserIdentityMapper appUserIdentityMapper,
             AppAuthProperties appAuthProperties,
             RedisTemplate<String, Object> redisTemplate,
             AliyunSmsCodeSender aliyunSmsCodeSender,
@@ -86,7 +97,9 @@ public class AppAuthService {
         this.appUserMapper = appUserMapper;
         this.appUserTokenService = appUserTokenService;
         this.currentAppUserResolver = currentAppUserResolver;
+        this.currentAppExpertResolver = currentAppExpertResolver;
         this.studentMapper = studentMapper;
+        this.appUserIdentityMapper = appUserIdentityMapper;
         this.appAuthProperties = appAuthProperties;
         this.redisTemplate = redisTemplate;
         this.aliyunSmsCodeSender = aliyunSmsCodeSender;
@@ -262,6 +275,19 @@ public class AppAuthService {
                 .eq(Student::getUserId, appUser.getId())
                 .eq(Student::getDeleted, 0)
                 .last("LIMIT 1"));
+        List<String> identities = appUserIdentityMapper.selectList(new LambdaQueryWrapper<AppUserIdentity>()
+                        .eq(AppUserIdentity::getUserId, appUser.getId())
+                        .eq(AppUserIdentity::getIdentityStatus, AppUserIdentityStatus.ACTIVE)
+                        .eq(AppUserIdentity::getDeleted, 0)
+                        .orderByDesc(AppUserIdentity::getIsPrimary)
+                        .orderByAsc(AppUserIdentity::getCreatedAt))
+                .stream()
+                .map(identity -> identity.getIdentityType().getValue())
+                .distinct()
+                .toList();
+        AppCurrentExpertResponse expertMode = currentAppExpertResolver.currentExpertSession()
+                .map(this::toCurrentExpertResponse)
+                .orElse(new AppCurrentExpertResponse(false, null, null, false));
         return new CurrentAppUserResponse(
                 appUser.getId(),
                 appUser.getUsername(),
@@ -271,8 +297,14 @@ public class AppAuthService {
                 appUser.getEmail(),
                 appUser.getProfileCompleted(),
                 student == null ? null : student.getId(),
-                student == null ? null : student.getCertificationStatus()
+                student == null ? null : student.getCertificationStatus(),
+                identities,
+                expertMode
         );
+    }
+
+    private AppCurrentExpertResponse toCurrentExpertResponse(AppExpertSession expertSession) {
+        return new AppCurrentExpertResponse(true, expertSession.expertId(), expertSession.realName(), true);
     }
 
     private AppLoginResponse issueLoginResponse(AppUser appUser, HttpServletRequest httpServletRequest) {

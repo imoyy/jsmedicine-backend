@@ -33,6 +33,12 @@ import com.gugugaga.jsmedicine.module.interaction.qa.mapper.QaAnswerMapper;
 import com.gugugaga.jsmedicine.module.interaction.qa.mapper.QaQuestionMapper;
 import com.gugugaga.jsmedicine.module.content.article.entity.Article;
 import com.gugugaga.jsmedicine.module.content.article.mapper.ArticleMapper;
+import com.gugugaga.jsmedicine.module.expert.entity.Expert;
+import com.gugugaga.jsmedicine.module.expert.entity.ExpertCategory;
+import com.gugugaga.jsmedicine.module.expert.entity.ExpertCategoryRelation;
+import com.gugugaga.jsmedicine.module.expert.mapper.ExpertCategoryMapper;
+import com.gugugaga.jsmedicine.module.expert.mapper.ExpertCategoryRelationMapper;
+import com.gugugaga.jsmedicine.module.expert.mapper.ExpertMapper;
 import com.gugugaga.jsmedicine.module.learning.book.entity.Book;
 import com.gugugaga.jsmedicine.module.learning.book.mapper.BookMapper;
 import com.gugugaga.jsmedicine.module.learning.course.entity.Course;
@@ -73,6 +79,9 @@ public class AppInteractionService {
     private final FeedbackMapper feedbackMapper;
     private final UserFavoriteMapper userFavoriteMapper;
     private final UserBrowseHistoryMapper userBrowseHistoryMapper;
+    private final ExpertMapper expertMapper;
+    private final ExpertCategoryMapper expertCategoryMapper;
+    private final ExpertCategoryRelationMapper expertCategoryRelationMapper;
     private final ArticleMapper articleMapper;
     private final CourseMapper courseMapper;
     private final BookMapper bookMapper;
@@ -88,6 +97,9 @@ public class AppInteractionService {
             FeedbackMapper feedbackMapper,
             UserFavoriteMapper userFavoriteMapper,
             UserBrowseHistoryMapper userBrowseHistoryMapper,
+            ExpertMapper expertMapper,
+            ExpertCategoryMapper expertCategoryMapper,
+            ExpertCategoryRelationMapper expertCategoryRelationMapper,
             ArticleMapper articleMapper,
             CourseMapper courseMapper,
             BookMapper bookMapper,
@@ -102,6 +114,9 @@ public class AppInteractionService {
         this.feedbackMapper = feedbackMapper;
         this.userFavoriteMapper = userFavoriteMapper;
         this.userBrowseHistoryMapper = userBrowseHistoryMapper;
+        this.expertMapper = expertMapper;
+        this.expertCategoryMapper = expertCategoryMapper;
+        this.expertCategoryRelationMapper = expertCategoryRelationMapper;
         this.articleMapper = articleMapper;
         this.courseMapper = courseMapper;
         this.bookMapper = bookMapper;
@@ -113,6 +128,7 @@ public class AppInteractionService {
     @Transactional(rollbackFor = Exception.class)
     public AppQaQuestionResponse createQuestion(AppQaQuestionRequest request) {
         AppUserSession session = currentAppUserResolver.requireCurrentUser();
+        validateQuestionRouting(request.expertCategoryId(), request.expertId());
         QaQuestion question = new QaQuestion();
         question.setUserId(session.userId());
         question.setStudentId(findStudent(session.userId()).map(Student::getId).orElse(null));
@@ -188,6 +204,26 @@ public class AppInteractionService {
         return buildInteractionResponse(session.userId(), request.resourceType(), request.resourceId());
     }
 
+    private void validateQuestionRouting(Long expertCategoryId, Long expertId) {
+        if (expertCategoryId == null && expertId == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "expertCategoryId or expertId is required");
+        }
+        if (expertCategoryId != null) {
+            requireEnabledExpertCategory(expertCategoryId);
+        }
+        if (expertId != null) {
+            requireConsultableExpert(expertId);
+        }
+        if (expertCategoryId != null && expertId != null) {
+            long relationCount = expertCategoryRelationMapper.selectCount(new LambdaQueryWrapper<ExpertCategoryRelation>()
+                    .eq(ExpertCategoryRelation::getExpertId, expertId)
+                    .eq(ExpertCategoryRelation::getCategoryId, expertCategoryId));
+            if (relationCount < 1) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST, "Expert does not belong to selected category");
+            }
+        }
+    }
+
     @Transactional(rollbackFor = Exception.class)
     public AppResourceInteractionResponse syncBrowseHistory(AppBrowseHistoryRequest request) {
         AppUserSession session = currentAppUserResolver.requireCurrentUser();
@@ -231,6 +267,27 @@ public class AppInteractionService {
                 .eq(Student::getDeleted, 0)
                 .eq(Student::getStatus, EnabledStatus.ENABLED)
                 .last("LIMIT 1")));
+    }
+
+    private Expert requireConsultableExpert(Long expertId) {
+        Expert expert = expertMapper.selectById(expertId);
+        if (expert == null
+                || !Objects.equals(expert.getDeleted(), 0)
+                || expert.getStatus() != EnabledStatus.ENABLED
+                || expert.getConsultEnabled() != EnabledStatus.ENABLED) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Expert does not exist");
+        }
+        return expert;
+    }
+
+    private ExpertCategory requireEnabledExpertCategory(Long categoryId) {
+        ExpertCategory category = expertCategoryMapper.selectById(categoryId);
+        if (category == null
+                || !Objects.equals(category.getDeleted(), 0)
+                || category.getStatus() != EnabledStatus.ENABLED) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Expert category does not exist");
+        }
+        return category;
     }
 
     private void validateVisibleResource(String resourceType, Long resourceId) {

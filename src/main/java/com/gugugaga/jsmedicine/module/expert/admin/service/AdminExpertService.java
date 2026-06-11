@@ -28,12 +28,18 @@ import com.gugugaga.jsmedicine.module.user.entity.AppUser;
 import com.gugugaga.jsmedicine.module.user.entity.AppUserIdentity;
 import com.gugugaga.jsmedicine.module.user.mapper.AppUserIdentityMapper;
 import com.gugugaga.jsmedicine.module.user.mapper.AppUserMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.LinkedHashSet;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.function.Function;
 
 @Service
 public class AdminExpertService {
@@ -41,6 +47,7 @@ public class AdminExpertService {
     private static final long DEFAULT_PAGE = 1L;
     private static final long DEFAULT_SIZE = 20L;
     private static final long MAX_SIZE = 100L;
+    private static final Logger log = LoggerFactory.getLogger(AdminExpertService.class);
 
     private final ExpertCategoryMapper expertCategoryMapper;
     private final ExpertMapper expertMapper;
@@ -80,7 +87,10 @@ public class AdminExpertService {
                         .and(hasText(keyword), wrapper -> wrapper.like(ExpertCategory::getCategoryName, keyword))
                         .orderByAsc(ExpertCategory::getSortOrder)
                         .orderByDesc(ExpertCategory::getCreatedAt));
-        return pageResponse(categoryPage, categoryPage.getRecords().stream().map(this::toCategoryResponse).toList());
+        Map<Long, ExpertCategory> parentCategories = loadParentCategories(categoryPage.getRecords());
+        return pageResponse(categoryPage, categoryPage.getRecords().stream()
+                .map(category -> toCategoryResponse(category, parentCategories))
+                .toList());
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -338,6 +348,35 @@ public class AdminExpertService {
                 category.getParentId() == null ? 1 : 2,
                 category.getCategoryName(), category.getSortOrder(), category.getStatus(),
                 category.getCreatedAt(), category.getUpdatedAt());
+    }
+
+    private ExpertCategoryResponse toCategoryResponse(ExpertCategory category, Map<Long, ExpertCategory> parentCategories) {
+        ExpertCategory parentCategory = category.getParentId() == null ? null : parentCategories.get(category.getParentId());
+        return new ExpertCategoryResponse(category.getId(), category.getParentId(),
+                parentCategory == null ? null : parentCategory.getCategoryName(),
+                category.getParentId() == null ? 1 : 2,
+                category.getCategoryName(), category.getSortOrder(), category.getStatus(),
+                category.getCreatedAt(), category.getUpdatedAt());
+    }
+
+    private Map<Long, ExpertCategory> loadParentCategories(List<ExpertCategory> categories) {
+        Set<Long> parentIds = categories.stream()
+                .map(ExpertCategory::getParentId)
+                .filter(Objects::nonNull)
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+        if (parentIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, ExpertCategory> parentCategories = expertCategoryMapper.selectBatchIds(parentIds).stream()
+                .filter(category -> Objects.equals(category.getDeleted(), 0))
+                .collect(java.util.stream.Collectors.toMap(ExpertCategory::getId, Function.identity()));
+        Set<Long> missingParentIds = parentIds.stream()
+                .filter(parentId -> !parentCategories.containsKey(parentId))
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+        if (!missingParentIds.isEmpty()) {
+            log.warn("Found orphan expert categories with missing parentIds={}", missingParentIds);
+        }
+        return parentCategories;
     }
 
     private ExpertResponse toExpertResponse(Expert expert, boolean includeDetails) {
