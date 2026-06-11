@@ -37,7 +37,10 @@ public class FileAssetContentService {
     }
 
     private boolean isPublicAsset(FileAsset fileAsset) {
-        return isPublicAvatarAsset(fileAsset) || isPublicCoverAsset(fileAsset);
+        return isPublicAvatarAsset(fileAsset)
+                || isPublicCoverAsset(fileAsset)
+                || isPublicVideoAsset(fileAsset)
+                || isPublicAudioAsset(fileAsset);
     }
 
     private boolean isPublicAvatarAsset(FileAsset fileAsset) {
@@ -51,5 +54,17 @@ public class FileAssetContentService {
         return "image".equalsIgnoreCase(fileAsset.getAssetType())
                 && fileAsset.getObjectKey() != null
                 && fileAsset.getObjectKey().startsWith(storageProperties.getCover().getObjectPrefix() + "/");
+    }
+
+    private boolean isPublicVideoAsset(FileAsset fileAsset) {
+        return "video".equalsIgnoreCase(fileAsset.getAssetType())
+                && fileAsset.getObjectKey() != null
+                && fileAsset.getObjectKey().startsWith(storageProperties.getVideo().getObjectPrefix() + "/");
+    }
+
+    private boolean isPublicAudioAsset(FileAsset fileAsset) {
+        return "audio".equalsIgnoreCase(fileAsset.getAssetType())
+                && fileAsset.getObjectKey() != null
+                && fileAsset.getObjectKey().startsWith(storageProperties.getAudio().getObjectPrefix() + "/");
     }
 }
