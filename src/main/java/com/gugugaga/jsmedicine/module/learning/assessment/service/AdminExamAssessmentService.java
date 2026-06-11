@@ -212,9 +212,7 @@ public class AdminExamAssessmentService {
         if (paperIds.isEmpty()) {
             return Map.of();
         }
-        return paperIds.stream()
-                .distinct()
-                .map(assessmentSupportService::requireExamPaper)
+        return assessmentSupportService.loadExistingExamPapers(paperIds).values().stream()
                 .collect(Collectors.toMap(ExamPaper::getId, ExamPaper::getPaperName));
     }
 

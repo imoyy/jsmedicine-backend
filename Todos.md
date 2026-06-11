@@ -342,6 +342,7 @@
   2026-06-09：已补 `GET /api/v1/admin/statistics/study-hours/regions`、`GET /api/v1/admin/statistics/topics/{topicId}/students`、`GET/PATCH /api/v1/admin/statistics/student-scores`，并为 `GET /api/v1/admin/statistics/regions` 补学时字段；本地已通过 `compile`、`test`、`clean package -DskipTests` 和 Swagger 导出验证，后续仍需用 dev 验收账号补人工接口验收记录。
   2026-06-09：继续修正学员存量统计口径。`GET /api/v1/admin/statistics/students/summary` 与 `GET /api/v1/admin/statistics/regions` 现已改为默认按全量学员统计，仅当前端显式传 `startAt/endAt` 时才按学员创建时间过滤；本地最新实例实测默认返回已恢复为全量地区分布，不再只剩最近 30 天新建学员。
   2026-06-09：已新增考核场次与大屏统计后端基础能力，落地 `exam_assessments`、`exam_assessment_organizations`、`exam_assessment_students`、`exam_assessment_events` 和 `exam_records` 场次字段/唯一约束/幂等字段；新增 `/api/v1/admin/learning/exam-assessments`、`/api/v1/app/learning/exam-assessments`、`/api/v1/admin/statistics/exam-assessments/{id}/dashboard|participants|participants/export`，并完成 `api/api.json` 导出验证。
+  2026-06-11：已修复考核场次列表容错问题。`GET /api/v1/admin/learning/exam-assessments` 过去会在当前页混入“关联试卷已失效”的历史场次时整页抛 `Exam paper does not exist`；现已改为列表仅加载现存试卷名称，单条异常数据不再导致整页 404，本地已通过 `compile` 验证。
 - `[ ]` 异常响应验收：参数校验、资源不存在、非法状态流转。
 - `[ ]` 复用 dev 验收数据和现有测试命令，不创建 `src/test` 新文件。
 

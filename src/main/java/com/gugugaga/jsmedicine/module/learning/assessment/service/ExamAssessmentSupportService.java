@@ -72,6 +72,24 @@ public class ExamAssessmentSupportService {
         return paper;
     }
 
+    public Map<Long, ExamPaper> loadExistingExamPapers(Collection<Long> paperIds) {
+        if (paperIds == null || paperIds.isEmpty()) {
+            return Map.of();
+        }
+        List<Long> distinctIds = paperIds.stream()
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        if (distinctIds.isEmpty()) {
+            return Map.of();
+        }
+        return examPaperMapper.selectList(new LambdaQueryWrapper<ExamPaper>()
+                        .in(ExamPaper::getId, distinctIds)
+                        .eq(ExamPaper::getDeleted, 0))
+                .stream()
+                .collect(Collectors.toMap(ExamPaper::getId, paper -> paper));
+    }
+
     public AssessmentStatus resolveDisplayStatus(ExamAssessment assessment, LocalDateTime now) {
         if (assessment.getStatus() == AssessmentStatus.CANCELLED || assessment.getStatus() == AssessmentStatus.ARCHIVED) {
             return assessment.getStatus();
