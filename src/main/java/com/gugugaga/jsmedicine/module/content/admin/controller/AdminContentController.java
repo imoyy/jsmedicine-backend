@@ -27,6 +27,7 @@ import com.gugugaga.jsmedicine.module.content.admin.dto.TopicRequest;
 import com.gugugaga.jsmedicine.module.content.admin.dto.TopicResponse;
 import com.gugugaga.jsmedicine.module.content.admin.service.AdminCoverUploadService;
 import com.gugugaga.jsmedicine.module.content.admin.service.AdminContentService;
+import com.gugugaga.jsmedicine.module.content.admin.service.AdminMediaUploadService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -51,13 +52,16 @@ public class AdminContentController {
 
     private final AdminContentService adminContentService;
     private final AdminCoverUploadService adminCoverUploadService;
+    private final AdminMediaUploadService adminMediaUploadService;
 
     public AdminContentController(
             AdminContentService adminContentService,
-            AdminCoverUploadService adminCoverUploadService
+            AdminCoverUploadService adminCoverUploadService,
+            AdminMediaUploadService adminMediaUploadService
     ) {
         this.adminContentService = adminContentService;
         this.adminCoverUploadService = adminCoverUploadService;
+        this.adminMediaUploadService = adminMediaUploadService;
     }
 
     @Operation(summary = "分页查询首页分类")
@@ -360,6 +364,30 @@ public class AdminContentController {
             @Valid @RequestBody AdminCoverConfirmRequest request
     ) {
         return ApiResponse.ok(adminCoverUploadService.confirmUpload(request));
+    }
+
+    @Operation(
+            summary = "申请媒体上传地址",
+            description = "用于课程视频和播客音频等媒体文件上传。支持 usage: course-video / podcast-audio。前端先调用本接口获取预签名上传地址，上传完成后再调用确认接口换取稳定 mediaUrl。"
+    )
+    @PreAuthorize("hasAuthority('content:file:edit')")
+    @PostMapping("/files/media/upload-url")
+    public ApiResponse<AdminCoverUploadResponse> createMediaUploadUrl(
+            @Valid @RequestBody AdminCoverUploadRequest request
+    ) {
+        return ApiResponse.ok(adminMediaUploadService.createUploadUrl(request));
+    }
+
+    @Operation(
+            summary = "确认媒体上传",
+            description = "确认成功后会写入 file_assets，并返回稳定读取地址 /api/v1/files/{id}/content；业务表中的 videoUrl / audioUrl 应保存该稳定地址，而不是对象存储临时签名 URL。"
+    )
+    @PreAuthorize("hasAuthority('content:file:edit')")
+    @PostMapping("/files/media/confirm")
+    public ApiResponse<AdminCoverAssetResponse> confirmMediaUpload(
+            @Valid @RequestBody AdminCoverConfirmRequest request
+    ) {
+        return ApiResponse.ok(adminMediaUploadService.confirmUpload(request));
     }
 
     @Operation(summary = "删除文件资源")

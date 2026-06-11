@@ -17,6 +17,8 @@ public class StorageProperties {
     private boolean autoCreateBucket = true;
     private Avatar avatar = new Avatar();
     private Cover cover = new Cover();
+    private Video video = new Video();
+    private Audio audio = new Audio();
 
     public String getProvider() {
         return provider;
@@ -90,6 +92,22 @@ public class StorageProperties {
         this.cover = cover;
     }
 
+    public Video getVideo() {
+        return video;
+    }
+
+    public void setVideo(Video video) {
+        this.video = video;
+    }
+
+    public Audio getAudio() {
+        return audio;
+    }
+
+    public void setAudio(Audio audio) {
+        this.audio = audio;
+    }
+
     public static class Avatar {
         private String bucketName = "public";
         private String objectPrefix = "app-users";
@@ -151,6 +169,116 @@ public class StorageProperties {
                 "image/jpeg",
                 "image/png",
                 "image/webp"
+        ));
+
+        public String getBucketName() {
+            return bucketName;
+        }
+
+        public void setBucketName(String bucketName) {
+            this.bucketName = bucketName;
+        }
+
+        public String getObjectPrefix() {
+            return objectPrefix;
+        }
+
+        public void setObjectPrefix(String objectPrefix) {
+            this.objectPrefix = objectPrefix;
+        }
+
+        public long getMaxFileSizeBytes() {
+            return maxFileSizeBytes;
+        }
+
+        public void setMaxFileSizeBytes(long maxFileSizeBytes) {
+            this.maxFileSizeBytes = maxFileSizeBytes;
+        }
+
+        public long getUploadUrlTtlSeconds() {
+            return uploadUrlTtlSeconds;
+        }
+
+        public void setUploadUrlTtlSeconds(long uploadUrlTtlSeconds) {
+            this.uploadUrlTtlSeconds = uploadUrlTtlSeconds;
+        }
+
+        public List<String> getAllowedContentTypes() {
+            return allowedContentTypes;
+        }
+
+        public void setAllowedContentTypes(List<String> allowedContentTypes) {
+            this.allowedContentTypes = allowedContentTypes == null ? new ArrayList<>() : new ArrayList<>(allowedContentTypes);
+        }
+    }
+
+    public static class Video {
+        private String bucketName = "public";
+        private String objectPrefix = "admin/videos";
+        private long maxFileSizeBytes = 500L * 1024 * 1024;
+        private long uploadUrlTtlSeconds = 3600;
+        private List<String> allowedContentTypes = new ArrayList<>(List.of(
+                "video/mp4",
+                "video/webm",
+                "video/ogg",
+                "video/x-msvideo",
+                "video/quicktime"
+        ));
+
+        public String getBucketName() {
+            return bucketName;
+        }
+
+        public void setBucketName(String bucketName) {
+            this.bucketName = bucketName;
+        }
+
+        public String getObjectPrefix() {
+            return objectPrefix;
+        }
+
+        public void setObjectPrefix(String objectPrefix) {
+            this.objectPrefix = objectPrefix;
+        }
+
+        public long getMaxFileSizeBytes() {
+            return maxFileSizeBytes;
+        }
+
+        public void setMaxFileSizeBytes(long maxFileSizeBytes) {
+            this.maxFileSizeBytes = maxFileSizeBytes;
+        }
+
+        public long getUploadUrlTtlSeconds() {
+            return uploadUrlTtlSeconds;
+        }
+
+        public void setUploadUrlTtlSeconds(long uploadUrlTtlSeconds) {
+            this.uploadUrlTtlSeconds = uploadUrlTtlSeconds;
+        }
+
+        public List<String> getAllowedContentTypes() {
+            return allowedContentTypes;
+        }
+
+        public void setAllowedContentTypes(List<String> allowedContentTypes) {
+            this.allowedContentTypes = allowedContentTypes == null ? new ArrayList<>() : new ArrayList<>(allowedContentTypes);
+        }
+    }
+
+    public static class Audio {
+        private String bucketName = "public";
+        private String objectPrefix = "admin/audios";
+        private long maxFileSizeBytes = 100L * 1024 * 1024;
+        private long uploadUrlTtlSeconds = 1800;
+        private List<String> allowedContentTypes = new ArrayList<>(List.of(
+                "audio/mpeg",
+                "audio/mp3",
+                "audio/wav",
+                "audio/ogg",
+                "audio/aac",
+                "audio/flac",
+                "audio/x-m4a"
         ));
 
         public String getBucketName() {
