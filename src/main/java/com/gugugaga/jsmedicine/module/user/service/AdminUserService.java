@@ -638,6 +638,7 @@ public class AdminUserService {
             return;
         }
         ensureIdentity(userId, AppUserIdentityType.EXPERT, true);
+        ensureExpertProfile(userId);
         deactivateIdentity(userId, AppUserIdentityType.STUDENT);
         unbindCurrentStudent(userId);
     }
@@ -685,15 +686,71 @@ public class AdminUserService {
     }
 
     private void unbindCurrentExpert(Long userId) {
-        Expert expert = expertMapper.selectOne(new LambdaQueryWrapper<Expert>()
-                .eq(Expert::getUserId, userId)
-                .eq(Expert::getDeleted, 0)
-                .last("LIMIT 1"));
+        Expert expert = findExpertByUserId(userId);
         if (expert == null) {
             return;
         }
         expert.setUserId(null);
         expertMapper.updateById(expert);
+    }
+
+    private void ensureExpertProfile(Long userId) {
+        Expert expert = findExpertByUserId(userId);
+        if (expert != null) {
+            return;
+        }
+        AppUser user = requireUser(userId);
+        expert = new Expert();
+        expert.setUserId(userId);
+        expert.setRealName(resolveExpertRealName(userId, user));
+        expert.setGender(user.getGender());
+        expert.setMobile(user.getMobile());
+        expert.setAvatarUrl(user.getAvatarUrl());
+        expert.setOrganization(resolveExpertOrganization(userId));
+        expert.setOrganizationId(resolveExpertOrganizationId(userId));
+        expert.setPracticeTypeId(resolveExpertPracticeTypeId(userId));
+        expert.setStatus(EnabledStatus.ENABLED);
+        expert.setConsultEnabled(EnabledStatus.DISABLED);
+        expert.setConsultationNotice(null);
+        expert.setSortOrder(0);
+        expert.setDeleted(0);
+        expertMapper.insert(expert);
+    }
+
+    private Expert findExpertByUserId(Long userId) {
+        return expertMapper.selectOne(new LambdaQueryWrapper<Expert>()
+                .eq(Expert::getUserId, userId)
+                .eq(Expert::getDeleted, 0)
+                .last("LIMIT 1"));
+    }
+
+    private String resolveExpertRealName(Long userId, AppUser user) {
+        Student student = findStudentByUserId(userId);
+        if (student != null && hasText(student.getRealName())) {
+            return student.getRealName();
+        }
+        if (hasText(user.getNickname())) {
+            return user.getNickname();
+        }
+        if (hasText(user.getUsername())) {
+            return user.getUsername();
+        }
+        return "Expert-" + userId;
+    }
+
+    private String resolveExpertOrganization(Long userId) {
+        Student student = findStudentByUserId(userId);
+        return student == null ? null : student.getOrganization();
+    }
+
+    private Long resolveExpertOrganizationId(Long userId) {
+        Student student = findStudentByUserId(userId);
+        return student == null ? null : student.getOrganizationId();
+    }
+
+    private Long resolveExpertPracticeTypeId(Long userId) {
+        Student student = findStudentByUserId(userId);
+        return student == null ? null : student.getPracticeTypeId();
     }
 
     private void ensureIdentity(Long userId, AppUserIdentityType identityType, boolean primary) {
@@ -750,6 +807,7 @@ public class AdminUserService {
 
     private AdminUserResponse toUserResponse(AppUser user) {
         Student student = findStudentByUserId(user.getId());
+        Expert expert = findExpertByUserId(user.getId());
         return new AdminUserResponse(
                 user.getId(),
                 user.getUsername(),
@@ -768,6 +826,9 @@ public class AdminUserService {
                 user.getLastLoginIp(),
                 user.getProfileCompleted(),
                 resolveRole(user.getId()),
+                expert == null ? null : expert.getId(),
+                expert == null ? null : expert.getRealName(),
+                expert != null,
                 student == null ? null : student.getId(),
                 student == null ? null : student.getRealName(),
                 student == null ? null : student.getProvince(),
