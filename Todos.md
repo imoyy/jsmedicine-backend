@@ -166,6 +166,7 @@
 - `[~]` 用户端学习闭环：课程、图书、播客、专题、学习记录。
 - `[ ]` 用户端考试闭环：考卷列表、详情、提交、判分、结果、错题解析。
 - `[ ]` 用户端互动闭环：专家咨询、答疑回复、直播观看、反馈提交、知识库检索。
+- `2026-06-12`：收口管理端咨询列表“新增可咨询专家”联调缺口。新增 `POST /api/v1/admin/interaction/qa/experts`，供咨询管理页面直接创建进入可咨询名单的专家；底层继续复用 `experts` 主数据与既有 `expert:edit` 权限，不新增平行表或平行专家模型，并显式要求请求体 `consultEnabled=ENABLED`，避免接口语义与实际数据状态不一致。
 - `2026-06-11`：已补用户端专家模式第一轮后端接口。新增 `/api/v1/app/interaction/expert/qa/questions`、`/api/v1/app/interaction/expert/qa/questions/{id}`、`/api/v1/app/interaction/expert/qa/questions/{id}/answers`，同一 app 登录用户在具备激活中的专家身份且专家档案启用可接诊时，可直接查看分配给自己的咨询，或按专家分类接收待回复咨询并首条回复时自动认领；同时 `/api/v1/app/auth/me` 补充 `identities` 与 `expertMode` 字段，便于前端按登录态切换专家工作台入口。用户端发起咨询现同步校验 `expertCategoryId/expertId` 路由目标，避免再写入无法被专家侧消费的悬空问题。
 
 当前根据《管理端使用手册》新增的差距清单：
@@ -382,6 +383,7 @@
 
 ## 变更记录
 
+- 2026-06-12：修复管理端用户切回学员时的身份恢复异常。`PUT /api/v1/admin/users/{id}` 在 `role=STUDENT` 场景下，现会优先复用包含逻辑删除在内的历史身份记录，避免 `app_user_identities` 因旧 `STUDENT` 记录被软删除后再次插入时撞 `(user_id, identity_type)` 唯一键，并被统一映射成 `500 INTERNAL_ERROR`。
 - 2026-06-11：修复“用户转专家”后无法打开专家信息的联调问题。此前管理端用户切换为 `EXPERT` 只会激活 `app_user_identities`，不会自动创建或绑定 `experts` 档案，导致前端只能看到专家按钮却查不到档案；现已在用户角色切换为 `EXPERT` 时自动确保存在最小专家档案，并在 `AdminUserResponse` 中补充 `expertId`、`expertName`、`expertProfileBound` 供前端稳定跳转，同时新增 `V30__backfill_missing_expert_profiles.sql` 回填历史“有专家身份但无专家档案”的存量数据。
 - 2026-06-11：修复管理端专家分类列表联调异常。根因是 `GET /api/v1/admin/experts/categories` 在组装 `parentCategoryName` 时对历史孤儿二级分类继续调用 `requireCategory(parentId)`，只要分页结果里存在父分类已被删除或缺失的数据就会整页返回 `NOT_FOUND`；现已改为列表回显时对缺失父分类做容错返回并记录告警日志，避免单条脏数据阻断整个分类管理页。
 - 2026-06-04：修复管理端学员导出运行时 500。根因是 `AdminUserService.exportStudents` 调用 Hutool ExcelWriter 时运行时缺少 Apache POI，导致 `GET /api/v1/admin/students/export` 抛出 `ClassNotFoundException: org.apache.poi.ss.usermodel.Sheet`；已在 `pom.xml` 补充 `poi-ooxml` 依赖，并用打包产物实测导出接口返回 `200` 和有效 `.xlsx` 文件。

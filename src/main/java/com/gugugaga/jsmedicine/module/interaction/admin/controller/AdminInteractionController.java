@@ -4,6 +4,8 @@ import com.gugugaga.jsmedicine.common.enums.FeedbackStatus;
 import com.gugugaga.jsmedicine.common.enums.QaStatus;
 import com.gugugaga.jsmedicine.common.response.ApiResponse;
 import com.gugugaga.jsmedicine.common.response.PageResponse;
+import com.gugugaga.jsmedicine.module.expert.admin.dto.ExpertRequest;
+import com.gugugaga.jsmedicine.module.expert.admin.dto.ExpertResponse;
 import com.gugugaga.jsmedicine.module.interaction.admin.dto.FeedbackProcessRequest;
 import com.gugugaga.jsmedicine.module.interaction.admin.dto.FeedbackResponse;
 import com.gugugaga.jsmedicine.module.interaction.admin.dto.QaAnswerRequest;
@@ -44,6 +46,14 @@ public class AdminInteractionController {
             @RequestParam(required = false) QaStatus status
     ) {
         return ApiResponse.ok(adminInteractionService.pageQaQuestions(page, size, keyword, status));
+    }
+
+    @Operation(summary = "新增可咨询专家",
+            description = "供咨询管理页面直接新增专家资料并进入可咨询名单。该接口底层复用专家主数据模型，要求请求体中的 consultEnabled 必须为 ENABLED。")
+    @PreAuthorize("hasAuthority('expert:edit')")
+    @PostMapping("/qa/experts")
+    public ApiResponse<ExpertResponse> createConsultExpert(@Valid @RequestBody ExpertRequest request) {
+        return ApiResponse.ok(adminInteractionService.createConsultExpert(request));
     }
 
     @Operation(summary = "答疑问题详情")

@@ -754,13 +754,13 @@ public class AdminUserService {
     }
 
     private void ensureIdentity(Long userId, AppUserIdentityType identityType, boolean primary) {
-        AppUserIdentity identity = findIdentity(userId, identityType);
+        AppUserIdentity identity = findIdentityIncludingDeleted(userId, identityType);
         if (identity == null) {
             identity = new AppUserIdentity();
             identity.setUserId(userId);
             identity.setIdentityType(identityType);
-            identity.setDeleted(0);
         }
+        identity.setDeleted(0);
         identity.setIdentityStatus(AppUserIdentityStatus.ACTIVE);
         identity.setIsPrimary(primary);
         if (identity.getActivatedAt() == null) {
@@ -790,6 +790,16 @@ public class AdminUserService {
                 .eq(AppUserIdentity::getUserId, userId)
                 .eq(AppUserIdentity::getIdentityType, identityType)
                 .eq(AppUserIdentity::getDeleted, 0)
+                .last("LIMIT 1"));
+    }
+
+    private AppUserIdentity findIdentityIncludingDeleted(Long userId, AppUserIdentityType identityType) {
+        return appUserIdentityMapper.selectOne(new LambdaQueryWrapper<AppUserIdentity>()
+                .eq(AppUserIdentity::getUserId, userId)
+                .eq(AppUserIdentity::getIdentityType, identityType)
+                .orderByDesc(AppUserIdentity::getDeleted)
+                .orderByDesc(AppUserIdentity::getUpdatedAt)
+                .orderByDesc(AppUserIdentity::getCreatedAt)
                 .last("LIMIT 1"));
     }
 

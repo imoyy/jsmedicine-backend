@@ -3,10 +3,14 @@ package com.gugugaga.jsmedicine.module.interaction.admin.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.gugugaga.jsmedicine.common.enums.FeedbackStatus;
+import com.gugugaga.jsmedicine.common.enums.EnabledStatus;
 import com.gugugaga.jsmedicine.common.enums.QaStatus;
 import com.gugugaga.jsmedicine.common.exception.BusinessException;
 import com.gugugaga.jsmedicine.common.exception.ErrorCode;
 import com.gugugaga.jsmedicine.common.response.PageResponse;
+import com.gugugaga.jsmedicine.module.expert.admin.dto.ExpertRequest;
+import com.gugugaga.jsmedicine.module.expert.admin.dto.ExpertResponse;
+import com.gugugaga.jsmedicine.module.expert.admin.service.AdminExpertService;
 import com.gugugaga.jsmedicine.infrastructure.security.CurrentAdminAccessor;
 import com.gugugaga.jsmedicine.infrastructure.storage.service.AppUserAvatarUrlResolver;
 import com.gugugaga.jsmedicine.module.interaction.admin.dto.FeedbackProcessRequest;
@@ -42,6 +46,7 @@ public class AdminInteractionService {
     private final QaAnswerMapper qaAnswerMapper;
     private final FeedbackMapper feedbackMapper;
     private final AppUserMapper appUserMapper;
+    private final AdminExpertService adminExpertService;
     private final CurrentAdminAccessor currentAdminAccessor;
     private final AuditRecordService auditRecordService;
     private final AppUserAvatarUrlResolver appUserAvatarUrlResolver;
@@ -51,6 +56,7 @@ public class AdminInteractionService {
             QaAnswerMapper qaAnswerMapper,
             FeedbackMapper feedbackMapper,
             AppUserMapper appUserMapper,
+            AdminExpertService adminExpertService,
             CurrentAdminAccessor currentAdminAccessor,
             AuditRecordService auditRecordService,
             AppUserAvatarUrlResolver appUserAvatarUrlResolver
@@ -59,6 +65,7 @@ public class AdminInteractionService {
         this.qaAnswerMapper = qaAnswerMapper;
         this.feedbackMapper = feedbackMapper;
         this.appUserMapper = appUserMapper;
+        this.adminExpertService = adminExpertService;
         this.currentAdminAccessor = currentAdminAccessor;
         this.auditRecordService = auditRecordService;
         this.appUserAvatarUrlResolver = appUserAvatarUrlResolver;
@@ -76,6 +83,15 @@ public class AdminInteractionService {
 
     public QaQuestionResponse qaQuestionDetail(Long id) {
         return toQaQuestionResponse(requireQaQuestion(id), true);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public ExpertResponse createConsultExpert(ExpertRequest request) {
+        if (request.consultEnabled() != EnabledStatus.ENABLED) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST,
+                    "Consult expert creation requires consultEnabled to be ENABLED");
+        }
+        return adminExpertService.createExpert(request);
     }
 
     @Transactional(rollbackFor = Exception.class)
