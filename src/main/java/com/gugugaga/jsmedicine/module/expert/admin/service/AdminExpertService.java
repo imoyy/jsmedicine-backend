@@ -5,11 +5,16 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.gugugaga.jsmedicine.common.enums.AppUserIdentityStatus;
 import com.gugugaga.jsmedicine.common.enums.AppUserIdentityType;
 import com.gugugaga.jsmedicine.common.enums.EnabledStatus;
+import com.gugugaga.jsmedicine.common.enums.ExpertCertificationStatus;
 import com.gugugaga.jsmedicine.common.exception.BusinessException;
 import com.gugugaga.jsmedicine.common.exception.ErrorCode;
 import com.gugugaga.jsmedicine.common.response.PageResponse;
 import com.gugugaga.jsmedicine.infrastructure.storage.service.AppUserAvatarUrlResolver;
 import com.gugugaga.jsmedicine.infrastructure.storage.service.StableCoverUrlService;
+import com.gugugaga.jsmedicine.infrastructure.security.CurrentAdminAccessor;
+import com.gugugaga.jsmedicine.module.expert.app.dto.AppExpertCertificationFileResponse;
+import com.gugugaga.jsmedicine.module.expert.admin.dto.AdminExpertCertificationResponse;
+import com.gugugaga.jsmedicine.module.expert.admin.dto.ExpertCertificationReviewRequest;
 import com.gugugaga.jsmedicine.module.expert.admin.dto.ExpertCategoryRequest;
 import com.gugugaga.jsmedicine.module.expert.admin.dto.ExpertCategoryResponse;
 import com.gugugaga.jsmedicine.module.expert.admin.dto.ExpertExperienceRequest;
@@ -19,9 +24,15 @@ import com.gugugaga.jsmedicine.module.expert.admin.dto.ExpertResponse;
 import com.gugugaga.jsmedicine.module.expert.entity.Expert;
 import com.gugugaga.jsmedicine.module.expert.entity.ExpertCategory;
 import com.gugugaga.jsmedicine.module.expert.entity.ExpertCategoryRelation;
+import com.gugugaga.jsmedicine.module.expert.entity.ExpertCertification;
+import com.gugugaga.jsmedicine.module.expert.entity.ExpertCertificationCategoryRelation;
+import com.gugugaga.jsmedicine.module.expert.entity.ExpertCertificationFile;
 import com.gugugaga.jsmedicine.module.expert.entity.ExpertExperience;
 import com.gugugaga.jsmedicine.module.expert.mapper.ExpertCategoryMapper;
 import com.gugugaga.jsmedicine.module.expert.mapper.ExpertCategoryRelationMapper;
+import com.gugugaga.jsmedicine.module.expert.mapper.ExpertCertificationCategoryRelationMapper;
+import com.gugugaga.jsmedicine.module.expert.mapper.ExpertCertificationFileMapper;
+import com.gugugaga.jsmedicine.module.expert.mapper.ExpertCertificationMapper;
 import com.gugugaga.jsmedicine.module.expert.mapper.ExpertExperienceMapper;
 import com.gugugaga.jsmedicine.module.expert.mapper.ExpertMapper;
 import com.gugugaga.jsmedicine.module.user.entity.AppUser;
@@ -35,6 +46,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.LinkedHashSet;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -57,6 +69,10 @@ public class AdminExpertService {
     private final AppUserIdentityMapper appUserIdentityMapper;
     private final StableCoverUrlService stableCoverUrlService;
     private final AppUserAvatarUrlResolver appUserAvatarUrlResolver;
+    private final ExpertCertificationMapper expertCertificationMapper;
+    private final ExpertCertificationFileMapper expertCertificationFileMapper;
+    private final ExpertCertificationCategoryRelationMapper expertCertificationCategoryRelationMapper;
+    private final CurrentAdminAccessor currentAdminAccessor;
 
     public AdminExpertService(
             ExpertCategoryMapper expertCategoryMapper,
@@ -66,7 +82,11 @@ public class AdminExpertService {
             AppUserMapper appUserMapper,
             AppUserIdentityMapper appUserIdentityMapper,
             StableCoverUrlService stableCoverUrlService,
-            AppUserAvatarUrlResolver appUserAvatarUrlResolver
+            AppUserAvatarUrlResolver appUserAvatarUrlResolver,
+            ExpertCertificationMapper expertCertificationMapper,
+            ExpertCertificationFileMapper expertCertificationFileMapper,
+            ExpertCertificationCategoryRelationMapper expertCertificationCategoryRelationMapper,
+            CurrentAdminAccessor currentAdminAccessor
     ) {
         this.expertCategoryMapper = expertCategoryMapper;
         this.expertMapper = expertMapper;
@@ -76,6 +96,10 @@ public class AdminExpertService {
         this.appUserIdentityMapper = appUserIdentityMapper;
         this.stableCoverUrlService = stableCoverUrlService;
         this.appUserAvatarUrlResolver = appUserAvatarUrlResolver;
+        this.expertCertificationMapper = expertCertificationMapper;
+        this.expertCertificationFileMapper = expertCertificationFileMapper;
+        this.expertCertificationCategoryRelationMapper = expertCertificationCategoryRelationMapper;
+        this.currentAdminAccessor = currentAdminAccessor;
     }
 
     public PageResponse<ExpertCategoryResponse> pageCategories(long page, long size, String keyword, Long parentId, EnabledStatus status) {
@@ -153,6 +177,58 @@ public class AdminExpertService {
 
     public ExpertResponse expertDetail(Long id) {
         return toExpertResponse(requireExpert(id), true);
+    }
+
+    public PageResponse<AdminExpertCertificationResponse> pageCertifications(
+            long page,
+            long size,
+            String sort,
+            String keyword,
+            ExpertCertificationStatus certificationStatus
+    ) {
+        Page<ExpertCertification> certificationPage = expertCertificationMapper.selectPage(
+                new Page<>(normalizePage(page), normalizeSize(size)),
+                new LambdaQueryWrapper<ExpertCertification>()
+                        .eq(ExpertCertification::getDeleted, 0)
+                        .eq(certificationStatus != null, ExpertCertification::getCertificationStatus, certificationStatus)
+                        .and(hasText(keyword), wrapper -> wrapper
+                                .like(ExpertCertification::getRealName, keyword)
+                                .or()
+                                .like(ExpertCertification::getMobile, keyword)
+                                .or()
+                                .like(ExpertCertification::getOrganization, keyword)
+                                .or()
+                                .like(ExpertCertification::getSpecialty, keyword))
+                        .orderByAsc("submittedAtAsc".equals(sort), ExpertCertification::getCertificationSubmittedAt)
+                        .orderByDesc(!"submittedAtAsc".equals(sort), ExpertCertification::getCertificationSubmittedAt)
+        );
+        return pageResponse(certificationPage, certificationPage.getRecords().stream()
+                .map(this::toCertificationResponse)
+                .toList());
+    }
+
+    public AdminExpertCertificationResponse certificationDetail(Long id) {
+        return toCertificationResponse(requireCertification(id));
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public AdminExpertCertificationResponse reviewCertification(Long id, ExpertCertificationReviewRequest request) {
+        ExpertCertification certification = requireCertification(id);
+        if (request.certificationStatus() != ExpertCertificationStatus.APPROVED
+                && request.certificationStatus() != ExpertCertificationStatus.REJECTED) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Certification review status must be approved or rejected");
+        }
+        certification.setCertificationStatus(request.certificationStatus());
+        certification.setCertificationReviewedAt(LocalDateTime.now());
+        certification.setCertificationReviewedBy(currentAdminAccessor.getCurrentAdminId().orElse(0L));
+        certification.setRejectReason(request.certificationStatus() == ExpertCertificationStatus.REJECTED
+                ? normalizeText(request.rejectReason())
+                : null);
+        expertCertificationMapper.updateById(certification);
+        if (request.certificationStatus() == ExpertCertificationStatus.APPROVED) {
+            approveCertification(certification);
+        }
+        return certificationDetail(id);
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -341,6 +417,121 @@ public class AdminExpertService {
         }
     }
 
+    private ExpertCertification requireCertification(Long id) {
+        ExpertCertification certification = expertCertificationMapper.selectById(id);
+        if (certification == null || !Objects.equals(certification.getDeleted(), 0)) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Expert certification does not exist");
+        }
+        return certification;
+    }
+
+    private void approveCertification(ExpertCertification certification) {
+        AppUser user = requireUser(certification.getUserId());
+        Expert expert = findExpertByUserId(certification.getUserId());
+        if (expert == null) {
+            expert = new Expert();
+            expert.setUserId(certification.getUserId());
+            expert.setStatus(EnabledStatus.ENABLED);
+            expert.setConsultEnabled(EnabledStatus.DISABLED);
+            expert.setSortOrder(0);
+            expert.setDeleted(0);
+        }
+        fillExpertFromCertification(expert, certification, user);
+        if (expert.getId() == null) {
+            expertMapper.insert(expert);
+        } else {
+            expertMapper.updateById(expert);
+        }
+        replaceExpertCategories(expert.getId(), loadCertificationCategoryIds(certification.getId()));
+        ensureExpertIdentity(certification.getUserId());
+    }
+
+    private AppUser requireUser(Long userId) {
+        AppUser user = appUserMapper.selectById(userId);
+        if (user == null || !Objects.equals(user.getDeleted(), 0)) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "App user does not exist");
+        }
+        return user;
+    }
+
+    private Expert findExpertByUserId(Long userId) {
+        return expertMapper.selectOne(new LambdaQueryWrapper<Expert>()
+                .eq(Expert::getUserId, userId)
+                .eq(Expert::getDeleted, 0)
+                .last("LIMIT 1"));
+    }
+
+    private void fillExpertFromCertification(Expert expert, ExpertCertification certification, AppUser user) {
+        expert.setRealName(certification.getRealName());
+        expert.setGender(certification.getGender());
+        expert.setBirthDate(certification.getBirthDate());
+        expert.setMobile(certification.getMobile());
+        if (!hasText(expert.getAvatarUrl())) {
+            expert.setAvatarUrl(user.getAvatarUrl());
+        }
+        expert.setTitle(certification.getTitle());
+        expert.setOrganization(certification.getOrganization());
+        expert.setOrganizationId(certification.getOrganizationId());
+        expert.setPracticeTypeId(certification.getPracticeTypeId());
+        expert.setSpecialty(certification.getSpecialty());
+        expert.setIntroduction(certification.getIntroduction());
+        expert.setConsultationNotice(certification.getConsultationNotice());
+        expert.setStatus(EnabledStatus.ENABLED);
+        if (expert.getConsultEnabled() == null) {
+            expert.setConsultEnabled(EnabledStatus.DISABLED);
+        }
+    }
+
+    private AdminExpertCertificationResponse toCertificationResponse(ExpertCertification certification) {
+        return new AdminExpertCertificationResponse(
+                certification.getId(),
+                certification.getUserId(),
+                certification.getRealName(),
+                certification.getGender(),
+                certification.getBirthDate(),
+                certification.getMobile(),
+                certification.getTitle(),
+                certification.getOrganization(),
+                certification.getOrganizationId(),
+                certification.getPracticeTypeId(),
+                certification.getSpecialty(),
+                certification.getIntroduction(),
+                certification.getConsultationNotice(),
+                loadCertificationCategoryIds(certification.getId()),
+                certification.getCertificationStatus(),
+                certification.getCertificationSubmittedAt(),
+                certification.getCertificationReviewedAt(),
+                certification.getCertificationReviewedBy(),
+                certification.getRejectReason(),
+                loadCertificationFiles(certification.getId())
+        );
+    }
+
+    private List<Long> loadCertificationCategoryIds(Long certificationId) {
+        return expertCertificationCategoryRelationMapper.selectList(new LambdaQueryWrapper<ExpertCertificationCategoryRelation>()
+                        .eq(ExpertCertificationCategoryRelation::getCertificationId, certificationId))
+                .stream()
+                .map(ExpertCertificationCategoryRelation::getCategoryId)
+                .toList();
+    }
+
+    private List<AppExpertCertificationFileResponse> loadCertificationFiles(Long certificationId) {
+        return expertCertificationFileMapper.selectList(new LambdaQueryWrapper<ExpertCertificationFile>()
+                        .eq(ExpertCertificationFile::getCertificationId, certificationId)
+                        .eq(ExpertCertificationFile::getDeleted, 0))
+                .stream()
+                .sorted(Comparator.comparing(ExpertCertificationFile::getSortOrder, Comparator.nullsLast(Integer::compareTo))
+                        .thenComparing(ExpertCertificationFile::getId))
+                .map(file -> new AppExpertCertificationFileResponse(
+                        file.getId(),
+                        file.getFileAssetId(),
+                        file.getSourceUrl(),
+                        file.getMaterialType(),
+                        file.getSortOrder()
+                ))
+                .toList();
+    }
+
     private ExpertCategoryResponse toCategoryResponse(ExpertCategory category) {
         ExpertCategory parentCategory = category.getParentId() == null ? null : requireCategory(category.getParentId());
         return new ExpertCategoryResponse(category.getId(), category.getParentId(),
@@ -424,5 +615,9 @@ public class AdminExpertService {
 
     private boolean hasText(String value) {
         return value != null && !value.isBlank();
+    }
+
+    private String normalizeText(String value) {
+        return hasText(value) ? value.trim() : null;
     }
 }

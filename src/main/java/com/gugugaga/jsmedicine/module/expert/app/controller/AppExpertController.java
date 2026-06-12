@@ -3,12 +3,17 @@ package com.gugugaga.jsmedicine.module.expert.app.controller;
 import com.gugugaga.jsmedicine.common.response.ApiResponse;
 import com.gugugaga.jsmedicine.common.response.PageResponse;
 import com.gugugaga.jsmedicine.module.expert.app.dto.AppExpertCategoryResponse;
+import com.gugugaga.jsmedicine.module.expert.app.dto.AppExpertCertificationRequest;
+import com.gugugaga.jsmedicine.module.expert.app.dto.AppExpertCertificationResponse;
 import com.gugugaga.jsmedicine.module.expert.app.dto.AppExpertResponse;
 import com.gugugaga.jsmedicine.module.expert.app.service.AppExpertService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -50,5 +55,19 @@ public class AppExpertController {
     @GetMapping("/{id}")
     public ApiResponse<AppExpertResponse> expertDetail(@PathVariable Long id) {
         return ApiResponse.ok(appExpertService.expertDetail(id));
+    }
+
+    @Operation(summary = "提交专家认证申请")
+    @PostMapping("/certification")
+    public ApiResponse<AppExpertCertificationResponse> submitCertification(
+            @Valid @RequestBody AppExpertCertificationRequest request
+    ) {
+        return ApiResponse.ok(appExpertService.submitCertification(request));
+    }
+
+    @Operation(summary = "查询专家认证结果")
+    @GetMapping("/certification")
+    public ApiResponse<AppExpertCertificationResponse> certificationStatus() {
+        return ApiResponse.ok(appExpertService.certificationStatus());
     }
 }

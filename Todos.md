@@ -168,6 +168,7 @@
 - `[ ]` 用户端互动闭环：专家咨询、答疑回复、直播观看、反馈提交、知识库检索。
 - `2026-06-12`：收口管理端咨询列表“新增可咨询专家”联调缺口。新增 `POST /api/v1/admin/interaction/qa/experts`，供咨询管理页面直接创建进入可咨询名单的专家；底层继续复用 `experts` 主数据与既有 `expert:edit` 权限，不新增平行表或平行专家模型，并显式要求请求体 `consultEnabled=ENABLED`，避免接口语义与实际数据状态不一致。
 - `2026-06-11`：已补用户端专家模式第一轮后端接口。新增 `/api/v1/app/interaction/expert/qa/questions`、`/api/v1/app/interaction/expert/qa/questions/{id}`、`/api/v1/app/interaction/expert/qa/questions/{id}/answers`，同一 app 登录用户在具备激活中的专家身份且专家档案启用可接诊时，可直接查看分配给自己的咨询，或按专家分类接收待回复咨询并首条回复时自动认领；同时 `/api/v1/app/auth/me` 补充 `identities` 与 `expertMode` 字段，便于前端按登录态切换专家工作台入口。用户端发起咨询现同步校验 `expertCategoryId/expertId` 路由目标，避免再写入无法被专家侧消费的悬空问题。
+- `2026-06-12`：已补用户端专家认证完整闭环。新增 `/api/v1/app/experts/certification` 提交/查询接口，以及管理端 `/api/v1/admin/experts/certifications` 列表、详情、审核接口；待审核数据独立落在 `expert_certifications`、`expert_certification_files`、`expert_certification_category_relations`，不污染现有 `experts` 主表。审核通过后自动生成或同步专家档案、替换专家分类并激活 `EXPERT` 身份，但仍保持 `consultEnabled=DISABLED`，因此 `GET /api/v1/app/auth/me` 会先出现 `identities=["EXPERT"...]`，专家工作台仍需后台继续开启可接诊后才可进入。
 
 当前根据《管理端使用手册》新增的差距清单：
 

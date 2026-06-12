@@ -3,6 +3,9 @@ package com.gugugaga.jsmedicine.module.expert.admin.controller;
 import com.gugugaga.jsmedicine.common.enums.EnabledStatus;
 import com.gugugaga.jsmedicine.common.response.ApiResponse;
 import com.gugugaga.jsmedicine.common.response.PageResponse;
+import com.gugugaga.jsmedicine.common.enums.ExpertCertificationStatus;
+import com.gugugaga.jsmedicine.module.expert.admin.dto.AdminExpertCertificationResponse;
+import com.gugugaga.jsmedicine.module.expert.admin.dto.ExpertCertificationReviewRequest;
 import com.gugugaga.jsmedicine.module.expert.admin.dto.ExpertCategoryRequest;
 import com.gugugaga.jsmedicine.module.expert.admin.dto.ExpertCategoryResponse;
 import com.gugugaga.jsmedicine.module.expert.admin.dto.ExpertExperienceRequest;
@@ -19,6 +22,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -93,6 +97,36 @@ public class AdminExpertController {
     @GetMapping("/{id}")
     public ApiResponse<ExpertResponse> expertDetail(@PathVariable Long id) {
         return ApiResponse.ok(adminExpertService.expertDetail(id));
+    }
+
+    @Operation(summary = "分页查询专家认证申请")
+    @PreAuthorize("hasAuthority('expert:certification:view')")
+    @GetMapping("/certifications")
+    public ApiResponse<PageResponse<AdminExpertCertificationResponse>> pageCertifications(
+            @RequestParam(defaultValue = "1") long page,
+            @RequestParam(defaultValue = "20") long size,
+            @RequestParam(required = false) String sort,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) ExpertCertificationStatus certificationStatus
+    ) {
+        return ApiResponse.ok(adminExpertService.pageCertifications(page, size, sort, keyword, certificationStatus));
+    }
+
+    @Operation(summary = "专家认证申请详情")
+    @PreAuthorize("hasAuthority('expert:certification:view')")
+    @GetMapping("/certifications/{id}")
+    public ApiResponse<AdminExpertCertificationResponse> certificationDetail(@PathVariable Long id) {
+        return ApiResponse.ok(adminExpertService.certificationDetail(id));
+    }
+
+    @Operation(summary = "审核专家认证申请")
+    @PreAuthorize("hasAuthority('expert:certification:review')")
+    @PatchMapping("/certifications/{id}/review")
+    public ApiResponse<AdminExpertCertificationResponse> reviewCertification(
+            @PathVariable Long id,
+            @Valid @RequestBody ExpertCertificationReviewRequest request
+    ) {
+        return ApiResponse.ok(adminExpertService.reviewCertification(id, request));
     }
 
     @Operation(summary = "新增专家")

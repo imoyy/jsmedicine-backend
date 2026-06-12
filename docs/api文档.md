@@ -5,7 +5,7 @@
 ## 基础说明
 
 - 项目：`中医在线` 后端
-- 文档更新时间：`2026-06-09`
+- 文档更新时间：`2026-06-12`
 - 认证方式：`Authorization: Bearer <token>`
 - 统一返回：`ApiResponse<T>`
 - 分页参数：`page`、`size`、`sort`
@@ -34,6 +34,8 @@
 - 管理端新增 `GET /api/v1/admin/content/home/candidates`，用于按首页分类和来源模块分页拉取候选课程、图书、资讯、播客、专题、知识库或直播资源。
 - 首页内容响应新增 `categoryName`、`contentTypeLabel`、`targetAvailable`、`targetTitle`、`targetCoverUrl`、`createdAt`、`updatedAt`，便于管理端直接渲染分类、资源封面和时间信息。
 - 专家分类继续复用同一套接口，按 `parentId` 表达两级结构，响应新增 `parentCategoryName`、`level`。
+- 用户端新增 `POST /api/v1/app/experts/certification`、`GET /api/v1/app/experts/certification`，用于提交和查询专家认证申请。
+- 管理端新增 `GET /api/v1/admin/experts/certifications`、`GET /api/v1/admin/experts/certifications/{id}`、`PATCH /api/v1/admin/experts/certifications/{id}/review`，用于专家认证审核闭环。
 - 管理端和用户端问答响应在保留原 `status` 的同时新增 `statusCode`、`statusLabel`。
 - 用户反馈继续保留 `feedbackType` 自由文本模型，`contact` 明确表示主联系方式字段。
 - 用户资料新增 `profileSignature`，用于用户端个人签名展示和管理端用户详情回显。
